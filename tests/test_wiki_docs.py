@@ -29,7 +29,7 @@ REQUIRED_PAGES = {
 
 def test_required_wiki_pages_exist() -> None:
     existing = {path.name for path in WIKI.glob("*.md")}
-    assert REQUIRED_PAGES <= existing
+    assert existing >= REQUIRED_PAGES
 
 
 def test_internal_wiki_links_point_to_existing_pages() -> None:
