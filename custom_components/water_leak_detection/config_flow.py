@@ -15,7 +15,8 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
 from homeassistant.core import callback
-from homeassistant.helpers import entity_registry as er, translation
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import translation
 from homeassistant.helpers.selector import (
     BooleanSelector,
     DeviceSelector,
