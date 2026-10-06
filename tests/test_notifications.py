@@ -457,3 +457,44 @@ async def test_notification_uses_home_assistant_language_strings() -> None:
         "Auf diesem Gerät stummschalten"
     )
     assert service_data["data"]["actions"][1]["title"] == "Für alle quittieren"
+
+
+@pytest.mark.asyncio
+async def test_runtime_translation_loader_uses_home_assistant_language(
+    monkeypatch,
+) -> None:
+    controller, _recipient, _hass, _persisted = _controller_for_action(
+        tracker_state="home"
+    )
+    controller.hass.config.language = "de"
+
+    async def _fake_get_translations(
+        hass,
+        language,
+        category,
+        integrations,
+    ):
+        assert language == "de"
+        assert category == "common"
+        assert list(integrations) == ["water_leak_detection"]
+        return {
+            "component.water_leak_detection.common.action_ack_all": (
+                "Für alle quittieren"
+            )
+        }
+
+    monkeypatch.setattr(
+        "custom_components.water_leak_detection.notifications."
+        "translation.async_get_translations",
+        _fake_get_translations,
+    )
+    controller._async_common_translations = (
+        NotificationController._async_common_translations.__get__(
+            controller,
+            NotificationController,
+        )
+    )
+
+    strings = await controller._async_common_translations()
+
+    assert strings["action_ack_all"] == "Für alle quittieren"
