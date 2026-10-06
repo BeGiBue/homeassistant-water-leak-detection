@@ -5,6 +5,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from homeassistant.config_entries import OptionsFlowWithReload
+
+from custom_components.water_leak_detection.config_flow import WaterLeakOptionsFlow
+
 ROOT = Path(__file__).resolve().parents[1]
 INTEGRATION = ROOT / "custom_components" / "water_leak_detection"
 
@@ -73,3 +77,7 @@ def test_setup_and_options_recipient_translations_exist() -> None:
     assert "reconfigure" in config_steps
     assert "notifications" in option_steps
     assert option_steps["init"]["menu_options"]["notifications"]
+
+
+def test_options_flow_reloads_integration_after_changes() -> None:
+    assert issubclass(WaterLeakOptionsFlow, OptionsFlowWithReload)
