@@ -79,7 +79,16 @@
           "shutoff_slow": "Slow Leak requests shutoff",
           "shutoff_low": "Low Flow requests shutoff",
           "shutoff_high": "High Flow requests shutoff",
-          "shutoff_burst": "Burst Leak requests shutoff"
+          "shutoff_burst": "Burst Leak requests shutoff",
+          "learning_window_days": "Learning window",
+          "manual_max_flow_lph": "Known maximum normal flow (0 = disabled)",
+          "pipe_diameter_mm": "Nominal pipe diameter",
+          "static_pressure_bar": "Static supply pressure",
+          "high_learned_multiplier": "High Flow multiplier on learned maximum",
+          "burst_learned_multiplier": "Burst Leak multiplier on learned maximum",
+          "hydraulic_burst_fraction": "Hydraulic Burst plausibility fraction",
+          "burst_rate_rise_lph_10s": "Burst rate-of-rise threshold per 10 seconds",
+          "burst_rate_confirm_seconds": "Rapid-rise Burst confirmation time"
         }
       },
       "add_recipient": {
@@ -125,7 +134,8 @@
       "invalid_high_quiet_threshold": "The High Flow quiet threshold must be below the High Flow threshold.",
       "invalid_burst_reset_threshold": "The Burst Leak reset threshold must be below the Burst Leak absolute threshold.",
       "recipient_notify_service_exists": "This Companion notification service is already configured as a recipient.",
-      "recipient_name_required": "Enter a name for the notification device."
+      "recipient_name_required": "Enter a name for the notification device.",
+      "invalid_adaptive_multiplier_order": "The Burst Leak multiplier must be greater than the High Flow multiplier."
     },
     "abort": {
       "no_mobile_app_notify_services": "No mobile_app notification services were found. Set up the Home Assistant Companion App first.",
