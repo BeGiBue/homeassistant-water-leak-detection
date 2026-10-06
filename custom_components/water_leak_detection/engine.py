@@ -192,7 +192,7 @@ class DetectionEngine:
         out: list[DetectorTransition] = []
 
         if runtime.phase is DetectorPhase.IDLE:
-            if flow >= s.slow_threshold_lph:
+            if s.slow_threshold_lph <= flow < s.low_threshold_lph:
                 if tr := self._transition(
                     kind, DetectorPhase.MONITORING, now=now, total_l=total_l
                 ):
@@ -200,8 +200,10 @@ class DetectionEngine:
             return out
 
         if runtime.phase is DetectorPhase.MONITORING:
-            # Slow leak intentionally requires continuous flow.
-            if flow < s.slow_threshold_lph:
+            # Slow leak intentionally requires continuous low-band flow. A normal
+            # larger draw interrupts the evidence window but does not clear an
+            # already confirmed Slow Leak.
+            if flow < s.slow_threshold_lph or flow >= s.low_threshold_lph:
                 if tr := self._transition(
                     kind, DetectorPhase.IDLE, now=now, total_l=total_l
                 ):
@@ -233,7 +235,7 @@ class DetectionEngine:
         out: list[DetectorTransition] = []
 
         if runtime.phase is DetectorPhase.IDLE:
-            if flow >= s.low_threshold_lph:
+            if s.low_threshold_lph <= flow < s.high_threshold_lph:
                 if tr := self._transition(
                     kind, DetectorPhase.MONITORING, now=now, total_l=total_l
                 ):
@@ -282,7 +284,7 @@ class DetectionEngine:
             return out
 
         if runtime.phase is DetectorPhase.IDLE:
-            if flow >= s.high_threshold_lph:
+            if s.high_threshold_lph <= flow < s.burst_threshold_lph:
                 if tr := self._transition(
                     kind, DetectorPhase.MONITORING, now=now, total_l=total_l
                 ):
