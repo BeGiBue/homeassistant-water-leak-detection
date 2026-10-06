@@ -19,7 +19,6 @@ from custom_components.water_leak_detection.learning import (
 )
 from custom_components.water_leak_detection.manager import WaterLeakManager
 
-
 NOW = datetime(2026, 10, 6, tzinfo=UTC)
 
 
