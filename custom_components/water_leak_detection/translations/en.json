@@ -34,7 +34,7 @@
       },
       "notifications": {
         "title": "Notification recipients",
-        "description": "Already configured ({recipient_count}):\\n\\n{configured_recipients}\\n\\nAdd more Companion App devices as recipients or finish setup. Recipients can be changed later at any time through Configure.",
+        "description": "**Already configured: {recipient_count}**\n\n{configured_recipients}\n\nAdd more Companion App devices or finish setup.",
         "menu_options": {
           "add_initial_recipient": "Add notification device",
           "finish_setup": "Finish setup"
@@ -42,7 +42,7 @@
       },
       "add_initial_recipient": {
         "title": "Add notification device",
-        "description": "Already configured ({recipient_count}):\\n\\n{configured_recipients}\\n\\nSelect the Companion notification service and its matching device tracker. Global acknowledgement is checked in the backend using the Home state.",
+        "description": "**Already configured: {recipient_count}**\n\n{configured_recipients}\n\nSelect the Companion notification service and its matching device tracker.",
         "data": {
           "name": "Display name",
           "notify_service": "Companion notification service",
@@ -119,11 +119,12 @@
           "hydraulic_burst_fraction": "Hydraulic Burst plausibility fraction",
           "burst_rate_rise_lph_10s": "Burst rate-of-rise threshold per 10 seconds",
           "burst_rate_confirm_seconds": "Rapid-rise Burst confirmation time"
-        }
+        },
+        "submit": "Save and go back"
       },
       "add_recipient": {
         "title": "Add notification device",
-        "description": "Already configured ({recipient_count}):\\n\\n{configured_recipients}\\n\\nConfigure another Companion App device. Global acknowledgement is always authorized in the backend using the assigned device tracker.",
+        "description": "**Already configured: {recipient_count}**\n\n{configured_recipients}\n\nConfigure another Companion App device.",
         "data": {
           "name": "Display name",
           "notify_service": "Companion notification service",
@@ -131,25 +132,28 @@
           "critical_enabled": "Allow critical Burst Leak alerts",
           "allow_global_ack": "Allow global acknowledgement when device is home",
           "trusted_stationary": "Trusted stationary home device"
-        }
+        },
+        "submit": "Add and go back"
       },
       "remove_recipient": {
         "title": "Remove notification device",
         "data": {
           "id": "Device"
         },
-        "description": "Already configured ({recipient_count}):\\n\\n{configured_recipients}\\n\\nSelect the device that should no longer receive alerts."
+        "description": "**Already configured: {recipient_count}**\n\n{configured_recipients}\n\nSelect the device that should no longer receive alerts.",
+        "submit": "Remove and go back"
       },
       "edit_recipient": {
         "title": "Select notification device",
         "data": {
           "id": "Device"
         },
-        "description": "Already configured ({recipient_count}):\\n\\n{configured_recipients}\\n\\nSelect the device you want to edit."
+        "description": "**Already configured: {recipient_count}**\n\n{configured_recipients}\n\nSelect the device you want to edit.",
+        "submit": "Continue"
       },
       "edit_recipient_details": {
         "title": "Edit notification device",
-        "description": "Already configured ({recipient_count}):\\n\\n{configured_recipients}\\n\\nChange tracker, critical-alert and acknowledgement settings. The internal device ID and action token are preserved.",
+        "description": "Change the selected device settings. The internal device ID and action token are preserved.",
         "data": {
           "name": "Display name",
           "notify_service": "Companion notification service",
@@ -157,15 +161,17 @@
           "critical_enabled": "Allow critical Burst Leak alerts",
           "allow_global_ack": "Allow global acknowledgement when device is home",
           "trusted_stationary": "Trusted stationary home device"
-        }
+        },
+        "submit": "Save and go back"
       },
       "notifications": {
         "title": "Notification recipients",
-        "description": "Already configured ({recipient_count}):\\n\\n{configured_recipients}\\n\\nManage the Companion App devices that receive leak alerts.",
+        "description": "**Already configured: {recipient_count}**\n\n{configured_recipients}\n\nManage the Companion App devices that receive leak alerts.",
         "menu_options": {
           "add_recipient": "Add recipient",
           "edit_recipient": "Edit recipient",
-          "remove_recipient": "Remove recipient"
+          "remove_recipient": "Remove recipient",
+          "back_to_main": "Back to configuration"
         }
       },
       "sources": {
@@ -174,7 +180,8 @@
         "data": {
           "flow_entity": "Flow rate sensor",
           "total_entity": "Total consumption sensor (optional)"
-        }
+        },
+        "submit": "Save and go back"
       }
     },
     "error": {
