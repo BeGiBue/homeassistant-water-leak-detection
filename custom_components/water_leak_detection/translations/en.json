@@ -78,7 +78,7 @@
     "step": {
       "init": {
         "title": "Configuration",
-        "description": "Change notification recipients or expert settings. Measurement sources can be changed through Reconfigure.",
+        "description": "Change measurement sources, notification recipients, and expert settings at any time.",
         "menu_options": {
           "notifications": "Notification recipients",
           "expert": "Expert settings",
