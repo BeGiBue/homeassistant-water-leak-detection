@@ -533,9 +533,12 @@ class DetectionEngine:
         }
 
     def restore(self, data: dict[str, Any]) -> None:
-        """Restore runtime state from serialized data."""
-        self.last_sample_at = _parse_datetime(data.get("last_sample_at"))
-        self.last_flow_lph = _as_float_or_none(data.get("last_flow_lph"))
+        """Restore confirmed events without treating offline time as evidence."""
+        # A restart creates an observation gap. Never integrate that gap and never
+        # let a pre-restart MONITORING or quiet/reset timer mature while HA was
+        # offline. Confirmed ACTIVE events are retained for safety.
+        self.last_sample_at = None
+        self.last_flow_lph = None
         runtime_data = data.get("runtimes", {})
         if not isinstance(runtime_data, dict):
             return
@@ -543,14 +546,21 @@ class DetectionEngine:
             raw = runtime_data.get(kind.value)
             if not isinstance(raw, dict):
                 continue
-            runtime = self.runtimes[kind]
+
             try:
-                runtime.phase = DetectorPhase(raw.get("phase", DetectorPhase.IDLE.value))
+                phase = DetectorPhase(raw.get("phase", DetectorPhase.IDLE.value))
             except ValueError:
-                runtime.phase = DetectorPhase.IDLE
+                phase = DetectorPhase.IDLE
+
+            runtime = self.runtimes[kind]
+            if phase is not DetectorPhase.ACTIVE:
+                runtime.reset()
+                continue
+
+            runtime.phase = DetectorPhase.ACTIVE
             runtime.started_at = _parse_datetime(raw.get("started_at"))
             runtime.detected_at = _parse_datetime(raw.get("detected_at"))
-            runtime.quiet_since = _parse_datetime(raw.get("quiet_since"))
+            runtime.quiet_since = None
             runtime.event_id = (
                 raw.get("event_id") if isinstance(raw.get("event_id"), str) else None
             )
