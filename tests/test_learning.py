@@ -93,13 +93,13 @@ def test_rolling_window_prunes_old_samples() -> None:
 
     def add_episode(start: datetime, peak: float) -> None:
         learner.observe(start, peak, suspicious=False, high_flow_bypassed=False)
-            learner.observe(
+        learner.observe(
             start + timedelta(seconds=10),
             0.0,
             suspicious=False,
             high_flow_bypassed=False,
         )
-            learner.observe(
+        learner.observe(
             start + timedelta(seconds=20),
             0.0,
             suspicious=False,
@@ -153,13 +153,13 @@ def test_confidence_progresses_with_samples_and_coverage() -> None:
 
     def add_episode(start: datetime, peak: float) -> None:
         learner.observe(start, peak, suspicious=False, high_flow_bypassed=False)
-            learner.observe(
+        learner.observe(
             start + timedelta(seconds=10),
             0.0,
             suspicious=False,
             high_flow_bypassed=False,
         )
-            learner.observe(
+        learner.observe(
             start + timedelta(seconds=20),
             0.0,
             suspicious=False,
