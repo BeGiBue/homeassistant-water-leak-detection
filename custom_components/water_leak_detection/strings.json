@@ -73,6 +73,12 @@
           "shutoff_burst": "Burst Leak requests shutoff"
         }
       }
+    },
+    "error": {
+      "invalid_threshold_order": "Thresholds must be ordered Slow Leak < Low Flow < High Flow < Burst Leak.",
+      "invalid_low_quiet_threshold": "The Low Flow quiet threshold must be below the Low Flow start threshold.",
+      "invalid_high_quiet_threshold": "The High Flow quiet threshold must be below the High Flow threshold.",
+      "invalid_burst_reset_threshold": "The Burst Leak reset threshold must be below the Burst Leak absolute threshold."
     }
   }
 }
