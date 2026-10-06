@@ -239,3 +239,10 @@ Version 1.0.2 is the current stable release and includes the complete original v
 The previously published **0.3.0** GitHub release was tagged before the Home Assistant integration-type correction and still declared itself as a `helper`. **1.0.2 continues the corrected stable line introduced with 1.0.0 and explicitly declares `integration_type: "service"`, so Home Assistant loads it as a normal integration rather than a Helper.**
 
 The release is validated against Home Assistant 2026.9.4 / Python 3.14.2 with compile checks, Ruff, JSON validation, and automated tests.
+
+
+## License
+
+Water Leak Guard is licensed under the **GNU Affero General Public License v3.0 only (AGPL-3.0-only)**.
+
+See [LICENSE](LICENSE) for the complete license text.

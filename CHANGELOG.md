@@ -4,6 +4,10 @@ All notable changes to Water Leak Guard are documented here.
 
 ## 1.0.2 — 2026-10-07
 
+### Added
+
+- Added the repository license: **GNU Affero General Public License v3.0 only (AGPL-3.0-only)**.
+
 ### Fixed
 
 - Saving a Configure subsection no longer closes the complete Home Assistant options flow.

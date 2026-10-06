@@ -8,14 +8,18 @@
 - [x] README documents installation and usage.
 - [x] `hacs.json` exists at repository root.
 - [x] Integration has local brand assets.
+- [x] Repository contains `LICENSE`.
+- [x] License is **AGPL-3.0-only**.
 
-## Version 1.0.1
+## Version 1.0.2
 
-- [x] Manifest version is 1.0.1.
+- [x] Manifest version is 1.0.2.
 - [x] Manifest classifies the component as `integration_type: "service"`, never `helper`.
-- [x] Recipient overview is implemented for initial setup and later configuration.
-- [x] Release notes are prepared in `RELEASE_NOTES_1.0.1.md`.
+- [x] Configure navigation remains open after saving subsections.
+- [x] Notification-recipient rendering is fixed.
+- [x] Release notes are prepared in `RELEASE_NOTES_1.0.2.md`.
 - [x] Changelog updated.
-- [x] Publish GitHub Release with tag `1.0.1`.
-- [x] Verify the tagged manifest still says `service`.
-- [ ] Verify HACS sees `1.0.1`.
+- [ ] HACS validation passes.
+- [ ] Publish GitHub Release with tag `1.0.2`.
+- [ ] Verify the tagged manifest still says `service`.
+- [ ] Verify HACS offers `1.0.2`.
