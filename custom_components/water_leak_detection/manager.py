@@ -368,16 +368,18 @@ class WaterLeakManager:
         )
 
     def _event_payload(self, transition: DetectorTransition) -> dict[str, Any]:
-        runtime = self.engine.runtimes[transition.kind]
         return {
             "config_entry_id": self.entry.entry_id,
             "type": transition.kind.value,
             "event_id": transition.event_id,
             "phase": transition.new_phase.value,
             "flow_lph": self.current_flow_lph,
-            "volume_l": self.engine.snapshot(self.current_total_l).active_volume_l,
-            "started_at": runtime.started_at.isoformat()
-            if runtime.started_at
+            "volume_l": round(transition.volume_l, 3),
+            "started_at": transition.started_at.isoformat()
+            if transition.started_at
+            else None,
+            "detected_at": transition.detected_at.isoformat()
+            if transition.detected_at
             else None,
         }
 
