@@ -8,7 +8,8 @@ import probatio
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import config_validation as cv, translation
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import translation
 
 from .const import (
     ATTR_CONFIG_ENTRY_ID,
