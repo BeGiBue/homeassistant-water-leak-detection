@@ -67,6 +67,9 @@ class DetectorTransition:
     old_phase: DetectorPhase
     new_phase: DetectorPhase
     event_id: str | None
+    started_at: datetime | None
+    detected_at: datetime | None
+    volume_l: float
 
 
 @dataclass(slots=True)
@@ -160,11 +163,27 @@ class DetectionEngine:
             runtime.quiet_since = None
             runtime.event_id = self._new_event_id(kind, now)
         else:
-            event_id = runtime.event_id
+            transition = DetectorTransition(
+                kind=kind,
+                old_phase=old_phase,
+                new_phase=new_phase,
+                event_id=runtime.event_id,
+                started_at=runtime.started_at,
+                detected_at=runtime.detected_at,
+                volume_l=self._event_volume(runtime, total_l),
+            )
             runtime.reset()
-            return DetectorTransition(kind, old_phase, new_phase, event_id)
+            return transition
 
-        return DetectorTransition(kind, old_phase, new_phase, runtime.event_id)
+        return DetectorTransition(
+            kind=kind,
+            old_phase=old_phase,
+            new_phase=new_phase,
+            event_id=runtime.event_id,
+            started_at=runtime.started_at,
+            detected_at=runtime.detected_at,
+            volume_l=self._event_volume(runtime, total_l),
+        )
 
     @staticmethod
     def _new_event_id(kind: DetectorKind, now: datetime) -> str:
