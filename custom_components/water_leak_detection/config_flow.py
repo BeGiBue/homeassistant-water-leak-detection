@@ -332,13 +332,18 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
 class WaterLeakOptionsFlow(OptionsFlow):
     """Options for detector settings and Companion recipients."""
 
+    def __init__(self) -> None:
+        """Initialize options flow state."""
+        super().__init__()
+        self._editing_recipient_id: str | None = None
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Show the options menu."""
         menu_options = ["expert", "add_recipient"]
         if self._raw_recipients():
-            menu_options.append("remove_recipient")
+            menu_options.extend(["edit_recipient", "remove_recipient"])
         return self.async_show_menu(
             step_id="init",
             menu_options=menu_options,
@@ -584,6 +589,147 @@ class WaterLeakOptionsFlow(OptionsFlow):
                     probatio.Required(
                         RECIPIENT_TRUSTED_STATIONARY,
                         default=False,
+                    ): BooleanSelector(),
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_edit_recipient(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Choose a configured notification recipient to edit."""
+        recipients = self._raw_recipients()
+        if not recipients:
+            return self.async_abort(reason="no_recipients_configured")
+
+        if user_input is not None:
+            self._editing_recipient_id = str(user_input[RECIPIENT_ID])
+            return await self.async_step_edit_recipient_details()
+
+        options = [
+            SelectOptionDict(
+                value=str(raw[RECIPIENT_ID]),
+                label=str(raw.get(RECIPIENT_NAME, raw[RECIPIENT_ID])),
+            )
+            for raw in recipients
+            if raw.get(RECIPIENT_ID)
+        ]
+        return self.async_show_form(
+            step_id="edit_recipient",
+            data_schema=probatio.Schema(
+                {
+                    probatio.Required(RECIPIENT_ID): SelectSelector(
+                        SelectSelectorConfig(options=options)
+                    )
+                }
+            ),
+        )
+
+    async def async_step_edit_recipient_details(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Edit one Companion notification recipient."""
+        recipient_id = self._editing_recipient_id
+        recipients = self._raw_recipients()
+        current = next(
+            (
+                raw
+                for raw in recipients
+                if str(raw.get(RECIPIENT_ID, "")) == recipient_id
+            ),
+            None,
+        )
+        if current is None:
+            return self.async_abort(reason="recipient_not_found")
+
+        notify_services = self._mobile_notify_services()
+        current_service = str(current.get(RECIPIENT_NOTIFY_SERVICE, ""))
+        if current_service and current_service not in notify_services:
+            notify_services.append(current_service)
+            notify_services.sort()
+
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            notify_service = str(user_input[RECIPIENT_NOTIFY_SERVICE])
+            if any(
+                str(raw.get(RECIPIENT_ID, "")) != recipient_id
+                and raw.get(RECIPIENT_NOTIFY_SERVICE) == notify_service
+                for raw in recipients
+            ):
+                errors["base"] = "recipient_notify_service_exists"
+            else:
+                replacement = {
+                    RECIPIENT_ID: str(current[RECIPIENT_ID]),
+                    RECIPIENT_NAME: str(user_input[RECIPIENT_NAME]).strip(),
+                    RECIPIENT_NOTIFY_SERVICE: notify_service,
+                    RECIPIENT_TRACKER_ENTITY: str(
+                        user_input[RECIPIENT_TRACKER_ENTITY]
+                    ),
+                    RECIPIENT_CRITICAL_ENABLED: bool(
+                        user_input[RECIPIENT_CRITICAL_ENABLED]
+                    ),
+                    RECIPIENT_ALLOW_GLOBAL_ACK: bool(
+                        user_input[RECIPIENT_ALLOW_GLOBAL_ACK]
+                    ),
+                    RECIPIENT_TRUSTED_STATIONARY: bool(
+                        user_input[RECIPIENT_TRUSTED_STATIONARY]
+                    ),
+                    RECIPIENT_TOKEN: str(current[RECIPIENT_TOKEN]),
+                }
+                updated = dict(self.config_entry.options)
+                updated[CONF_NOTIFICATION_RECIPIENTS] = [
+                    replacement
+                    if str(raw.get(RECIPIENT_ID, "")) == recipient_id
+                    else raw
+                    for raw in recipients
+                ]
+                return self.async_create_entry(title="", data=updated)
+
+        service_options = [
+            SelectOptionDict(value=service, label=service)
+            for service in notify_services
+        ]
+        return self.async_show_form(
+            step_id="edit_recipient_details",
+            data_schema=probatio.Schema(
+                {
+                    probatio.Required(
+                        RECIPIENT_NAME,
+                        default=str(current.get(RECIPIENT_NAME, "")),
+                    ): TextSelector(),
+                    probatio.Required(
+                        RECIPIENT_NOTIFY_SERVICE,
+                        default=current_service,
+                    ): SelectSelector(
+                        SelectSelectorConfig(options=service_options)
+                    ),
+                    probatio.Required(
+                        RECIPIENT_TRACKER_ENTITY,
+                        default=str(current.get(RECIPIENT_TRACKER_ENTITY, "")),
+                    ): EntitySelector(
+                        EntitySelectorConfig(
+                            domain="device_tracker",
+                            multiple=False,
+                        )
+                    ),
+                    probatio.Required(
+                        RECIPIENT_CRITICAL_ENABLED,
+                        default=bool(
+                            current.get(RECIPIENT_CRITICAL_ENABLED, True)
+                        ),
+                    ): BooleanSelector(),
+                    probatio.Required(
+                        RECIPIENT_ALLOW_GLOBAL_ACK,
+                        default=bool(
+                            current.get(RECIPIENT_ALLOW_GLOBAL_ACK, True)
+                        ),
+                    ): BooleanSelector(),
+                    probatio.Required(
+                        RECIPIENT_TRUSTED_STATIONARY,
+                        default=bool(
+                            current.get(RECIPIENT_TRUSTED_STATIONARY, False)
+                        ),
                     ): BooleanSelector(),
                 }
             ),
