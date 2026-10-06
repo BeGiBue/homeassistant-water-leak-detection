@@ -26,7 +26,7 @@ def test_manifest_is_normal_service_integration() -> None:
 
     assert manifest["integration_type"] == "service"
     assert manifest["config_flow"] is True
-    assert manifest["version"] == "1.0.1"
+    assert manifest["version"] == "1.0.2"
     assert manifest["name"] == "Water Leak Guard"
     assert NAME == "Water Leak Guard"
 
