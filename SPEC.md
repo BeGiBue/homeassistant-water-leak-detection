@@ -659,6 +659,8 @@ The final names may be adapted to HA conventions, but the integration should exp
 
 Suggested entities:
 
+- independent Slow Leak enable/disable switch,
+- independent Low Flow enable/disable switch,
 - overall leak status sensor,
 - overall active-alarm binary sensor,
 - shutoff-request binary sensor,
@@ -1002,3 +1004,4 @@ The following rules are binding across all implementation versions:
 13. **Suspicious events must not automatically redefine abnormal behavior as normal.**
 14. **The integration must remain usable without any custom frontend card.**
 15. **Home Assistant-native mechanisms should be preferred wherever practical.**
+16. **Slow Leak and Low Flow detector enable state is independent from alarm state and exposed as dedicated HA entities.**

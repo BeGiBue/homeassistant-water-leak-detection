@@ -1,0 +1,78 @@
+"""Binary sensors for Home Assistant Water Leak Detection."""
+
+from __future__ import annotations
+
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+
+from .const import DOMAIN
+from .entity import WaterLeakEntity
+from .manager import WaterLeakManager
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Set up Water Leak Detection binary sensors."""
+    manager: WaterLeakManager = hass.data[DOMAIN][entry.entry_id]
+    async_add_entities(
+        [LeakAlarmBinarySensor(manager), ShutoffRequestBinarySensor(manager)]
+    )
+
+
+class LeakAlarmBinarySensor(WaterLeakEntity, BinarySensorEntity):
+    """Whether any leak detector is active."""
+
+    _attr_name = "Leak alarm"
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    _attr_icon = "mdi:pipe-leak"
+
+    def __init__(self, manager: WaterLeakManager) -> None:
+        super().__init__(manager, "leak_alarm")
+
+    @property
+    def is_on(self) -> bool:
+        return self.manager.engine.snapshot(
+            self.manager.current_total_l
+        ).alarm_active
+
+    @property
+    def extra_state_attributes(self):
+        snapshot = self.manager.engine.snapshot(self.manager.current_total_l)
+        return {
+            "status": snapshot.status,
+            "event_id": snapshot.active_event_id,
+            "detector": snapshot.active_kind.value
+            if snapshot.active_kind
+            else None,
+        }
+
+
+class ShutoffRequestBinarySensor(WaterLeakEntity, BinarySensorEntity):
+    """Independent request for an external motorized shutoff valve."""
+
+    _attr_name = "Water shutoff request"
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    _attr_icon = "mdi:valve-closed"
+
+    def __init__(self, manager: WaterLeakManager) -> None:
+        super().__init__(manager, "shutoff_request")
+
+    @property
+    def is_on(self) -> bool:
+        return self.manager.engine.snapshot(
+            self.manager.current_total_l
+        ).shutoff_request
+
+    @property
+    def extra_state_attributes(self):
+        snapshot = self.manager.engine.snapshot(self.manager.current_total_l)
+        return {
+            "decoupled_from_alarm_acknowledgement": True,
+            "status": snapshot.status,
+            "event_id": snapshot.active_event_id,
+        }
