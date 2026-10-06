@@ -32,9 +32,9 @@ def test_runtime_translations_exist_for_english_and_german() -> None:
     english = _load_json(INTEGRATION / "translations" / "en.json")
     german = _load_json(INTEGRATION / "translations" / "de.json")
 
-    assert english["title"] == "Water leak detection"
-    assert german["title"] == "Wasserleck-Erkennung"
-    assert german["device"]["water_leak_detection"]["name"] == "Wasserleck-Erkennung"
+    assert english["title"] == "Water Leak Guard"
+    assert german["title"] == "Wasserwächter"
+    assert german["device"]["water_leak_detection"]["name"] == "Wasserwächter"
 
 
 def test_all_exposed_entity_translation_keys_have_german_names() -> None:
