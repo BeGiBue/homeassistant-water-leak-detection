@@ -287,3 +287,123 @@ def test_disabling_low_detector_does_not_disable_burst() -> None:
 
     assert engine.runtimes[DetectorKind.LOW_FLOW].phase is DetectorPhase.IDLE
     assert engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.ACTIVE
+
+
+def test_adaptive_high_threshold_creates_normal_peak_band() -> None:
+    engine = DetectionEngine()
+    engine.sample(
+        at(0),
+        1000.0,
+        None,
+        effective_high_threshold_lph=1500.0,
+        effective_burst_threshold_lph=2500.0,
+    )
+
+    assert engine.runtimes[DetectorKind.LOW_FLOW].phase is DetectorPhase.IDLE
+    assert engine.runtimes[DetectorKind.HIGH_FLOW].phase is DetectorPhase.IDLE
+    assert engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.IDLE
+
+
+def test_adaptive_high_threshold_still_detects_above_reference() -> None:
+    settings = DetectorSettings(high_detection_seconds=10)
+    engine = DetectionEngine(settings)
+    engine.sample(
+        at(0),
+        1600.0,
+        None,
+        effective_high_threshold_lph=1500.0,
+        effective_burst_threshold_lph=3000.0,
+    )
+    engine.sample(
+        at(10),
+        1600.0,
+        None,
+        effective_high_threshold_lph=1500.0,
+        effective_burst_threshold_lph=3000.0,
+    )
+
+    assert engine.runtimes[DetectorKind.HIGH_FLOW].phase is DetectorPhase.ACTIVE
+
+
+def test_rapid_rise_burst_triggers_below_absolute_threshold() -> None:
+    settings = DetectorSettings(
+        burst_threshold_lph=2000.0,
+        burst_detection_seconds=30,
+        burst_rate_rise_lph_10s=1000.0,
+        burst_rate_confirm_seconds=10,
+    )
+    engine = DetectionEngine(settings)
+    engine.sample(
+        at(0),
+        100.0,
+        None,
+        effective_high_threshold_lph=600.0,
+        effective_burst_threshold_lph=4000.0,
+    )
+    engine.sample(
+        at(10),
+        3200.0,
+        None,
+        effective_high_threshold_lph=600.0,
+        effective_burst_threshold_lph=4000.0,
+    )
+
+    runtime = engine.runtimes[DetectorKind.BURST_LEAK]
+    assert runtime.phase is DetectorPhase.MONITORING
+    assert runtime.reason == "rapid_rise"
+
+    engine.sample(
+        at(20),
+        3200.0,
+        None,
+        effective_high_threshold_lph=600.0,
+        effective_burst_threshold_lph=4000.0,
+    )
+    assert engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.ACTIVE
+
+
+def test_rapid_rise_burst_ignores_high_flow_bypass() -> None:
+    settings = DetectorSettings(
+        burst_rate_rise_lph_10s=1000.0,
+        burst_rate_confirm_seconds=10,
+    )
+    engine = DetectionEngine(settings)
+    engine.sample(
+        at(0),
+        100.0,
+        None,
+        high_flow_bypassed=True,
+        effective_high_threshold_lph=600.0,
+        effective_burst_threshold_lph=4000.0,
+    )
+    engine.sample(
+        at(10),
+        3200.0,
+        None,
+        high_flow_bypassed=True,
+        effective_high_threshold_lph=600.0,
+        effective_burst_threshold_lph=4000.0,
+    )
+    engine.sample(
+        at(20),
+        3200.0,
+        None,
+        high_flow_bypassed=True,
+        effective_high_threshold_lph=600.0,
+        effective_burst_threshold_lph=4000.0,
+    )
+
+    assert engine.runtimes[DetectorKind.HIGH_FLOW].phase is DetectorPhase.IDLE
+    assert engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.ACTIVE
+
+
+def test_static_burst_threshold_works_without_learning_context() -> None:
+    settings = DetectorSettings(
+        burst_threshold_lph=2000.0,
+        burst_detection_seconds=10,
+    )
+    engine = DetectionEngine(settings)
+    engine.sample(at(0), 2500.0, None)
+    engine.sample(at(10), 2500.0, None)
+
+    assert engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.ACTIVE
