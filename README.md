@@ -1,4 +1,4 @@
-# Home Assistant Water Leak Detection
+# Water Leak Guard
 
 [![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BeGiBue&repository=homeassistant-water-leak-detection&category=integration)
 
@@ -41,10 +41,10 @@ Use the button above, or add the repository manually in HACS:
 
 Then:
 
-1. Download **Home Assistant Water Leak Detection** in HACS.
+1. Download **Water Leak Guard** in HACS.
 2. Restart Home Assistant.
 3. Open **Settings → Devices & services → Add integration**.
-4. Search for **Home Assistant Water Leak Detection**.
+4. Search for **Water Leak Guard**.
 5. Complete the config flow.
 
 Detailed installation and update instructions: [docs/INSTALLATION.md](docs/INSTALLATION.md)
