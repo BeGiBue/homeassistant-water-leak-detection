@@ -45,7 +45,7 @@ async def async_setup_entry(
 class WaterLeakStatusSensor(WaterLeakEntity, SensorEntity):
     """Overall detector state."""
 
-    _attr_name = "Status"
+    _attr_translation_key = "status"
     _attr_icon = "mdi:water-alert"
 
     def __init__(self, manager: WaterLeakManager) -> None:
@@ -105,7 +105,7 @@ class WaterLeakStatusSensor(WaterLeakEntity, SensorEntity):
 class CurrentFlowSensor(WaterLeakEntity, SensorEntity):
     """Normalized source flow."""
 
-    _attr_name = "Current flow"
+    _attr_translation_key = "current_flow"
     _attr_native_unit_of_measurement = UnitOfVolumeFlowRate.LITERS_PER_HOUR
     _attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -131,7 +131,7 @@ class CurrentFlowSensor(WaterLeakEntity, SensorEntity):
 class ActiveEventDurationSensor(WaterLeakEntity, SensorEntity):
     """Duration of the highest priority active event."""
 
-    _attr_name = "Active event duration"
+    _attr_translation_key = "active_event_duration"
     _attr_device_class = SensorDeviceClass.DURATION
     _attr_native_unit_of_measurement = UnitOfTime.SECONDS
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -156,7 +156,7 @@ class ActiveEventDurationSensor(WaterLeakEntity, SensorEntity):
 class ActiveEventVolumeSensor(WaterLeakEntity, SensorEntity):
     """Water volume used since the highest priority event started."""
 
-    _attr_name = "Active event volume"
+    _attr_translation_key = "active_event_volume"
     _attr_device_class = SensorDeviceClass.WATER
     _attr_native_unit_of_measurement = UnitOfVolume.LITERS
     _attr_icon = "mdi:water-plus"
@@ -178,7 +178,7 @@ class ActiveEventVolumeSensor(WaterLeakEntity, SensorEntity):
 class BypassRemainingSensor(WaterLeakEntity, SensorEntity):
     """Remaining High Flow bypass time."""
 
-    _attr_name = "High flow bypass remaining"
+    _attr_translation_key = "high_flow_bypass_remaining"
     _attr_device_class = SensorDeviceClass.DURATION
     _attr_native_unit_of_measurement = UnitOfTime.SECONDS
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -204,7 +204,7 @@ class BypassRemainingSensor(WaterLeakEntity, SensorEntity):
 class LearnedMaximumFlowSensor(WaterLeakEntity, SensorEntity):
     """Robust rolling learned normal peak flow."""
 
-    _attr_name = "Learned maximum flow"
+    _attr_translation_key = "learned_maximum_flow"
     _attr_native_unit_of_measurement = UnitOfVolumeFlowRate.LITERS_PER_HOUR
     _attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -235,7 +235,7 @@ class LearnedMaximumFlowSensor(WaterLeakEntity, SensorEntity):
 class LearningConfidenceSensor(WaterLeakEntity, SensorEntity):
     """Confidence state of adaptive normal-flow learning."""
 
-    _attr_name = "Learning confidence"
+    _attr_translation_key = "learning_confidence"
     _attr_icon = "mdi:brain"
 
     def __init__(self, manager: WaterLeakManager) -> None:
@@ -259,7 +259,7 @@ class LearningConfidenceSensor(WaterLeakEntity, SensorEntity):
 class LearningCoverageSensor(WaterLeakEntity, SensorEntity):
     """Number of days represented by admitted normal-use samples."""
 
-    _attr_name = "Learning coverage"
+    _attr_translation_key = "learning_coverage"
     _attr_native_unit_of_measurement = UnitOfTime.DAYS
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = "mdi:calendar-check-outline"
@@ -284,7 +284,7 @@ class LearningCoverageSensor(WaterLeakEntity, SensorEntity):
 class HydraulicReferenceFlowSensor(WaterLeakEntity, SensorEntity):
     """Heuristic hydraulic plausibility reference flow."""
 
-    _attr_name = "Hydraulic reference flow"
+    _attr_translation_key = "hydraulic_reference_flow"
     _attr_native_unit_of_measurement = UnitOfVolumeFlowRate.LITERS_PER_HOUR
     _attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -303,7 +303,7 @@ class HydraulicReferenceFlowSensor(WaterLeakEntity, SensorEntity):
 class EffectiveHighThresholdSensor(WaterLeakEntity, SensorEntity):
     """Current adaptive High Flow threshold."""
 
-    _attr_name = "Effective High Flow threshold"
+    _attr_translation_key = "effective_high_threshold"
     _attr_native_unit_of_measurement = UnitOfVolumeFlowRate.LITERS_PER_HOUR
     _attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -322,7 +322,7 @@ class EffectiveHighThresholdSensor(WaterLeakEntity, SensorEntity):
 class EffectiveBurstThresholdSensor(WaterLeakEntity, SensorEntity):
     """Current adaptive absolute Burst Leak threshold."""
 
-    _attr_name = "Effective Burst Leak threshold"
+    _attr_translation_key = "effective_burst_threshold"
     _attr_native_unit_of_measurement = UnitOfVolumeFlowRate.LITERS_PER_HOUR
     _attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
     _attr_state_class = SensorStateClass.MEASUREMENT
