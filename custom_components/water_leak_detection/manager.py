@@ -73,6 +73,7 @@ from .const import (
     DetectorPhase,
 )
 from .engine import DetectionEngine, DetectorSettings, DetectorTransition
+from .notifications import NotificationController
 from .units import UnsupportedUnitError, normalize_flow_lph, normalize_volume_l
 
 _LOGGER = logging.getLogger(__name__)
@@ -99,6 +100,12 @@ class WaterLeakManager:
             hass, STORAGE_VERSION, f"{STORAGE_KEY_PREFIX}.{entry.entry_id}"
         )
         self._last_shutoff_request = False
+        self.notifications = NotificationController(
+            hass,
+            entry,
+            self,
+            self._schedule_save,
+        )
 
     async def async_setup(self) -> None:
         """Restore persisted state and start tracking source entities."""
@@ -107,6 +114,7 @@ class WaterLeakManager:
             engine_data = stored.get("engine")
             if isinstance(engine_data, dict):
                 self.engine.restore(engine_data)
+            self.notifications.restore(stored.get("acknowledgements"))
             bypass_until = stored.get("bypass_until")
             if isinstance(bypass_until, str):
                 try:
@@ -117,6 +125,7 @@ class WaterLeakManager:
                     self.bypass_until = parsed
 
         self._last_shutoff_request = self.engine.snapshot().shutoff_request
+        await self.notifications.async_setup()
 
         entities = [self.flow_entity_id]
         if self.total_entity_id:
@@ -133,6 +142,7 @@ class WaterLeakManager:
 
     async def async_unload(self) -> None:
         """Stop listeners and save current runtime state."""
+        await self.notifications.async_unload()
         for unsub in self._unsubs:
             unsub()
         self._unsubs.clear()
@@ -292,6 +302,7 @@ class WaterLeakManager:
     def apply_options(self) -> None:
         """Apply config entry options without destroying runtime state."""
         self.engine.update_settings(self._settings_from_options())
+        self.notifications.reload_recipients()
         self._handle_shutoff_transition()
         self._schedule_save()
         self._notify_listeners()
@@ -414,6 +425,7 @@ class WaterLeakManager:
             "bypass_until": self.bypass_until.isoformat()
             if self.bypass_until
             else None,
+            "acknowledgements": self.notifications.to_dict(),
         }
 
     @callback
