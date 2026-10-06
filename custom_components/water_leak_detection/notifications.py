@@ -348,9 +348,10 @@ class NotificationController:
         for recipient in self.recipients.values():
             if recipient.tracker_entity != tracker_entity:
                 continue
-            if recipient.id not in state.muted_recipients:
-                continue
 
+            # Returning Home is a fresh safety context. Re-notify every configured
+            # recipient on that device while the event remains globally unacknowledged.
+            # A previous personal mute is cleared at the same time.
             state.muted_recipients.discard(recipient.id)
             self._persist_callback()
             await self._async_send_event_notification(
