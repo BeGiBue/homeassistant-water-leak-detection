@@ -1,4 +1,4 @@
-"""Number entities for Home Assistant Water Leak Detection."""
+"""Number entities for Water Leak Guard."""
 
 from __future__ import annotations
 
