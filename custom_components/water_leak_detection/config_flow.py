@@ -250,21 +250,22 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
             for entity_id in total_candidates
         ]
 
+        schema: dict[Any, Any] = {
+            probatio.Required(
+                CONF_FLOW_ENTITY,
+                default=flow_candidates[0],
+            ): SelectSelector(
+                SelectSelectorConfig(options=flow_options)
+            )
+        }
+        if total_options:
+            schema[probatio.Optional(CONF_TOTAL_ENTITY)] = SelectSelector(
+                SelectSelectorConfig(options=total_options)
+            )
+
         return self.async_show_form(
             step_id="device_entities",
-            data_schema=probatio.Schema(
-                {
-                    probatio.Required(
-                        CONF_FLOW_ENTITY,
-                        default=flow_candidates[0],
-                    ): SelectSelector(
-                        SelectSelectorConfig(options=flow_options)
-                    ),
-                    probatio.Optional(CONF_TOTAL_ENTITY): SelectSelector(
-                        SelectSelectorConfig(options=total_options)
-                    ),
-                }
-            ),
+            data_schema=probatio.Schema(schema),
             errors=errors,
         )
 
@@ -478,55 +479,60 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> probatio.Schema:
         """Build the recipient configuration form."""
         current = current or {}
-        return probatio.Schema(
-            {
-                probatio.Required(
-                    RECIPIENT_NAME,
-                    default=current.get(RECIPIENT_NAME, ""),
-                ): TextSelector(),
-                probatio.Required(
+        schema: dict[Any, Any] = {
+            probatio.Required(
+                RECIPIENT_NAME,
+                default=current.get(RECIPIENT_NAME, ""),
+            ): TextSelector(),
+            probatio.Required(
+                RECIPIENT_NOTIFY_SERVICE,
+                default=current.get(
                     RECIPIENT_NOTIFY_SERVICE,
-                    default=current.get(
-                        RECIPIENT_NOTIFY_SERVICE,
-                        notify_services[0],
-                    ),
-                ): SelectSelector(
-                    SelectSelectorConfig(
-                        options=[
-                            SelectOptionDict(value=service, label=service)
-                            for service in notify_services
-                        ]
-                    )
+                    notify_services[0],
                 ),
-                probatio.Required(
-                    RECIPIENT_TRACKER_ENTITY,
-                    default=current.get(RECIPIENT_TRACKER_ENTITY),
-                ): EntitySelector(
-                    EntitySelectorConfig(
-                        domain="device_tracker",
-                        multiple=False,
-                    )
+            ): SelectSelector(
+                SelectSelectorConfig(
+                    options=[
+                        SelectOptionDict(value=service, label=service)
+                        for service in notify_services
+                    ]
+                )
+            ),
+            probatio.Required(
+                RECIPIENT_CRITICAL_ENABLED,
+                default=bool(
+                    current.get(RECIPIENT_CRITICAL_ENABLED, True)
                 ),
-                probatio.Required(
-                    RECIPIENT_CRITICAL_ENABLED,
-                    default=bool(
-                        current.get(RECIPIENT_CRITICAL_ENABLED, True)
-                    ),
-                ): BooleanSelector(),
-                probatio.Required(
-                    RECIPIENT_ALLOW_GLOBAL_ACK,
-                    default=bool(
-                        current.get(RECIPIENT_ALLOW_GLOBAL_ACK, True)
-                    ),
-                ): BooleanSelector(),
-                probatio.Required(
-                    RECIPIENT_TRUSTED_STATIONARY,
-                    default=bool(
-                        current.get(RECIPIENT_TRUSTED_STATIONARY, False)
-                    ),
-                ): BooleanSelector(),
-            }
+            ): BooleanSelector(),
+            probatio.Required(
+                RECIPIENT_ALLOW_GLOBAL_ACK,
+                default=bool(
+                    current.get(RECIPIENT_ALLOW_GLOBAL_ACK, True)
+                ),
+            ): BooleanSelector(),
+            probatio.Required(
+                RECIPIENT_TRUSTED_STATIONARY,
+                default=bool(
+                    current.get(RECIPIENT_TRUSTED_STATIONARY, False)
+                ),
+            ): BooleanSelector(),
+        }
+        tracker_default = current.get(RECIPIENT_TRACKER_ENTITY)
+        tracker_key = (
+            probatio.Required(
+                RECIPIENT_TRACKER_ENTITY,
+                default=tracker_default,
+            )
+            if tracker_default
+            else probatio.Required(RECIPIENT_TRACKER_ENTITY)
         )
+        schema[tracker_key] = EntitySelector(
+            EntitySelectorConfig(
+                domain="device_tracker",
+                multiple=False,
+            )
+        )
+        return probatio.Schema(schema)
 
     @staticmethod
     @callback
