@@ -1,5 +1,5 @@
 {
-  "title": "Wasserleck-Erkennung",
+  "title": "Wasserwächter",
   "config": {
     "step": {
       "user": {
@@ -205,7 +205,7 @@
   },
   "device": {
     "water_leak_detection": {
-      "name": "Wasserleck-Erkennung"
+      "name": "Wasserwächter"
     }
   },
   "entity": {
@@ -429,7 +429,7 @@
     "detector_low_flow": "Low Flow",
     "detector_high_flow": "High Flow",
     "detector_burst_leak": "Burst Leak",
-    "notification_title": "Wasserleck-Erkennung: {detector}",
+    "notification_title": "Wasserwächter: {detector}",
     "notification_title_returning_home": "Wasserleck weiterhin aktiv",
     "notification_returned_home": "Du bist nach Hause zurückgekehrt, während dieses Ereignis noch aktiv ist.",
     "notification_current_flow": "Aktueller Durchfluss: {flow} L/h.",

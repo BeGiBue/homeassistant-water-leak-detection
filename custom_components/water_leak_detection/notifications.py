@@ -412,7 +412,7 @@ class NotificationController:
             else self._translate(
                 strings,
                 "notification_title",
-                "Water leak detection: {detector}",
+                "Water Leak Guard: {detector}",
                 detector=detector,
             )
         )

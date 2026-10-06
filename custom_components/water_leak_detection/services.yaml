@@ -4,7 +4,7 @@ start_high_flow_bypass:
   fields:
     config_entry_id:
       name: Config entry ID
-      description: Optional when only one Water Leak Detection instance is configured.
+      description: Optional when only one Water Leak Guard instance is configured.
       required: false
       selector:
         text:
@@ -25,7 +25,7 @@ cancel_high_flow_bypass:
   fields:
     config_entry_id:
       name: Config entry ID
-      description: Optional when only one Water Leak Detection instance is configured.
+      description: Optional when only one Water Leak Guard instance is configured.
       required: false
       selector:
         text:
@@ -36,7 +36,7 @@ reset_learning:
   fields:
     config_entry_id:
       name: Config entry ID
-      description: Optional when only one Water Leak Detection instance is configured.
+      description: Optional when only one Water Leak Guard instance is configured.
       required: false
       selector:
         text:

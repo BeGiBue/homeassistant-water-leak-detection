@@ -1,4 +1,4 @@
-"""Home Assistant Water Leak Detection integration."""
+"""Water Leak Guard integration."""
 
 from __future__ import annotations
 
@@ -27,6 +27,12 @@ _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
+_LEGACY_DEFAULT_TITLES = {
+    "Home Assistant Water Leak Detection",
+    "Water leak detection",
+    "Wasserleck-Erkennung",
+}
+
 
 def _manager_for_call(hass: HomeAssistant, call: ServiceCall) -> WaterLeakManager:
     managers: dict[str, WaterLeakManager] = hass.data.get(DOMAIN, {})
@@ -35,15 +41,15 @@ def _manager_for_call(hass: HomeAssistant, call: ServiceCall) -> WaterLeakManage
         manager = managers.get(entry_id)
         if manager is None:
             raise HomeAssistantError(
-                f"Unknown Water Leak Detection config entry: {entry_id}"
+                f"Unknown Water Leak Guard config entry: {entry_id}"
             )
         return manager
     if len(managers) == 1:
         return next(iter(managers.values()))
     if not managers:
-        raise HomeAssistantError("No Water Leak Detection config entry is loaded")
+        raise HomeAssistantError("No Water Leak Guard config entry is loaded")
     raise HomeAssistantError(
-        "Multiple Water Leak Detection entries are loaded; config_entry_id is required"
+        "Multiple Water Leak Guard entries are loaded; config_entry_id is required"
     )
 
 
@@ -96,7 +102,7 @@ async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up one configured water meter."""
-    if entry.title == NAME:
+    if entry.title == NAME or entry.title in _LEGACY_DEFAULT_TITLES:
         translations = await translation.async_get_translations(
             hass,
             hass.config.language,

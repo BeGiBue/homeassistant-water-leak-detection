@@ -1,4 +1,4 @@
-"""Config flow for Home Assistant Water Leak Detection."""
+"""Config flow for Water Leak Guard."""
 
 from __future__ import annotations
 

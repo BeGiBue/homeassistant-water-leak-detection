@@ -11,6 +11,7 @@ from custom_components.water_leak_detection.config_flow import (
     WaterLeakConfigFlow,
     WaterLeakOptionsFlow,
 )
+from custom_components.water_leak_detection.const import NAME
 
 ROOT = Path(__file__).resolve().parents[1]
 INTEGRATION = ROOT / "custom_components" / "water_leak_detection"
@@ -26,15 +27,21 @@ def test_manifest_is_normal_service_integration() -> None:
     assert manifest["integration_type"] == "service"
     assert manifest["config_flow"] is True
     assert manifest["version"] == "0.3.0"
+    assert manifest["name"] == "Water Leak Guard"
+    assert NAME == "Water Leak Guard"
 
 
 def test_runtime_translations_exist_for_english_and_german() -> None:
     english = _load_json(INTEGRATION / "translations" / "en.json")
     german = _load_json(INTEGRATION / "translations" / "de.json")
 
-    assert english["title"] == "Water leak detection"
-    assert german["title"] == "Wasserleck-Erkennung"
-    assert german["device"]["water_leak_detection"]["name"] == "Wasserleck-Erkennung"
+    hacs = _load_json(ROOT / "hacs.json")
+
+    assert hacs["name"] == "Water Leak Guard"
+    assert english["title"] == "Water Leak Guard"
+    assert english["device"]["water_leak_detection"]["name"] == "Water Leak Guard"
+    assert german["title"] == "Wasserwächter"
+    assert german["device"]["water_leak_detection"]["name"] == "Wasserwächter"
 
 
 def test_all_exposed_entity_translation_keys_have_german_names() -> None:

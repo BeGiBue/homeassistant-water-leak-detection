@@ -1,5 +1,5 @@
 {
-  "title": "Water leak detection",
+  "title": "Water Leak Guard",
   "config": {
     "step": {
       "user": {
@@ -205,7 +205,7 @@
   },
   "device": {
     "water_leak_detection": {
-      "name": "Water leak detection"
+      "name": "Water Leak Guard"
     }
   },
   "entity": {
@@ -429,7 +429,7 @@
     "detector_low_flow": "Low Flow",
     "detector_high_flow": "High Flow",
     "detector_burst_leak": "Burst Leak",
-    "notification_title": "Water leak detection: {detector}",
+    "notification_title": "Water Leak Guard: {detector}",
     "notification_title_returning_home": "Water leak still active",
     "notification_returned_home": "You returned home while this event is still active.",
     "notification_current_flow": "Current flow: {flow} L/h.",

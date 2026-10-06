@@ -1,4 +1,4 @@
-# Home Assistant Water Leak Detection
+# Water Leak Guard
 
 ## 1. Purpose
 
@@ -12,7 +12,7 @@ The integration shall use Home Assistant native entities, services, events, conf
 
 ## 2. Project identity
 
-- **Display name:** Home Assistant Water Leak Detection
+- **Display name:** Water Leak Guard
 - **Repository:** `BeGiBue/homeassistant-water-leak-detection`
 - **Target platform:** Home Assistant
 - **Scope:** Backend integration only
