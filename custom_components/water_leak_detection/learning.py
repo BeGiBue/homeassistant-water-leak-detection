@@ -159,7 +159,12 @@ class AdaptiveFlowLearner:
         if self.samples:
             age_days = max(
                 1,
-                int((now - min(sample.timestamp for sample in self.samples)).total_seconds() // 86400)
+                int(
+                    (
+                        now - min(sample.timestamp for sample in self.samples)
+                    ).total_seconds()
+                    // 86400
+                )
                 + 1,
             )
 
