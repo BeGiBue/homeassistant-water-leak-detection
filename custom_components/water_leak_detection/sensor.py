@@ -127,7 +127,6 @@ class ActiveEventVolumeSensor(WaterLeakEntity, SensorEntity):
     _attr_name = "Active event volume"
     _attr_device_class = SensorDeviceClass.WATER
     _attr_native_unit_of_measurement = UnitOfVolume.LITERS
-    _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = "mdi:water-plus"
     _attr_suggested_display_precision = 1
 
