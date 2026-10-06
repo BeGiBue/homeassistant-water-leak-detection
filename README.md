@@ -220,16 +220,17 @@ Event payloads include the event ID and relevant detector context. Burst events 
 - [Configuration reference](docs/CONFIGURATION.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Changelog](CHANGELOG.md)
+- [v0.3.1 release notes](RELEASE_NOTES_0.3.1.md)
 - [v0.3.0 release notes](RELEASE_NOTES_0.3.0.md)
 - [Release procedure](docs/RELEASING.md)
 - [Technical specification and roadmap](SPEC.md)
 
 ## Release status
 
-Version 0.3.0 implements the original v0.1 → v0.3 backend roadmap:
+Version 0.3.1 contains the complete v0.3 backend plus Home Assistant UI, localization, and reconfiguration fixes. The original backend roadmap remains:
 
 - **v0.1.0** — detection core and backend entities
 - **v0.2.0** — notifications, device acknowledgement, and geofencing
 - **v0.3.0** — adaptive learning and hydraulic plausibility
 
-The release is validated against Home Assistant 2026.9.4 / Python 3.14.2 with compile checks, Ruff, JSON validation, and automated tests.
+Version 0.3.1 is validated against Home Assistant 2026.9.4 / Python 3.14.2 with Hassfest, compile checks, Ruff, JSON validation, and 87 automated tests.
