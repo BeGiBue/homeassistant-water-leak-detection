@@ -27,6 +27,7 @@ from .const import (
     CONF_HIGH_THRESHOLD_LPH,
     CONF_HIGH_VOLUME_L,
     CONF_LOW_DETECTION_MIN,
+    CONF_LOW_ENABLED,
     CONF_LOW_QUIET_LPH,
     CONF_LOW_RESET_MIN,
     CONF_LOW_THRESHOLD_LPH,
@@ -35,6 +36,7 @@ from .const import (
     CONF_SHUTOFF_LOW,
     CONF_SHUTOFF_SLOW,
     CONF_SLOW_DETECTION_MIN,
+    CONF_SLOW_ENABLED,
     CONF_SLOW_RESET_MIN,
     CONF_SLOW_THRESHOLD_LPH,
     CONF_TOTAL_ENTITY,
@@ -49,6 +51,7 @@ from .const import (
     DEFAULT_HIGH_THRESHOLD_LPH,
     DEFAULT_HIGH_VOLUME_L,
     DEFAULT_LOW_DETECTION_MIN,
+    DEFAULT_LOW_ENABLED,
     DEFAULT_LOW_QUIET_LPH,
     DEFAULT_LOW_RESET_MIN,
     DEFAULT_LOW_THRESHOLD_LPH,
@@ -57,6 +60,7 @@ from .const import (
     DEFAULT_SHUTOFF_LOW,
     DEFAULT_SHUTOFF_SLOW,
     DEFAULT_SLOW_DETECTION_MIN,
+    DEFAULT_SLOW_ENABLED,
     DEFAULT_SLOW_RESET_MIN,
     DEFAULT_SLOW_THRESHOLD_LPH,
     EVENT_LEAK_ENDED,
@@ -261,6 +265,21 @@ class WaterLeakManager:
         await self.async_refresh()
         await self._store.async_save(self._serialize())
 
+    async def async_set_detector_enabled(self, detector: str, enabled: bool) -> None:
+        """Enable or disable one user-switchable detector."""
+        key = {
+            "slow": CONF_SLOW_ENABLED,
+            "low": CONF_LOW_ENABLED,
+        }.get(detector)
+        if key is None:
+            raise ValueError(f"Unsupported detector toggle: {detector}")
+
+        options = dict(self.entry.options)
+        options[key] = bool(enabled)
+        self.hass.config_entries.async_update_entry(self.entry, options=options)
+        self.apply_options()
+        await self.async_refresh()
+
     async def async_set_bypass_default_minutes(self, minutes: float) -> None:
         """Update the default bypass duration from the Number entity."""
         options = dict(self.entry.options)
@@ -280,6 +299,7 @@ class WaterLeakManager:
     def _settings_from_options(self) -> DetectorSettings:
         opt = self.entry.options
         return DetectorSettings(
+            slow_enabled=bool(opt.get(CONF_SLOW_ENABLED, DEFAULT_SLOW_ENABLED)),
             slow_threshold_lph=float(
                 opt.get(CONF_SLOW_THRESHOLD_LPH, DEFAULT_SLOW_THRESHOLD_LPH)
             ),
@@ -291,6 +311,7 @@ class WaterLeakManager:
                 opt.get(CONF_SLOW_RESET_MIN, DEFAULT_SLOW_RESET_MIN)
             )
             * 60,
+            low_enabled=bool(opt.get(CONF_LOW_ENABLED, DEFAULT_LOW_ENABLED)),
             low_threshold_lph=float(
                 opt.get(CONF_LOW_THRESHOLD_LPH, DEFAULT_LOW_THRESHOLD_LPH)
             ),
