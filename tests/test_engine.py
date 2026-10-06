@@ -134,3 +134,20 @@ def test_engine_runtime_round_trip() -> None:
     restored.restore(engine.to_dict())
     assert restored.runtimes[DetectorKind.SLOW_LEAK].phase is DetectorPhase.ACTIVE
     assert restored.runtimes[DetectorKind.SLOW_LEAK].event_id == event_id
+
+
+def test_pool_fill_does_not_start_lower_detectors_when_high_is_bypassed() -> None:
+    engine = DetectionEngine()
+    engine.sample(at(0), 1000.0, None, high_flow_bypassed=True)
+    engine.sample(at(7200), 1000.0, None, high_flow_bypassed=True)
+    assert engine.runtimes[DetectorKind.SLOW_LEAK].phase is DetectorPhase.IDLE
+    assert engine.runtimes[DetectorKind.LOW_FLOW].phase is DetectorPhase.IDLE
+    assert engine.runtimes[DetectorKind.HIGH_FLOW].phase is DetectorPhase.IDLE
+
+
+def test_slow_candidate_resets_when_usage_enters_low_flow_range() -> None:
+    engine = DetectionEngine()
+    engine.sample(at(0), 7.0, None)
+    engine.sample(at(1800), 200.0, None)
+    assert engine.runtimes[DetectorKind.SLOW_LEAK].phase is DetectorPhase.IDLE
+    assert engine.runtimes[DetectorKind.LOW_FLOW].phase is DetectorPhase.MONITORING
