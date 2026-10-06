@@ -68,7 +68,12 @@ Entity and device names are translated by Home Assistant when they are created. 
 
 After the integration is installed, open **Settings → Devices & services → Integrations → Water leak detection**.
 
-- **Configure** manages notification recipients and expert detector settings.
-- **Reconfigure** changes the flow-rate and optional cumulative-consumption source entities.
+**Configure** can be opened again at any time and contains:
 
-Notification recipients do not have to be configured only during the initial installation; they can be added, edited, or removed later.
+- **Measurement sources** — flow-rate and optional cumulative-consumption source entities.
+- **Notification recipients** — add, edit, or remove Companion App recipients.
+- **Expert settings** — detector, learning, hydraulic, bypass, and shutoff options.
+
+Home Assistant's separate **Reconfigure** action for measurement sources remains supported as an additional path.
+
+Notification recipients do not have to be configured only during initial installation; they can be added, edited, or removed later.
