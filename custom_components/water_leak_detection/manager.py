@@ -104,7 +104,7 @@ class WaterLeakManager:
             hass,
             entry,
             self,
-            self._schedule_save,
+            self._notification_state_changed,
         )
 
     async def async_setup(self) -> None:
@@ -427,6 +427,12 @@ class WaterLeakManager:
             else None,
             "acknowledgements": self.notifications.to_dict(),
         }
+
+    @callback
+    def _notification_state_changed(self) -> None:
+        """Persist acknowledgement changes and refresh exposed entities."""
+        self._schedule_save()
+        self._notify_listeners()
 
     @callback
     def _schedule_save(self) -> None:
