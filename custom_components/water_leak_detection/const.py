@@ -4,11 +4,18 @@ from __future__ import annotations
 
 from enum import StrEnum
 
+from homeassistant.const import Platform
+
 DOMAIN = "water_leak_detection"
 NAME = "Home Assistant Water Leak Detection"
 VERSION = "0.1.0"
 
-PLATFORMS = ["sensor", "binary_sensor", "switch", "number"]
+PLATFORMS: tuple[Platform, ...] = (
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.SWITCH,
+    Platform.NUMBER,
+)
 
 CONF_FLOW_ENTITY = "flow_entity"
 CONF_TOTAL_ENTITY = "total_entity"
