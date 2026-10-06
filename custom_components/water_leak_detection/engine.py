@@ -101,6 +101,20 @@ class DetectionEngine:
         """Apply updated thresholds without discarding current state."""
         self.settings = settings
 
+    def suspend_for_unavailable_source(self) -> None:
+        """Suspend evidence timers while the source measurement is unavailable.
+
+        Unconfirmed monitoring must not accumulate unknown time. Confirmed events
+        remain active for safety, but any in-progress quiet/reset interval is
+        cleared because an unavailable source is not evidence of zero flow.
+        """
+        for runtime in self.runtimes.values():
+            runtime.quiet_since = None
+            if runtime.phase is DetectorPhase.MONITORING:
+                runtime.reset()
+        self.last_sample_at = None
+        self.last_flow_lph = None
+
     def sample(
         self,
         now: datetime,
