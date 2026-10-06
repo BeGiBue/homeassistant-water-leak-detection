@@ -14,9 +14,11 @@ from .const import DETECTOR_PRIORITY, DetectorKind, DetectorPhase
 class DetectorSettings:
     """Detector thresholds and timing."""
 
+    slow_enabled: bool = True
     slow_threshold_lph: float = 3.0
     slow_detection_seconds: float = 3600.0
     slow_reset_seconds: float = 600.0
+    low_enabled: bool = True
     low_threshold_lph: float = 150.0
     low_detection_seconds: float = 3600.0
     low_quiet_lph: float = 20.0
@@ -139,8 +141,28 @@ class DetectionEngine:
                     runtime.estimated_volume_l += flow_lph * delta_seconds / 3600.0
 
         transitions: list[DetectorTransition] = []
-        transitions.extend(self._sample_slow(now, flow_lph, total_l))
-        transitions.extend(self._sample_low(now, flow_lph, total_l))
+
+        if self.settings.slow_enabled:
+            transitions.extend(self._sample_slow(now, flow_lph, total_l))
+        elif self.runtimes[DetectorKind.SLOW_LEAK].phase is not DetectorPhase.IDLE:
+            self._append_transition(
+                transitions,
+                DetectorKind.SLOW_LEAK,
+                DetectorPhase.IDLE,
+                now=now,
+                total_l=total_l,
+            )
+
+        if self.settings.low_enabled:
+            transitions.extend(self._sample_low(now, flow_lph, total_l))
+        elif self.runtimes[DetectorKind.LOW_FLOW].phase is not DetectorPhase.IDLE:
+            self._append_transition(
+                transitions,
+                DetectorKind.LOW_FLOW,
+                DetectorPhase.IDLE,
+                now=now,
+                total_l=total_l,
+            )
         transitions.extend(
             self._sample_high(now, flow_lph, total_l, high_flow_bypassed)
         )
