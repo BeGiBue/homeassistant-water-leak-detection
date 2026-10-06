@@ -5,11 +5,11 @@
     "@BeGiBue"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/BeGiBue/homeassistant-water-leak-detection",
-  "issue_tracker": "https://github.com/BeGiBue/homeassistant-water-leak-detection/issues",
-  "iot_class": "calculated",
-  "version": "0.1.0",
-  "integration_type": "helper",
   "dependencies": [],
-  "requirements": []
+  "documentation": "https://github.com/BeGiBue/homeassistant-water-leak-detection",
+  "integration_type": "helper",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/BeGiBue/homeassistant-water-leak-detection/issues",
+  "requirements": [],
+  "version": "0.1.0"
 }
