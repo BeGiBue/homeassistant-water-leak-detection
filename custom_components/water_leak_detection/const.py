@@ -22,9 +22,11 @@ CONF_TOTAL_ENTITY = "total_entity"
 CONF_SOURCE_MODE = "source_mode"
 CONF_SOURCE_DEVICE = "source_device"
 
+CONF_SLOW_ENABLED = "slow_enabled"
 CONF_SLOW_THRESHOLD_LPH = "slow_threshold_lph"
 CONF_SLOW_DETECTION_MIN = "slow_detection_minutes"
 CONF_SLOW_RESET_MIN = "slow_reset_minutes"
+CONF_LOW_ENABLED = "low_enabled"
 CONF_LOW_THRESHOLD_LPH = "low_threshold_lph"
 CONF_LOW_DETECTION_MIN = "low_detection_minutes"
 CONF_LOW_QUIET_LPH = "low_quiet_lph"
@@ -45,9 +47,11 @@ CONF_SHUTOFF_LOW = "shutoff_low"
 CONF_SHUTOFF_HIGH = "shutoff_high"
 CONF_SHUTOFF_BURST = "shutoff_burst"
 
+DEFAULT_SLOW_ENABLED = True
 DEFAULT_SLOW_THRESHOLD_LPH = 3.0
 DEFAULT_SLOW_DETECTION_MIN = 60.0
 DEFAULT_SLOW_RESET_MIN = 10.0
+DEFAULT_LOW_ENABLED = True
 DEFAULT_LOW_THRESHOLD_LPH = 150.0
 DEFAULT_LOW_DETECTION_MIN = 60.0
 DEFAULT_LOW_QUIET_LPH = 20.0
