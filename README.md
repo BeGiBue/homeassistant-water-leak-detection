@@ -34,7 +34,7 @@ The implementation follows [`SPEC.md`](SPEC.md). Version **0.1.0** implements th
 
 Copy `custom_components/water_leak_detection` into your Home Assistant `custom_components` directory and restart Home Assistant.
 
-Minimum target: Home Assistant **2026.6.0**.
+Minimum target: Home Assistant **2026.9.0**.
 
 ## Example source sensors
 
