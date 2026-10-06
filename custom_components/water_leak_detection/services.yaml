@@ -1,16 +1,10 @@
 start_high_flow_bypass:
-  name: Start high-flow bypass
-  description: Temporarily suppress only High Flow detection. Burst Leak stays active.
   fields:
     config_entry_id:
-      name: Config entry ID
-      description: Optional when only one Water Leak Detection instance is configured.
       required: false
       selector:
         text:
     duration_minutes:
-      name: Duration
-      description: Bypass duration. If omitted, the configured default is used.
       required: false
       selector:
         number:
@@ -20,23 +14,15 @@ start_high_flow_bypass:
           unit_of_measurement: min
 
 cancel_high_flow_bypass:
-  name: Cancel high-flow bypass
-  description: Re-enable High Flow detection immediately.
   fields:
     config_entry_id:
-      name: Config entry ID
-      description: Optional when only one Water Leak Detection instance is configured.
       required: false
       selector:
         text:
 
 reset_learning:
-  name: Reset adaptive learning
-  description: Clears all admitted normal-flow learning samples. Detector settings and active leak events are not reset.
   fields:
     config_entry_id:
-      name: Config entry ID
-      description: Optional when only one Water Leak Detection instance is configured.
       required: false
       selector:
         text:
