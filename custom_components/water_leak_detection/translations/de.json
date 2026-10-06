@@ -34,7 +34,7 @@
       },
       "notifications": {
         "title": "Benachrichtigungsempfänger",
-        "description": "Bereits eingerichtet ({recipient_count}):\\n\\n{configured_recipients}\\n\\nFüge weitere Companion-App-Geräte als Empfänger hinzu oder schließe die Einrichtung ab. Empfänger können später jederzeit über „Konfigurieren“ geändert werden.",
+        "description": "**Bereits eingerichtet: {recipient_count}**\n\n{configured_recipients}\n\nFüge weitere Companion-App-Geräte hinzu oder schließe die Einrichtung ab.",
         "menu_options": {
           "add_initial_recipient": "Benachrichtigungsgerät hinzufügen",
           "finish_setup": "Einrichtung abschließen"
@@ -42,7 +42,7 @@
       },
       "add_initial_recipient": {
         "title": "Benachrichtigungsgerät hinzufügen",
-        "description": "Bereits eingerichtet ({recipient_count}):\\n\\n{configured_recipients}\\n\\nWähle den Companion-Benachrichtigungsdienst und den zugehörigen Device Tracker. Das globale Quittieren wird im Backend anhand des Home-Status geprüft.",
+        "description": "**Bereits eingerichtet: {recipient_count}**\n\n{configured_recipients}\n\nWähle den Companion-Benachrichtigungsdienst und den zugehörigen Device Tracker.",
         "data": {
           "name": "Anzeigename",
           "notify_service": "Companion-Benachrichtigungsdienst",
@@ -119,11 +119,12 @@
           "hydraulic_burst_fraction": "Hydraulischer Burst-Plausibilitätsfaktor",
           "burst_rate_rise_lph_10s": "Burst-Anstiegsgrenze pro 10 Sekunden",
           "burst_rate_confirm_seconds": "Bestätigungszeit für schnellen Burst-Anstieg"
-        }
+        },
+        "submit": "Speichern und zurück"
       },
       "add_recipient": {
         "title": "Benachrichtigungsgerät hinzufügen",
-        "description": "Bereits eingerichtet ({recipient_count}):\\n\\n{configured_recipients}\\n\\nKonfiguriere ein weiteres Companion-App-Gerät. Das globale Quittieren wird immer im Backend anhand des zugeordneten Device Trackers geprüft.",
+        "description": "**Bereits eingerichtet: {recipient_count}**\n\n{configured_recipients}\n\nKonfiguriere ein weiteres Companion-App-Gerät.",
         "data": {
           "name": "Anzeigename",
           "notify_service": "Companion-Benachrichtigungsdienst",
@@ -131,25 +132,28 @@
           "critical_enabled": "Kritische Burst-Leak-Alarme erlauben",
           "allow_global_ack": "Globales Quittieren erlauben, wenn Gerät zuhause",
           "trusted_stationary": "Stationäres vertrauenswürdiges Home-Gerät"
-        }
+        },
+        "submit": "Hinzufügen und zurück"
       },
       "remove_recipient": {
         "title": "Benachrichtigungsgerät entfernen",
         "data": {
           "id": "Gerät"
         },
-        "description": "Bereits eingerichtet ({recipient_count}):\\n\\n{configured_recipients}\\n\\nWähle das Gerät aus, das nicht mehr benachrichtigt werden soll."
+        "description": "**Bereits eingerichtet: {recipient_count}**\n\n{configured_recipients}\n\nWähle das Gerät aus, das nicht mehr benachrichtigt werden soll.",
+        "submit": "Entfernen und zurück"
       },
       "edit_recipient": {
         "title": "Benachrichtigungsgerät auswählen",
         "data": {
           "id": "Gerät"
         },
-        "description": "Bereits eingerichtet ({recipient_count}):\\n\\n{configured_recipients}\\n\\nWähle das Gerät aus, das du bearbeiten möchtest."
+        "description": "**Bereits eingerichtet: {recipient_count}**\n\n{configured_recipients}\n\nWähle das Gerät aus, das du bearbeiten möchtest.",
+        "submit": "Weiter"
       },
       "edit_recipient_details": {
         "title": "Benachrichtigungsgerät bearbeiten",
-        "description": "Bereits eingerichtet ({recipient_count}):\\n\\n{configured_recipients}\\n\\nÄndere Tracker, Critical-Alarm und Quittierungsrechte. Die interne Gerätekennung und das Action-Token bleiben erhalten.",
+        "description": "Ändere die Einstellungen des ausgewählten Geräts. Die interne Gerätekennung und das Action-Token bleiben erhalten.",
         "data": {
           "name": "Anzeigename",
           "notify_service": "Companion-Benachrichtigungsdienst",
@@ -157,15 +161,17 @@
           "critical_enabled": "Kritische Burst-Leak-Alarme erlauben",
           "allow_global_ack": "Globales Quittieren erlauben, wenn Gerät zuhause",
           "trusted_stationary": "Stationäres vertrauenswürdiges Home-Gerät"
-        }
+        },
+        "submit": "Speichern und zurück"
       },
       "notifications": {
         "title": "Benachrichtigungsempfänger",
-        "description": "Bereits eingerichtet ({recipient_count}):\\n\\n{configured_recipients}\\n\\nVerwalte die Companion-App-Geräte, die Leckagealarme erhalten.",
+        "description": "**Bereits eingerichtet: {recipient_count}**\n\n{configured_recipients}\n\nVerwalte die Companion-App-Geräte, die Leckagealarme erhalten.",
         "menu_options": {
           "add_recipient": "Empfänger hinzufügen",
           "edit_recipient": "Empfänger bearbeiten",
-          "remove_recipient": "Empfänger entfernen"
+          "remove_recipient": "Empfänger entfernen",
+          "back_to_main": "Zurück zur Konfiguration"
         }
       },
       "sources": {
@@ -174,7 +180,8 @@
         "data": {
           "flow_entity": "Durchflusssensor",
           "total_entity": "Gesamtverbrauchssensor (optional)"
-        }
+        },
+        "submit": "Speichern und zurück"
       }
     },
     "error": {
