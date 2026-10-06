@@ -51,7 +51,8 @@
         "menu_options": {
           "expert": "Expert settings",
           "add_recipient": "Add notification device",
-          "remove_recipient": "Remove notification device"
+          "remove_recipient": "Remove notification device",
+          "edit_recipient": "Edit notification device"
         }
       },
       "expert": {
@@ -98,6 +99,24 @@
         "data": {
           "id": "Device"
         }
+      },
+      "edit_recipient": {
+        "title": "Select notification device",
+        "data": {
+          "id": "Device"
+        }
+      },
+      "edit_recipient_details": {
+        "title": "Edit notification device",
+        "description": "Change tracker, critical-alert and acknowledgement settings. The internal device ID and action token are preserved.",
+        "data": {
+          "name": "Display name",
+          "notify_service": "Companion notification service",
+          "tracker_entity": "Device tracker",
+          "critical_enabled": "Allow critical Burst Leak alerts",
+          "allow_global_ack": "Allow global acknowledgement when device is home",
+          "trusted_stationary": "Trusted stationary home device"
+        }
       }
     },
     "error": {
@@ -109,7 +128,8 @@
     },
     "abort": {
       "no_mobile_app_notify_services": "No mobile_app notification services were found. Set up the Home Assistant Companion App first.",
-      "no_recipients_configured": "No notification devices are configured yet."
+      "no_recipients_configured": "No notification devices are configured yet.",
+      "recipient_not_found": "The selected notification device no longer exists."
     }
   }
 }
