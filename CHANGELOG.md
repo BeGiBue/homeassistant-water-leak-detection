@@ -2,6 +2,16 @@
 
 All notable changes to Water Leak Guard are documented here.
 
+## 1.0.1 — 2026-10-06
+
+### Improved
+
+- Notification-recipient setup now shows all already configured alert devices instead of only the device currently being edited.
+- The overview stays visible while adding, editing, or removing recipients.
+- Each configured recipient is shown with display name, Companion notification service, and matching device tracker.
+- The same overview is available both during initial setup and later through **Configure → Notification recipients**.
+- Internal recipient IDs and action tokens remain hidden.
+
 ## 1.0.0 — 2026-10-06
 
 ### Stable release

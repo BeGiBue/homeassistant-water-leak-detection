@@ -1,67 +1,38 @@
-# Releasing 1.0.0
-
-This repository is prepared so release 1.0.0 can be published without building a ZIP artifact.
+# Releasing 1.0.1
 
 HACS installs the integration directly from:
 
 `custom_components/water_leak_detection`
 
-## Before publishing
-
-Repository settings must contain GitHub Topics such as:
-
-- `home-assistant`
-- `hacs`
-- `water-leak`
-- `leak-detection`
-
-The repository description and Issues are enabled.
-
-## Critical Home Assistant classification check
+## Critical release checks
 
 Before publishing, verify in `custom_components/water_leak_detection/manifest.json`:
 
-- `"version": "1.0.0"`
+- `"version": "1.0.1"`
 - `"integration_type": "service"`
 
-Do **not** publish a release that declares `integration_type: "helper"`. Home Assistant routes custom config flows with that type to the Helpers UI.
-
-The 0.3.0 GitHub release was tagged from an older commit that still used `helper`; 1.0.0 supersedes it.
-
-## Validate
-
-From the GitHub **Actions** tab, run these manual workflows when required:
-
-1. **Validate**
-2. **Hassfest**
-3. **HACS**
-
-The HACS workflow uses the official `hacs/action@main` validator.
+The release must remain a normal Home Assistant integration and must never regress to `helper`.
 
 ## Publish
 
-After the release-preparation changes are merged into `main`:
+Use the manual **Publish 1.0.1** workflow. It verifies:
 
-1. Open **Actions**.
-2. Select **Publish 1.0.0**.
-3. Choose **Run workflow**.
-4. Run it on `main`.
+- manifest version 1.0.1,
+- `integration_type: "service"`,
+- visible name `Water Leak Guard`,
+- presence of `RELEASE_NOTES_1.0.1.md`.
 
-The workflow verifies the manifest version and integration type, then publishes GitHub Release `1.0.0` using `RELEASE_NOTES_1.0.0.md`.
+It then creates GitHub Release `1.0.1` using those release notes.
 
 ## HACS versioning
 
-Once the GitHub Release is published, HACS uses the latest published release tag as the remote version.
-
-A standalone Git tag without a GitHub Release is not enough for HACS release versioning.
+HACS derives the remote version from the latest published GitHub Release.
 
 ## Post-release verification
 
-- Confirm the GitHub Release page shows version `1.0.0`.
-- Confirm the tagged `manifest.json` contains `"integration_type": "service"`.
-- Open the HACS repository deep link from README.
-- Confirm HACS offers version `1.0.0`.
-- Update/install on a test Home Assistant instance.
-- Restart Home Assistant.
-- Verify **Wasserwächter / Water Leak Guard** appears under **Devices & services → Integrations**, not under **Helpers**.
-- Verify the integration shows its local brand icon.
+- GitHub Release is `1.0.1`.
+- Tagged manifest reports `1.0.1`.
+- Tagged manifest reports `integration_type: "service"`.
+- HACS offers `1.0.1`.
+- Existing recipient configuration survives the update.
+- Recipient setup/configuration shows all configured alert devices.

@@ -1,0 +1,46 @@
+name: Publish 1.0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/release-1.0.1.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release commit
+        uses: actions/checkout@v7
+
+      - name: Verify release metadata
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(
+              Path("custom_components/water_leak_detection/manifest.json").read_text()
+          )
+          assert manifest["version"] == "1.0.1", manifest["version"]
+          assert manifest["integration_type"] == "service", manifest["integration_type"]
+          assert manifest["name"] == "Water Leak Guard", manifest["name"]
+          assert Path("RELEASE_NOTES_1.0.1.md").is_file()
+          print("Release metadata verified for 1.0.1")
+          PY
+
+      - name: Publish GitHub Release 1.0.1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "1.0.1" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Release 1.0.1 already exists."
+            exit 0
+          fi
+
+          gh release create "1.0.1"             --repo "${GITHUB_REPOSITORY}"             --target "${GITHUB_SHA}"             --title "Water Leak Guard 1.0.1"             --notes-file "RELEASE_NOTES_1.0.1.md"

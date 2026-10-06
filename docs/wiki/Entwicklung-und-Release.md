@@ -77,7 +77,7 @@ Workflows:
 - Validate
 - Hassfest
 - HACS
-- Publish 1.0.0
+- Publish 1.0.1
 
 ---
 
@@ -103,17 +103,17 @@ Deutsch wird erst innerhalb Home Assistant zu:
 
 ---
 
-# 6. Release 1.0.0
+# 6. Release 1.0.1
 
 Das Repository enthält:
 
 - `CHANGELOG.md`
-- `RELEASE_NOTES_1.0.0.md`
+- `RELEASE_NOTES_1.0.1.md`
 - manuellen Publish-Workflow
 
-Der Release-Workflow prüft die Manifest-Version **und** `integration_type: "service"` und erzeugt den GitHub Release `1.0.0`.
+Der Release-Workflow prüft die Manifest-Version **und** `integration_type: "service"` und erzeugt den GitHub Release `1.0.1`.
 
-Der veröffentlichte 0.3.0-Tag enthielt noch `integration_type: "helper"`. Das wurde erst nach dem Tag auf `main` korrigiert. 1.0.0 ist deshalb der erste stabile Release, der von Home Assistant als normale Integration und nicht als Helfer einsortiert wird.
+Der veröffentlichte 0.3.0-Tag enthielt noch `integration_type: "helper"`. Das wurde erst nach dem Tag auf `main` korrigiert. 1.0.0 war deshalb der erste stabile Release, der von Home Assistant als normale Integration und nicht als Helfer einsortiert wird.
 
 ---
 
@@ -147,3 +147,8 @@ Adaptives Lernen, Confidence, Hydraulik und Rapid-Rise-Burst.
 - die Integration im Manifest wieder als `helper` statt als normale `service`-Integration klassifiziert wird
 
 Diese Punkte sollten bei Änderungen an Engine, Manager oder Notifications immer als Regressionstests erhalten bleiben.
+
+
+## 1.0.1
+
+Version 1.0.1 verbessert die Verwaltung mehrerer Benachrichtigungsempfänger: Bereits eingerichtete Geräte werden während Einrichtung, Hinzufügen, Bearbeiten und Entfernen gemeinsam angezeigt. Sichtbar sind Anzeigename, Companion-Benachrichtigungsdienst und Device Tracker; interne IDs und Action-Tokens bleiben verborgen.
