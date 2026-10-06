@@ -7,7 +7,12 @@ from typing import Any
 from uuid import uuid4
 
 import probatio
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlowWithReload,
+)
 from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
 from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er
@@ -130,6 +135,8 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         super().__init__()
         self._source_device: str | None = None
+        self._entry_data: dict[str, Any] = {}
+        self._initial_recipients: list[dict[str, Any]] = []
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -148,16 +155,8 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_SOURCE_MODE, default=SOURCE_ENTITIES
                     ): SelectSelector(
                         SelectSelectorConfig(
-                            options=[
-                                SelectOptionDict(
-                                    value=SOURCE_ENTITIES,
-                                    label="Individual entities",
-                                ),
-                                SelectOptionDict(
-                                    value=SOURCE_DEVICE,
-                                    label="Home Assistant device",
-                                ),
-                            ]
+                            options=[SOURCE_ENTITIES, SOURCE_DEVICE],
+                            translation_key=CONF_SOURCE_MODE,
                         )
                     )
                 }
@@ -174,7 +173,9 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
             total_entity = user_input.get(CONF_TOTAL_ENTITY) or None
             errors = self._validate_sources(flow_entity, total_entity)
             if not errors:
-                return self._create_source_entry(flow_entity, total_entity, None)
+                return await self._prepare_source_entry(
+                    flow_entity, total_entity, None
+                )
 
         return self.async_show_form(
             step_id="entities",
@@ -230,7 +231,7 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
             total_entity = None if total_raw == NO_TOTAL else total_raw
             errors = self._validate_sources(flow_entity, total_entity)
             if not errors:
-                return self._create_source_entry(
+                return await self._prepare_source_entry(
                     flow_entity, total_entity, self._source_device
                 )
 
@@ -242,15 +243,12 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
             for entity_id in flow_candidates
         ]
         total_options = [
-            SelectOptionDict(value=NO_TOTAL, label="No total sensor")
-        ]
-        total_options.extend(
             SelectOptionDict(
                 value=entity_id,
                 label=self._entity_label(entity_id),
             )
             for entity_id in total_candidates
-        )
+        ]
 
         return self.async_show_form(
             step_id="device_entities",
@@ -262,10 +260,7 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
                     ): SelectSelector(
                         SelectSelectorConfig(options=flow_options)
                     ),
-                    probatio.Required(
-                        CONF_TOTAL_ENTITY,
-                        default=NO_TOTAL,
-                    ): SelectSelector(
+                    probatio.Optional(CONF_TOTAL_ENTITY): SelectSelector(
                         SelectSelectorConfig(options=total_options)
                     ),
                 }
@@ -323,31 +318,218 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors[CONF_TOTAL_ENTITY] = "same_source_entity"
         return errors
 
-    def _create_source_entry(
+    async def _prepare_source_entry(
         self,
         flow_entity: str,
         total_entity: str | None,
         device_id: str | None,
     ) -> ConfigFlowResult:
+        """Store source configuration and continue to notification recipients."""
         for entry in self._async_current_entries():
             if entry.data.get(CONF_FLOW_ENTITY) == flow_entity:
                 return self.async_abort(reason="already_configured")
 
-        data: dict[str, Any] = {CONF_FLOW_ENTITY: flow_entity}
+        self._entry_data = {CONF_FLOW_ENTITY: flow_entity}
         if total_entity:
-            data[CONF_TOTAL_ENTITY] = total_entity
+            self._entry_data[CONF_TOTAL_ENTITY] = total_entity
         if device_id:
-            data[CONF_SOURCE_DEVICE] = device_id
-        return self.async_create_entry(title=NAME, data=data)
+            self._entry_data[CONF_SOURCE_DEVICE] = device_id
+        return await self.async_step_notifications()
+
+    async def async_step_notifications(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Allow notification recipients to be configured during setup."""
+        menu_options = ["finish_setup"]
+        if self._mobile_notify_services():
+            menu_options.insert(0, "add_initial_recipient")
+        return self.async_show_menu(
+            step_id="notifications",
+            menu_options=menu_options,
+        )
+
+    async def async_step_add_initial_recipient(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Add one Companion recipient during initial setup."""
+        notify_services = self._mobile_notify_services()
+        if not notify_services:
+            return await self.async_step_notifications()
+
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            name = str(user_input[RECIPIENT_NAME]).strip()
+            notify_service = str(user_input[RECIPIENT_NOTIFY_SERVICE])
+            if not name:
+                errors["base"] = "recipient_name_required"
+            elif any(
+                raw.get(RECIPIENT_NOTIFY_SERVICE) == notify_service
+                for raw in self._initial_recipients
+            ):
+                errors["base"] = "recipient_notify_service_exists"
+            else:
+                self._initial_recipients.append(
+                    {
+                        RECIPIENT_ID: uuid4().hex[:10],
+                        RECIPIENT_NAME: name,
+                        RECIPIENT_NOTIFY_SERVICE: notify_service,
+                        RECIPIENT_TRACKER_ENTITY: str(
+                            user_input[RECIPIENT_TRACKER_ENTITY]
+                        ),
+                        RECIPIENT_CRITICAL_ENABLED: bool(
+                            user_input[RECIPIENT_CRITICAL_ENABLED]
+                        ),
+                        RECIPIENT_ALLOW_GLOBAL_ACK: bool(
+                            user_input[RECIPIENT_ALLOW_GLOBAL_ACK]
+                        ),
+                        RECIPIENT_TRUSTED_STATIONARY: bool(
+                            user_input[RECIPIENT_TRUSTED_STATIONARY]
+                        ),
+                        RECIPIENT_TOKEN: token_urlsafe(12),
+                    }
+                )
+                return await self.async_step_notifications()
+
+        return self.async_show_form(
+            step_id="add_initial_recipient",
+            data_schema=self._recipient_schema(notify_services),
+            errors=errors,
+        )
+
+    async def async_step_finish_setup(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Create the config entry after source and recipient setup."""
+        return self.async_create_entry(
+            title=NAME,
+            data=self._entry_data,
+            options={CONF_NOTIFICATION_RECIPIENTS: self._initial_recipients},
+        )
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Allow source sensors to be changed after setup."""
+        entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            flow_entity = str(user_input[CONF_FLOW_ENTITY])
+            total_entity = user_input.get(CONF_TOTAL_ENTITY) or None
+            errors = self._validate_sources(flow_entity, total_entity)
+            if not errors:
+                for current in self._async_current_entries():
+                    if (
+                        current.entry_id != entry.entry_id
+                        and current.data.get(CONF_FLOW_ENTITY) == flow_entity
+                    ):
+                        return self.async_abort(reason="already_configured")
+                data = dict(entry.data)
+                data[CONF_FLOW_ENTITY] = flow_entity
+                if total_entity:
+                    data[CONF_TOTAL_ENTITY] = total_entity
+                else:
+                    data.pop(CONF_TOTAL_ENTITY, None)
+                data.pop(CONF_SOURCE_DEVICE, None)
+                return self.async_update_reload_and_abort(entry, data=data)
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=probatio.Schema(
+                {
+                    probatio.Required(
+                        CONF_FLOW_ENTITY,
+                        default=entry.data[CONF_FLOW_ENTITY],
+                    ): EntitySelector(
+                        EntitySelectorConfig(domain="sensor", multiple=False)
+                    ),
+                    probatio.Optional(
+                        CONF_TOTAL_ENTITY,
+                        default=entry.data.get(CONF_TOTAL_ENTITY),
+                    ): EntitySelector(
+                        EntitySelectorConfig(domain="sensor", multiple=False)
+                    ),
+                }
+            ),
+            errors=errors,
+        )
+
+    def _mobile_notify_services(self) -> list[str]:
+        """Return currently registered Companion mobile notification services."""
+        services = self.hass.services.async_services().get("notify", {})
+        return sorted(
+            f"notify.{service}"
+            for service in services
+            if service.startswith("mobile_app_")
+        )
+
+    @staticmethod
+    def _recipient_schema(
+        notify_services: list[str],
+        *,
+        current: dict[str, Any] | None = None,
+    ) -> probatio.Schema:
+        """Build the recipient configuration form."""
+        current = current or {}
+        return probatio.Schema(
+            {
+                probatio.Required(
+                    RECIPIENT_NAME,
+                    default=current.get(RECIPIENT_NAME, ""),
+                ): TextSelector(),
+                probatio.Required(
+                    RECIPIENT_NOTIFY_SERVICE,
+                    default=current.get(
+                        RECIPIENT_NOTIFY_SERVICE,
+                        notify_services[0],
+                    ),
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=[
+                            SelectOptionDict(value=service, label=service)
+                            for service in notify_services
+                        ]
+                    )
+                ),
+                probatio.Required(
+                    RECIPIENT_TRACKER_ENTITY,
+                    default=current.get(RECIPIENT_TRACKER_ENTITY),
+                ): EntitySelector(
+                    EntitySelectorConfig(
+                        domain="device_tracker",
+                        multiple=False,
+                    )
+                ),
+                probatio.Required(
+                    RECIPIENT_CRITICAL_ENABLED,
+                    default=bool(
+                        current.get(RECIPIENT_CRITICAL_ENABLED, True)
+                    ),
+                ): BooleanSelector(),
+                probatio.Required(
+                    RECIPIENT_ALLOW_GLOBAL_ACK,
+                    default=bool(
+                        current.get(RECIPIENT_ALLOW_GLOBAL_ACK, True)
+                    ),
+                ): BooleanSelector(),
+                probatio.Required(
+                    RECIPIENT_TRUSTED_STATIONARY,
+                    default=bool(
+                        current.get(RECIPIENT_TRUSTED_STATIONARY, False)
+                    ),
+                ): BooleanSelector(),
+            }
+        )
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+    def async_get_options_flow(
+        config_entry: ConfigEntry,
+    ) -> OptionsFlowWithReload:
         """Create options flow."""
         return WaterLeakOptionsFlow()
 
 
-class WaterLeakOptionsFlow(OptionsFlow):
+class WaterLeakOptionsFlow(OptionsFlowWithReload):
     """Options for detector settings and Companion recipients."""
 
     def __init__(self) -> None:
@@ -359,11 +541,20 @@ class WaterLeakOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Show the options menu."""
-        menu_options = ["expert", "add_recipient"]
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=["notifications", "expert"],
+        )
+
+    async def async_step_notifications(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Manage notification recipients."""
+        menu_options = ["add_recipient"]
         if self._raw_recipients():
             menu_options.extend(["edit_recipient", "remove_recipient"])
         return self.async_show_menu(
-            step_id="init",
+            step_id="notifications",
             menu_options=menu_options,
         )
 
@@ -644,38 +835,9 @@ class WaterLeakOptionsFlow(OptionsFlow):
                 updated[CONF_NOTIFICATION_RECIPIENTS] = [*existing, recipient]
                 return self.async_create_entry(title="", data=updated)
 
-        service_options = [
-            SelectOptionDict(value=service, label=service)
-            for service in notify_services
-        ]
         return self.async_show_form(
             step_id="add_recipient",
-            data_schema=probatio.Schema(
-                {
-                    probatio.Required(RECIPIENT_NAME): TextSelector(),
-                    probatio.Required(RECIPIENT_NOTIFY_SERVICE): SelectSelector(
-                        SelectSelectorConfig(options=service_options)
-                    ),
-                    probatio.Required(RECIPIENT_TRACKER_ENTITY): EntitySelector(
-                        EntitySelectorConfig(
-                            domain="device_tracker",
-                            multiple=False,
-                        )
-                    ),
-                    probatio.Required(
-                        RECIPIENT_CRITICAL_ENABLED,
-                        default=True,
-                    ): BooleanSelector(),
-                    probatio.Required(
-                        RECIPIENT_ALLOW_GLOBAL_ACK,
-                        default=True,
-                    ): BooleanSelector(),
-                    probatio.Required(
-                        RECIPIENT_TRUSTED_STATIONARY,
-                        default=False,
-                    ): BooleanSelector(),
-                }
-            ),
+            data_schema=WaterLeakConfigFlow._recipient_schema(notify_services),
             errors=errors,
         )
 
@@ -773,52 +935,11 @@ class WaterLeakOptionsFlow(OptionsFlow):
                 ]
                 return self.async_create_entry(title="", data=updated)
 
-        service_options = [
-            SelectOptionDict(value=service, label=service)
-            for service in notify_services
-        ]
         return self.async_show_form(
             step_id="edit_recipient_details",
-            data_schema=probatio.Schema(
-                {
-                    probatio.Required(
-                        RECIPIENT_NAME,
-                        default=str(current.get(RECIPIENT_NAME, "")),
-                    ): TextSelector(),
-                    probatio.Required(
-                        RECIPIENT_NOTIFY_SERVICE,
-                        default=current_service,
-                    ): SelectSelector(
-                        SelectSelectorConfig(options=service_options)
-                    ),
-                    probatio.Required(
-                        RECIPIENT_TRACKER_ENTITY,
-                        default=str(current.get(RECIPIENT_TRACKER_ENTITY, "")),
-                    ): EntitySelector(
-                        EntitySelectorConfig(
-                            domain="device_tracker",
-                            multiple=False,
-                        )
-                    ),
-                    probatio.Required(
-                        RECIPIENT_CRITICAL_ENABLED,
-                        default=bool(
-                            current.get(RECIPIENT_CRITICAL_ENABLED, True)
-                        ),
-                    ): BooleanSelector(),
-                    probatio.Required(
-                        RECIPIENT_ALLOW_GLOBAL_ACK,
-                        default=bool(
-                            current.get(RECIPIENT_ALLOW_GLOBAL_ACK, True)
-                        ),
-                    ): BooleanSelector(),
-                    probatio.Required(
-                        RECIPIENT_TRUSTED_STATIONARY,
-                        default=bool(
-                            current.get(RECIPIENT_TRUSTED_STATIONARY, False)
-                        ),
-                    ): BooleanSelector(),
-                }
+            data_schema=WaterLeakConfigFlow._recipient_schema(
+                notify_services,
+                current=current,
             ),
             errors=errors,
         )
