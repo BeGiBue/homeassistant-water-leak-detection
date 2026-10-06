@@ -8,10 +8,10 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTime, UnitOfVolume, UnitOfVolumeFlowRate
+from homeassistant.const import EntityCategory, UnitOfTime, UnitOfVolume, UnitOfVolumeFlowRate
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, DetectorKind
 from .entity import WaterLeakEntity
@@ -113,8 +113,6 @@ class ActiveEventDurationSensor(WaterLeakEntity, SensorEntity):
         snapshot = self.manager.engine.snapshot(self.manager.current_total_l)
         if snapshot.active_started_at is None:
             return 0
-        from homeassistant.util import dt as dt_util
-
         return max(
             0,
             int(
