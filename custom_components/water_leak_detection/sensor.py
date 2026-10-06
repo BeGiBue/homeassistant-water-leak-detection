@@ -63,6 +63,8 @@ class WaterLeakStatusSensor(WaterLeakEntity, SensorEntity):
             if snapshot.active_kind
             else None,
             "high_flow_bypass": self.manager.high_flow_bypass_active,
+            "slow_leak_enabled": self.manager.engine.settings.slow_enabled,
+            "low_flow_enabled": self.manager.engine.settings.low_enabled,
             "detectors": {
                 kind.value: self.manager.engine.runtimes[kind].phase.value
                 for kind in DetectorKind
