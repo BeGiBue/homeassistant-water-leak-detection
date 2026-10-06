@@ -7,7 +7,6 @@ from custom_components.water_leak_detection.learning import (
     LearningConfidence,
 )
 
-
 BASE = datetime(2026, 9, 1, tzinfo=UTC)
 
 
