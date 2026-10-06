@@ -157,3 +157,10 @@ Version 1.0.1 verbessert die Verwaltung mehrerer Benachrichtigungsempfänger: Be
 ## 1.0.2
 
 Version 1.0.2 behebt die Navigation im Home-Assistant-Konfigurator. Speichern beendet den Options-Flow nicht mehr, sondern führt zurück zum passenden Menü. Das Empfänger-Untermenü besitzt zusätzlich **Zurück zur Konfiguration**. Außerdem wurden sichtbare `\n\n`-Escape-Sequenzen in der Empfängerübersicht korrigiert und die Übersicht auf kompakte Anzeigenamen reduziert.
+
+
+# 9. Lizenz
+
+Das Projekt steht unter der **GNU Affero General Public License v3.0 only (AGPL-3.0-only)**.
+
+Die vollständigen Lizenzbedingungen stehen in der Datei `LICENSE` im Repository. Änderungen und Weitergabe bleiben unter den Bedingungen der AGPLv3; bei einer modifizierten netzwerkbasierten Bereitstellung muss der entsprechende Quellcode den Nutzern zugänglich gemacht werden.
