@@ -543,9 +543,13 @@ class NotificationController:
 
     async def _async_common_translations(self) -> dict[str, str]:
         """Load notification strings in the configured Home Assistant language."""
+        hass_config = getattr(self.hass, "config", None)
+        if hass_config is None:
+            return {}
+
         translations = await translation.async_get_translations(
             self.hass,
-            self.hass.config.language,
+            hass_config.language,
             "common",
             [DOMAIN],
         )
