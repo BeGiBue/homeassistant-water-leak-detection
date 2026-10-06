@@ -1,0 +1,78 @@
+{
+  "title": "Home Assistant Water Leak Detection",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Select measurement source type",
+        "description": "Choose whether to select the water meter sensors directly or discover compatible sensors from a Home Assistant device.",
+        "data": {
+          "source_mode": "Source type"
+        }
+      },
+      "entities": {
+        "title": "Measurement sources",
+        "description": "Select the flow sensor and, if available, the cumulative water consumption sensor.",
+        "data": {
+          "flow_entity": "Flow rate sensor",
+          "total_entity": "Total consumption sensor (optional)"
+        }
+      },
+      "device": {
+        "title": "Water meter device",
+        "description": "Select the Home Assistant device that contains the water meter sensors.",
+        "data": {
+          "source_device": "Device"
+        }
+      },
+      "device_entities": {
+        "title": "Detected measurement sources",
+        "description": "Confirm the compatible sensors detected on the selected device.",
+        "data": {
+          "flow_entity": "Flow rate sensor",
+          "total_entity": "Total consumption sensor"
+        }
+      }
+    },
+    "error": {
+      "entity_not_available": "The selected entity is not currently available.",
+      "unsupported_flow_unit": "The flow sensor uses an unsupported unit.",
+      "unsupported_volume_unit": "The total sensor uses an unsupported unit.",
+      "same_source_entity": "Flow and total consumption must use different entities."
+    },
+    "abort": {
+      "already_configured": "This flow sensor is already configured.",
+      "device_has_no_flow_sensor": "No compatible flow-rate sensor was found on this device."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Expert settings",
+        "description": "Adjust detector thresholds, timing, bypass duration and which detector classes request a water shutoff.",
+        "data": {
+          "slow_threshold_lph": "Slow Leak threshold",
+          "slow_detection_minutes": "Slow Leak detection time",
+          "slow_reset_minutes": "Slow Leak reset time",
+          "low_threshold_lph": "Low Flow start threshold",
+          "low_detection_minutes": "Low Flow detection time",
+          "low_quiet_lph": "Low Flow quiet threshold",
+          "low_reset_minutes": "Low Flow quiet/reset time",
+          "high_threshold_lph": "High Flow threshold",
+          "high_detection_minutes": "High Flow detection time",
+          "high_volume_l": "High Flow volume threshold",
+          "high_quiet_lph": "High Flow quiet threshold",
+          "high_reset_minutes": "High Flow reset time",
+          "burst_threshold_lph": "Burst Leak absolute threshold",
+          "burst_detection_seconds": "Burst Leak confirmation time",
+          "burst_reset_lph": "Burst Leak reset threshold",
+          "burst_reset_seconds": "Burst Leak reset time",
+          "bypass_default_minutes": "Default High Flow bypass duration",
+          "shutoff_slow": "Slow Leak requests shutoff",
+          "shutoff_low": "Low Flow requests shutoff",
+          "shutoff_high": "High Flow requests shutoff",
+          "shutoff_burst": "Burst Leak requests shutoff"
+        }
+      }
+    }
+  }
+}
