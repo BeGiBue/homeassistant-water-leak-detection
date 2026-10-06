@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 import probatio
-
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
 from homeassistant.core import callback
