@@ -161,6 +161,8 @@ class WaterLeakManager:
         flow_state = self.hass.states.get(self.flow_entity_id)
         if not self._usable_state(flow_state):
             self.source_available = False
+            self.engine.suspend_for_unavailable_source()
+            self._schedule_save()
             self._notify_listeners()
             return
 
@@ -174,6 +176,8 @@ class WaterLeakManager:
                 "Unable to normalize flow source %s: %s", self.flow_entity_id, err
             )
             self.source_available = False
+            self.engine.suspend_for_unavailable_source()
+            self._schedule_save()
             self._notify_listeners()
             return
 
