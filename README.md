@@ -1,129 +1,143 @@
 # Home Assistant Water Leak Detection
 
-Backend-only Home Assistant custom integration for detecting abnormal water consumption and possible water leaks.
+[![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BeGiBue&repository=homeassistant-water-leak-detection&category=integration)
 
-The implementation follows [`SPEC.md`](SPEC.md). Version **0.3.0** adds continuous adaptive normal-flow learning, confidence states, hydraulic plausibility and adaptive High/Burst thresholds on top of the v0.2 notification/acknowledgement backend.
+A backend-focused Home Assistant custom integration for detecting abnormal water consumption and possible water leaks from an existing water-meter flow sensor.
 
-## Current v0.3.0 features
+**Current release:** 0.3.0  
+**Minimum Home Assistant:** 2026.9.0  
+**Integration domain:** `water_leak_detection`
 
-- UI configuration via Config Flow.
-- Select source sensors directly or discover compatible sensors from a Home Assistant device.
-- Flow normalization to L/h and total consumption normalization to L.
-- Separate Slow Leak, Low Flow, High Flow and Burst Leak state machines.
-- Slow Leak defaults: 3 L/h for 60 min; active leak resets after 10 min below threshold.
-- Low Flow defaults: starts at 150 L/h; detects after 60 min unless a 7 min quiet period below 20 L/h occurs.
-- Provisional High Flow detector using flow + duration + accumulated event volume.
-- Provisional absolute Burst Leak detector, kept fully independent of High Flow.
-- Slow Leak and Low Flow can be disabled independently through dedicated HA switch entities.
-- High Flow bypass that **never disables Burst Leak**.
-- Persistent active detector state and bypass expiry across HA restarts.
-- Independent **Water shutoff request** binary sensor for an external motorized valve automation.
-- Expert settings for all v0.1 thresholds and detector-to-shutoff mapping.
-- HA events for event start/end and shutoff-request changes.
-- Multiple Home Assistant Companion notification recipients.
-- Per-device notification target + `device_tracker.*` association.
-- Critical Burst Leak payloads for iOS and Android when enabled per recipient.
-- Actionable notifications with **Mute for this device** and **Acknowledge for everyone**.
-- Global acknowledgement is authorized in backend code only when the requesting device is currently `home`.
-- Trusted stationary Home devices (for example a shared iPad) can globally acknowledge while they remain in the Home zone.
-- A device that transitions from `not_home` to `home` is notified again if the event is still active and not globally acknowledged.
-- Acknowledgements are stored per event ID and survive Home Assistant restarts.
-- Global acknowledgement never clears the physical detector state or the independent shutoff request.
-- Continuous rolling normal-flow learning using completed, non-suspicious water-use episodes.
-- Suspicious events and High Flow bypass periods are excluded from learning.
-- Learning confidence states: `insufficient`, `learning`, `reliable`.
-- Short-term and long-term references support seasonal adaptation.
-- Configurable learning window (default 30 days).
-- Hydraulic plausibility reference based on nominal pipe diameter and static pressure.
-- Adaptive High Flow threshold derived from trusted normal usage while remaining bounded by the hydraulic envelope.
-- Adaptive Burst Leak threshold derived from learned/manual context plus hydraulic plausibility.
-- Rapid rate-of-rise Burst detection in addition to absolute-flow Burst detection.
-- Burst detection remains active during High Flow bypass.
-- `water_leak_detection.reset_learning` action for intentionally clearing admitted learning history.
+> [!IMPORTANT]
+> This integration can detect suspicious water usage and expose a shutoff request. It does not guarantee prevention of water damage. Automatic valve closure is opt-in and should be tested carefully.
+
+## Highlights
+
+- Separate **Slow Leak**, **Low Flow**, **High Flow**, and **Burst Leak** detectors.
+- Independent enable/disable switches for Slow Leak and Low Flow.
+- Temporary High Flow bypass for intentional high consumption such as pool filling.
+- Burst Leak remains active even while High Flow is bypassed.
+- Optional cumulative consumption sensor for event-volume tracking.
+- Multi-device Home Assistant Companion notifications.
+- Device-specific mute and Home-zone-authorized global acknowledgement.
+- Trusted stationary Home devices such as a shared iPad.
+- Return-home re-notification while an event is still active and not globally acknowledged.
+- Independent `Water shutoff request` entity for an external motorized valve automation.
+- Continuous rolling learning of normal peak consumption.
+- Learning confidence states: `insufficient`, `learning`, and `reliable`.
+- Hydraulic plausibility context using nominal pipe diameter and static pressure.
+- Adaptive High Flow and Burst Leak thresholds.
+- Rapid rate-of-rise Burst detection.
+- Persistent event state, bypass expiry, acknowledgements, and learned history across Home Assistant restarts.
 
 ## Installation
 
-### HACS custom repository
+### HACS — recommended
 
-1. Add this repository as a custom **Integration** repository in HACS.
-2. Install **Home Assistant Water Leak Detection**.
-3. Restart Home Assistant.
-4. Open **Settings → Devices & services → Add integration**.
-5. Search for **Home Assistant Water Leak Detection**.
+Use the button above, or add the repository manually in HACS:
 
-### Manual
+- Repository: `https://github.com/BeGiBue/homeassistant-water-leak-detection`
+- Category: **Integration**
 
-Copy `custom_components/water_leak_detection` into your Home Assistant `custom_components` directory and restart Home Assistant.
+Then:
 
-Minimum target: Home Assistant **2026.9.0**.
+1. Download **Home Assistant Water Leak Detection** in HACS.
+2. Restart Home Assistant.
+3. Open **Settings → Devices & services → Add integration**.
+4. Search for **Home Assistant Water Leak Detection**.
+5. Complete the config flow.
 
-## Example source sensors
+Detailed installation and update instructions: [docs/INSTALLATION.md](docs/INSTALLATION.md)
+
+### Manual installation
+
+Copy:
+
+`custom_components/water_leak_detection`
+
+to:
+
+`<config>/custom_components/water_leak_detection`
+
+Restart Home Assistant and add the integration through **Settings → Devices & services**.
+
+## Measurement sources
+
+The integration requires a compatible flow-rate sensor and can optionally use a cumulative water-consumption sensor.
 
 Reference installation:
 
-- Flow: `sensor.wasserzahler_flow` in `m³/h`, resolution 0.001 m³/h = 1 L/h.
-- Total: `sensor.wasserzahler_total`.
+- Flow: `sensor.wasserzahler_flow` in `m³/h`
+- Total: `sensor.wasserzahler_total`
+- Reference flow resolution: 0.001 m³/h = 1 L/h
+- Reference installation: DN25 / 1", static pressure 3.5 bar
 
-Supported core input units include L/h, L/min, L/s, m³/h, m³/min, m³/s and common compatible volume units.
+Flow values are normalized internally to **L/h** and total consumption to **L**.
 
-## Entities
+Supported flow units include L/h, L/min, L/s, m³/h, m³/min, and m³/s.
 
-The integration creates a device with these backend entities:
+## Detector defaults
 
-- **Status** — overall detector state (`idle`, monitoring states, or active detector class).
-- **Current flow** — normalized flow in L/h.
-- **Leak alarm** — ON when any detector is active.
-- **Water shutoff request** — independent endpoint intended for a valve automation.
-- **Active event duration** — duration of the highest-priority active event.
-- **Active event volume** — water used since that event began.
-- **Slow Leak detection** — independent switch to enable/disable the Slow Leak detector.
-- **Low Flow detection** — independent switch to enable/disable the Low Flow detector.
-- **High flow bypass** — switch to start/cancel the bypass using the configured default duration.
-- **High flow bypass duration** — editable default bypass duration in minutes.
-- **High flow bypass remaining** — remaining bypass time in seconds.
-- **Learned maximum flow** — robust rolling learned normal peak in L/h.
-- **Learning confidence** — `insufficient`, `learning` or `reliable`.
-- **Learning coverage** — number of distinct days represented in admitted learning samples.
-- **Hydraulic reference flow** — diagnostic plausibility reference, not a theoretical maximum.
-- **Effective High Flow threshold** — current adaptive High threshold.
-- **Effective Burst Leak threshold** — current adaptive absolute Burst threshold.
+| Detector | Purpose | Default |
+|---|---|---|
+| Slow Leak | Very small continuous loss | ≥ 3 L/h for 60 min |
+| Low Flow | Moderate flow lasting too long | ≥ 150 L/h for 60 min |
+| High Flow | Sustained unusually high use | Adaptive; fixed base 600 L/h |
+| Burst Leak | Major leak / pipe failure | Adaptive absolute + rapid-rise detection |
 
-### Why the bypass is not a `timer.*` entity
+Slow Leak and Low Flow can be switched off independently. High Flow can be temporarily bypassed. Burst Leak cannot be bypassed by the High Flow bypass.
 
-Home Assistant's `timer` domain is a helper integration rather than a normal entity platform that third-party integrations implement. The integration therefore exposes the same backend capability using HA-native controllable entities (switch + duration number + remaining-time sensor) and integration actions. It is directly usable from dashboards, scripts and automations without depending on a user-created helper.
+All expert thresholds and reset times can be adjusted through the integration options.
 
-## Companion notification recipients
+## Main entities
 
-Open the integration's **Configure** dialog and choose **Add notification device**. Each recipient stores:
+The integration creates a Home Assistant device with backend entities including:
 
-- a display name,
-- its `notify.mobile_app_*` service,
-- the matching `device_tracker.*`,
-- whether Burst Leak may use critical notifications,
-- whether the device may globally acknowledge while it is Home,
-- whether it is a trusted stationary Home device.
+- **Status**
+- **Current flow**
+- **Leak alarm**
+- **Water shutoff request**
+- **Active event duration**
+- **Active event volume**
+- **Slow Leak detection**
+- **Low Flow detection**
+- **High Flow bypass**
+- **High Flow bypass duration**
+- **High Flow bypass remaining**
+- **Learned maximum flow**
+- **Learning confidence**
+- **Learning coverage**
+- **Hydraulic reference flow**
+- **Effective High Flow threshold**
+- **Effective Burst Leak threshold**
 
-Recipients are deliberately device-based rather than only person-based. This supports users with multiple devices and shared Home devices.
+## Companion notifications and acknowledgement
+
+Notification recipients are configured per Companion App device. Each device can have its own:
+
+- `notify.mobile_app_*` service,
+- matching `device_tracker.*`,
+- critical Burst-alert setting,
+- permission for global acknowledgement while Home,
+- trusted stationary Home-device flag.
+
+An away device can mute the current event for itself. Global acknowledgement is accepted only when the configured tracker for the responding device is currently `home`. The check is enforced in backend code.
+
+A shared iPad that normally stays Home can be configured as a trusted stationary Home device and used by another household member to globally acknowledge an event.
+
+Returning Home is treated as a fresh safety context: if an event is still active and not globally acknowledged, that device is notified again.
+
+## High Flow bypass
+
+The integration intentionally does not create a custom `timer.*` platform. It exposes the bypass with HA-native controllable entities and actions:
+
+- switch: start/cancel bypass,
+- number: default duration,
+- sensor: remaining duration,
+- action: `water_leak_detection.start_high_flow_bypass`,
+- action: `water_leak_detection.cancel_high_flow_bypass`.
 
 Example:
-
-- Personal iPhone: may mute an event for itself while away; may globally acknowledge after it is Home.
-- Shared iPad that normally stays Home: mark it as a trusted stationary Home device and allow global acknowledgement. Any household member using that iPad can then acknowledge the active event for everyone.
-- If the iPhone later changes from `not_home` to `home` while the event is still active and has not been globally acknowledged, the integration sends that alarm to the iPhone again.
-
-### Acknowledgement semantics
-
-**Mute for this device** only suppresses further notifications for that recipient and event ID. It does not affect other devices, detector state or shutoff request.
-
-**Acknowledge for everyone** is accepted only when the configured tracker for the responding device is currently `home`. The authorization check happens in backend code. The physical leak event remains active until its detector reset condition is fulfilled.
-
-Each new physical event gets a new event ID, so acknowledgement never permanently disables a detector class.
-
-## Actions
-
-### `water_leak_detection.start_high_flow_bypass`
-
-Starts or restarts the High Flow bypass. `duration_minutes` is optional; if omitted, the current **High flow bypass duration** value is used.
 
 ```yaml
 sequence:
@@ -132,29 +146,29 @@ sequence:
       duration_minutes: 240
 ```
 
-If multiple integration instances exist, also provide `config_entry_id`.
+## Adaptive learning
 
-### `water_leak_detection.cancel_high_flow_bypass`
+The learner stores peaks from completed, non-suspicious water-use episodes. Events are excluded from learning when High/Burst detection becomes suspicious or active, or while High Flow bypass is active.
 
-Cancels the bypass immediately.
+The default rolling window is 30 days. Recent and longer-term references are combined so the model can adapt to seasonal changes without allowing one unusual event to redefine normal behavior.
 
-### `water_leak_detection.reset_learning`
+Learning confidence:
 
-Clears only the admitted adaptive-learning history. Detector settings, active leak events, acknowledgements and shutoff state are not reset.
+- `insufficient` — learned values do not raise safety thresholds,
+- `learning` — learned values have reduced influence,
+- `reliable` — the robust learned reference can fully influence adaptive thresholds.
 
-## Adaptive learning and hydraulic context
+Use `water_leak_detection.reset_learning` to intentionally clear admitted learning history.
 
-The learner stores the peak of completed normal water-use episodes. An episode is discarded from learning when a detector becomes suspicious/active during it or while the High Flow bypass is active. In-progress episodes are also discarded across source outages/restarts rather than being trusted as normal evidence.
+## Hydraulic context
 
-The default rolling window is 30 days. Recent behavior and the longer window are combined so seasonal changes can influence the learned reference without turning a single event into the permanent maximum.
+Nominal pipe diameter and static pressure are used as a **plausibility envelope**, not as an exact physical maximum. Actual flow depends on the meter, pressure reducer, dynamic pressure, pipe length, fittings, and upstream supply.
 
-During **insufficient** confidence, learned values do not raise safety thresholds. During **learning**, the learned reference has reduced weight. At **reliable** confidence, the full robust learned reference may influence thresholds.
-
-Hydraulic settings (default DN25 / 25 mm and 3.5 bar for the reference installation) define a plausibility envelope only. Real deliverable flow depends on the meter, pressure reducer, pipe lengths, fittings, dynamic pressure and upstream supply. The integration therefore does not claim an exact theoretical burst-flow calculation.
+The hydraulic model limits how far adaptive thresholds can move upward.
 
 ## Shutoff request
 
-`binary_sensor.*_water_shutoff_request` is deliberately independent from alarm acknowledgement logic. It is intended as a stable backend endpoint for an optional motorized shutoff valve.
+`binary_sensor.*_water_shutoff_request` is deliberately independent from alarm acknowledgement.
 
 Example external automation:
 
@@ -169,11 +183,11 @@ actions:
       entity_id: valve.main_water
 ```
 
-Use your actual entity IDs. Automatic physical shutoff is intentionally not enabled by this integration unless you explicitly build/configure it.
+Replace the entity IDs with the IDs from your Home Assistant instance.
 
 ## Events
 
-The integration fires:
+The integration emits:
 
 - `water_leak_detection_event_started`
 - `water_leak_detection_event_ended`
@@ -182,16 +196,24 @@ The integration fires:
 - `water_leak_detection_acknowledged`
 - `water_leak_detection_ack_rejected`
 
-These complement persistent entities and can be consumed by advanced automations.
+Event payloads include the event ID and relevant detector context. Burst events can report reasons such as `absolute_flow` or `rapid_rise`.
 
-## Roadmap
+## Documentation
 
-See [`SPEC.md`](SPEC.md) for the binding design and definitions of done:
+- [Installation and updates](docs/INSTALLATION.md)
+- [Configuration reference](docs/CONFIGURATION.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Changelog](CHANGELOG.md)
+- [v0.3.0 release notes](RELEASE_NOTES_0.3.0.md)
+- [Release procedure](docs/RELEASING.md)
+- [Technical specification and roadmap](SPEC.md)
 
-- **v0.1.0** — Core Detection & Backend
-- **v0.2.0** — Notifications, Devices & Acknowledgement
-- **v0.3.0** — Adaptive Detection & Hydraulic Model
+## Release status
 
-## Development status
+Version 0.3.0 implements the original v0.1 → v0.3 backend roadmap:
 
-v0.3.0 implements the adaptive-learning and hydraulic-model milestone from SPEC.md. The hydraulic reference is intentionally heuristic and must be treated as plausibility context rather than a guaranteed physical maximum.
+- **v0.1.0** — detection core and backend entities
+- **v0.2.0** — notifications, device acknowledgement, and geofencing
+- **v0.3.0** — adaptive learning and hydraulic plausibility
+
+The release is validated against Home Assistant 2026.9.4 / Python 3.14.2 with compile checks, Ruff, JSON validation, and automated tests.
