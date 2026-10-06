@@ -81,7 +81,8 @@
         "description": "Change notification recipients or expert settings. Measurement sources can be changed through Reconfigure.",
         "menu_options": {
           "notifications": "Notification recipients",
-          "expert": "Expert settings"
+          "expert": "Expert settings",
+          "sources": "Measurement sources"
         }
       },
       "expert": {
@@ -164,6 +165,14 @@
           "edit_recipient": "Edit recipient",
           "remove_recipient": "Remove recipient"
         }
+      },
+      "sources": {
+        "title": "Measurement sources",
+        "description": "Change the flow sensor and optional total-consumption sensor. The integration reloads automatically afterwards.",
+        "data": {
+          "flow_entity": "Flow rate sensor",
+          "total_entity": "Total consumption sensor (optional)"
+        }
       }
     },
     "error": {
@@ -173,7 +182,12 @@
       "invalid_burst_reset_threshold": "The Burst Leak reset threshold must be below the Burst Leak absolute threshold.",
       "recipient_notify_service_exists": "This Companion notification service is already configured as a recipient.",
       "recipient_name_required": "Enter a name for the notification device.",
-      "invalid_adaptive_multiplier_order": "The Burst Leak multiplier must be greater than the High Flow multiplier."
+      "invalid_adaptive_multiplier_order": "The Burst Leak multiplier must be greater than the High Flow multiplier.",
+      "entity_not_available": "The selected entity is not currently available.",
+      "unsupported_flow_unit": "The flow sensor uses an unsupported unit.",
+      "unsupported_volume_unit": "The total sensor uses an unsupported unit.",
+      "same_source_entity": "Flow and total consumption must use different entities.",
+      "already_configured": "This flow sensor is already used by another entry."
     },
     "abort": {
       "no_mobile_app_notify_services": "No mobile_app notification services were found. Set up the Home Assistant Companion App first.",
