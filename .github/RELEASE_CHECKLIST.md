@@ -19,7 +19,7 @@
 - [x] Notification-recipient rendering is fixed.
 - [x] Release notes are prepared in `RELEASE_NOTES_1.0.2.md`.
 - [x] Changelog updated.
-- [ ] HACS validation passes.
+- [x] HACS validation passes.
 - [ ] Publish GitHub Release with tag `1.0.2`.
 - [ ] Verify the tagged manifest still says `service`.
 - [ ] Verify HACS offers `1.0.2`.
