@@ -279,6 +279,8 @@ class NotificationController:
         state = self.acknowledgements.setdefault(event_id, EventAcknowledgement())
 
         if action_kind == ACTION_MUTE:
+            if recipient_id in state.muted_recipients:
+                return
             state.muted_recipients.add(recipient_id)
             self._persist_callback()
             self.hass.bus.async_fire(
@@ -293,6 +295,9 @@ class NotificationController:
             return
 
         if action_kind != ACTION_ACK_ALL:
+            return
+
+        if state.globally_acknowledged:
             return
 
         if not recipient.allow_global_ack:
