@@ -128,6 +128,32 @@ def _number(minimum: float, maximum: float, step: float, unit: str):
     )
 
 
+def _recipient_description_placeholders(
+    recipients: list[dict[str, Any]],
+) -> dict[str, str]:
+    """Build a safe, human-readable overview of configured recipients."""
+    valid = [recipient for recipient in recipients if isinstance(recipient, dict)]
+    if not valid:
+        return {
+            "recipient_count": "0",
+            "configured_recipients": "—",
+        }
+
+    lines: list[str] = []
+    for recipient in valid:
+        name = str(recipient.get(RECIPIENT_NAME) or "—")
+        notify_service = str(
+            recipient.get(RECIPIENT_NOTIFY_SERVICE) or "—"
+        )
+        tracker = str(recipient.get(RECIPIENT_TRACKER_ENTITY) or "—")
+        lines.append(f"- {name} · {notify_service} · {tracker}")
+
+    return {
+        "recipient_count": str(len(valid)),
+        "configured_recipients": "\n".join(lines),
+    }
+
+
 class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle configuration."""
 
@@ -348,6 +374,9 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_menu(
             step_id="notifications",
             menu_options=menu_options,
+            description_placeholders=_recipient_description_placeholders(
+                self._initial_recipients
+            ),
         )
 
     async def async_step_add_initial_recipient(
@@ -396,6 +425,9 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="add_initial_recipient",
             data_schema=self._recipient_schema(notify_services),
             errors=errors,
+            description_placeholders=_recipient_description_placeholders(
+                self._initial_recipients
+            ),
         )
 
     async def async_step_finish_setup(
@@ -649,12 +681,16 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Manage notification recipients."""
+        recipients = self._raw_recipients()
         menu_options = ["add_recipient"]
-        if self._raw_recipients():
+        if recipients:
             menu_options.extend(["edit_recipient", "remove_recipient"])
         return self.async_show_menu(
             step_id="notifications",
             menu_options=menu_options,
+            description_placeholders=_recipient_description_placeholders(
+                recipients
+            ),
         )
 
     async def async_step_expert(
@@ -899,9 +935,9 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         if not notify_services:
             return self.async_abort(reason="no_mobile_app_notify_services")
 
+        existing = self._raw_recipients()
         errors: dict[str, str] = {}
         if user_input is not None:
-            existing = self._raw_recipients()
             name = str(user_input[RECIPIENT_NAME]).strip()
             notify_service = str(user_input[RECIPIENT_NOTIFY_SERVICE])
             tracker_entity = str(user_input[RECIPIENT_TRACKER_ENTITY])
@@ -938,6 +974,9 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
             step_id="add_recipient",
             data_schema=WaterLeakConfigFlow._recipient_schema(notify_services),
             errors=errors,
+            description_placeholders=_recipient_description_placeholders(
+                existing
+            ),
         )
 
     async def async_step_edit_recipient(
@@ -968,6 +1007,9 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
                         SelectSelectorConfig(options=options)
                     )
                 }
+            ),
+            description_placeholders=_recipient_description_placeholders(
+                recipients
             ),
         )
 
@@ -1041,6 +1083,9 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
                 current=current,
             ),
             errors=errors,
+            description_placeholders=_recipient_description_placeholders(
+                recipients
+            ),
         )
 
     async def async_step_remove_recipient(
@@ -1077,6 +1122,9 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
                         SelectSelectorConfig(options=options)
                     )
                 }
+            ),
+            description_placeholders=_recipient_description_placeholders(
+                recipients
             ),
         )
 

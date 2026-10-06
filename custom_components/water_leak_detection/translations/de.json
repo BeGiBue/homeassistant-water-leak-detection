@@ -34,7 +34,7 @@
       },
       "notifications": {
         "title": "Benachrichtigungsempfänger",
-        "description": "Füge jetzt ein oder mehrere Companion-App-Geräte als Empfänger hinzu oder schließe die Einrichtung ohne Empfänger ab. Empfänger können später jederzeit über „Konfigurieren“ geändert werden.",
+        "description": "Bereits eingerichtet ({recipient_count}):\\n\\n{configured_recipients}\\n\\nFüge weitere Companion-App-Geräte als Empfänger hinzu oder schließe die Einrichtung ab. Empfänger können später jederzeit über „Konfigurieren“ geändert werden.",
         "menu_options": {
           "add_initial_recipient": "Benachrichtigungsgerät hinzufügen",
           "finish_setup": "Einrichtung abschließen"
@@ -42,7 +42,7 @@
       },
       "add_initial_recipient": {
         "title": "Benachrichtigungsgerät hinzufügen",
-        "description": "Wähle den Companion-Benachrichtigungsdienst und den zugehörigen Device Tracker. Das globale Quittieren wird im Backend anhand des Home-Status geprüft.",
+        "description": "Bereits eingerichtet ({recipient_count}):\\n\\n{configured_recipients}\\n\\nWähle den Companion-Benachrichtigungsdienst und den zugehörigen Device Tracker. Das globale Quittieren wird im Backend anhand des Home-Status geprüft.",
         "data": {
           "name": "Anzeigename",
           "notify_service": "Companion-Benachrichtigungsdienst",
@@ -123,7 +123,7 @@
       },
       "add_recipient": {
         "title": "Benachrichtigungsgerät hinzufügen",
-        "description": "Konfiguriere ein Companion-App-Gerät. Das globale Quittieren wird immer im Backend anhand des zugeordneten Device Trackers geprüft.",
+        "description": "Bereits eingerichtet ({recipient_count}):\\n\\n{configured_recipients}\\n\\nKonfiguriere ein weiteres Companion-App-Gerät. Das globale Quittieren wird immer im Backend anhand des zugeordneten Device Trackers geprüft.",
         "data": {
           "name": "Anzeigename",
           "notify_service": "Companion-Benachrichtigungsdienst",
@@ -137,17 +137,19 @@
         "title": "Benachrichtigungsgerät entfernen",
         "data": {
           "id": "Gerät"
-        }
+        },
+        "description": "Bereits eingerichtet ({recipient_count}):\\n\\n{configured_recipients}\\n\\nWähle das Gerät aus, das nicht mehr benachrichtigt werden soll."
       },
       "edit_recipient": {
         "title": "Benachrichtigungsgerät auswählen",
         "data": {
           "id": "Gerät"
-        }
+        },
+        "description": "Bereits eingerichtet ({recipient_count}):\\n\\n{configured_recipients}\\n\\nWähle das Gerät aus, das du bearbeiten möchtest."
       },
       "edit_recipient_details": {
         "title": "Benachrichtigungsgerät bearbeiten",
-        "description": "Ändere Tracker, Critical-Alarm und Quittierungsrechte. Die interne Gerätekennung und das Action-Token bleiben erhalten.",
+        "description": "Bereits eingerichtet ({recipient_count}):\\n\\n{configured_recipients}\\n\\nÄndere Tracker, Critical-Alarm und Quittierungsrechte. Die interne Gerätekennung und das Action-Token bleiben erhalten.",
         "data": {
           "name": "Anzeigename",
           "notify_service": "Companion-Benachrichtigungsdienst",
@@ -159,7 +161,7 @@
       },
       "notifications": {
         "title": "Benachrichtigungsempfänger",
-        "description": "Verwalte die Companion-App-Geräte, die Leckagealarme erhalten.",
+        "description": "Bereits eingerichtet ({recipient_count}):\\n\\n{configured_recipients}\\n\\nVerwalte die Companion-App-Geräte, die Leckagealarme erhalten.",
         "menu_options": {
           "add_recipient": "Empfänger hinzufügen",
           "edit_recipient": "Empfänger bearbeiten",

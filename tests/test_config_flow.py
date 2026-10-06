@@ -1,7 +1,13 @@
 """Tests for expert option validation."""
 
-from custom_components.water_leak_detection.config_flow import WaterLeakOptionsFlow
+from custom_components.water_leak_detection.config_flow import (
+    WaterLeakOptionsFlow,
+    _recipient_description_placeholders,
+)
 from custom_components.water_leak_detection.const import (
+    RECIPIENT_NAME,
+    RECIPIENT_NOTIFY_SERVICE,
+    RECIPIENT_TRACKER_ENTITY,
     CONF_BURST_LEARNED_MULTIPLIER,
     CONF_BURST_RESET_LPH,
     CONF_BURST_THRESHOLD_LPH,
@@ -75,4 +81,36 @@ def test_adaptive_burst_multiplier_must_exceed_high_multiplier() -> None:
 
     assert WaterLeakOptionsFlow._validate_expert_options(values) == {
         "base": "invalid_adaptive_multiplier_order"
+    }
+
+
+def test_recipient_overview_lists_all_configured_devices() -> None:
+    recipients = [
+        {
+            RECIPIENT_NAME: "Phone",
+            RECIPIENT_NOTIFY_SERVICE: "notify.mobile_app_phone",
+            RECIPIENT_TRACKER_ENTITY: "device_tracker.phone",
+        },
+        {
+            RECIPIENT_NAME: "Tablet",
+            RECIPIENT_NOTIFY_SERVICE: "notify.mobile_app_tablet",
+            RECIPIENT_TRACKER_ENTITY: "device_tracker.tablet",
+        },
+    ]
+
+    placeholders = _recipient_description_placeholders(recipients)
+
+    assert placeholders["recipient_count"] == "2"
+    assert "Phone · notify.mobile_app_phone · device_tracker.phone" in placeholders[
+        "configured_recipients"
+    ]
+    assert "Tablet · notify.mobile_app_tablet · device_tracker.tablet" in placeholders[
+        "configured_recipients"
+    ]
+
+
+def test_recipient_overview_handles_empty_list() -> None:
+    assert _recipient_description_placeholders([]) == {
+        "recipient_count": "0",
+        "configured_recipients": "—",
     }

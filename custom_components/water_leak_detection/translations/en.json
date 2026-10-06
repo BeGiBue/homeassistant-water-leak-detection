@@ -34,7 +34,7 @@
       },
       "notifications": {
         "title": "Notification recipients",
-        "description": "Add one or more Companion App devices now, or finish setup without recipients. Recipients can be changed later at any time through Configure.",
+        "description": "Already configured ({recipient_count}):\\n\\n{configured_recipients}\\n\\nAdd more Companion App devices as recipients or finish setup. Recipients can be changed later at any time through Configure.",
         "menu_options": {
           "add_initial_recipient": "Add notification device",
           "finish_setup": "Finish setup"
@@ -42,7 +42,7 @@
       },
       "add_initial_recipient": {
         "title": "Add notification device",
-        "description": "Select the Companion notification service and its matching device tracker. Global acknowledgement is checked in the backend using the Home state.",
+        "description": "Already configured ({recipient_count}):\\n\\n{configured_recipients}\\n\\nSelect the Companion notification service and its matching device tracker. Global acknowledgement is checked in the backend using the Home state.",
         "data": {
           "name": "Display name",
           "notify_service": "Companion notification service",
@@ -123,7 +123,7 @@
       },
       "add_recipient": {
         "title": "Add notification device",
-        "description": "Configure one Companion App device. Global acknowledgement is always authorized in the backend using the assigned device tracker.",
+        "description": "Already configured ({recipient_count}):\\n\\n{configured_recipients}\\n\\nConfigure another Companion App device. Global acknowledgement is always authorized in the backend using the assigned device tracker.",
         "data": {
           "name": "Display name",
           "notify_service": "Companion notification service",
@@ -137,17 +137,19 @@
         "title": "Remove notification device",
         "data": {
           "id": "Device"
-        }
+        },
+        "description": "Already configured ({recipient_count}):\\n\\n{configured_recipients}\\n\\nSelect the device that should no longer receive alerts."
       },
       "edit_recipient": {
         "title": "Select notification device",
         "data": {
           "id": "Device"
-        }
+        },
+        "description": "Already configured ({recipient_count}):\\n\\n{configured_recipients}\\n\\nSelect the device you want to edit."
       },
       "edit_recipient_details": {
         "title": "Edit notification device",
-        "description": "Change tracker, critical-alert and acknowledgement settings. The internal device ID and action token are preserved.",
+        "description": "Already configured ({recipient_count}):\\n\\n{configured_recipients}\\n\\nChange tracker, critical-alert and acknowledgement settings. The internal device ID and action token are preserved.",
         "data": {
           "name": "Display name",
           "notify_service": "Companion notification service",
@@ -159,7 +161,7 @@
       },
       "notifications": {
         "title": "Notification recipients",
-        "description": "Manage the Companion App devices that receive leak alerts.",
+        "description": "Already configured ({recipient_count}):\\n\\n{configured_recipients}\\n\\nManage the Companion App devices that receive leak alerts.",
         "menu_options": {
           "add_recipient": "Add recipient",
           "edit_recipient": "Edit recipient",
