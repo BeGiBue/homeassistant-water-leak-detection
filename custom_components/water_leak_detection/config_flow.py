@@ -32,6 +32,15 @@ from .const import (
     CONF_BURST_RESET_SEC,
     CONF_BURST_THRESHOLD_LPH,
     CONF_BYPASS_DEFAULT_MIN,
+    CONF_BURST_LEARNED_MULTIPLIER,
+    CONF_BURST_RATE_CONFIRM_SEC,
+    CONF_BURST_RATE_RISE_LPH_10S,
+    CONF_HIGH_LEARNED_MULTIPLIER,
+    CONF_HYDRAULIC_BURST_FRACTION,
+    CONF_LEARNING_WINDOW_DAYS,
+    CONF_MANUAL_MAX_FLOW_LPH,
+    CONF_PIPE_DIAMETER_MM,
+    CONF_STATIC_PRESSURE_BAR,
     CONF_FLOW_ENTITY,
     CONF_HIGH_DETECTION_MIN,
     CONF_HIGH_QUIET_LPH,
@@ -58,6 +67,15 @@ from .const import (
     DEFAULT_BURST_RESET_SEC,
     DEFAULT_BURST_THRESHOLD_LPH,
     DEFAULT_BYPASS_DEFAULT_MIN,
+    DEFAULT_BURST_LEARNED_MULTIPLIER,
+    DEFAULT_BURST_RATE_CONFIRM_SEC,
+    DEFAULT_BURST_RATE_RISE_LPH_10S,
+    DEFAULT_HIGH_LEARNED_MULTIPLIER,
+    DEFAULT_HYDRAULIC_BURST_FRACTION,
+    DEFAULT_LEARNING_WINDOW_DAYS,
+    DEFAULT_MANUAL_MAX_FLOW_LPH,
+    DEFAULT_PIPE_DIAMETER_MM,
+    DEFAULT_STATIC_PRESSURE_BAR,
     DEFAULT_HIGH_DETECTION_MIN,
     DEFAULT_HIGH_QUIET_LPH,
     DEFAULT_HIGH_RESET_MIN,
@@ -485,6 +503,69 @@ class WaterLeakOptionsFlow(OptionsFlow):
                     ),
                 ): _number(1, 1440, 1, "min"),
                 probatio.Required(
+                    CONF_LEARNING_WINDOW_DAYS,
+                    default=values.get(
+                        CONF_LEARNING_WINDOW_DAYS,
+                        DEFAULT_LEARNING_WINDOW_DAYS,
+                    ),
+                ): _number(7, 90, 1, "d"),
+                probatio.Required(
+                    CONF_MANUAL_MAX_FLOW_LPH,
+                    default=values.get(
+                        CONF_MANUAL_MAX_FLOW_LPH,
+                        DEFAULT_MANUAL_MAX_FLOW_LPH,
+                    ),
+                ): _number(0, 50000, 10, "L/h"),
+                probatio.Required(
+                    CONF_PIPE_DIAMETER_MM,
+                    default=values.get(
+                        CONF_PIPE_DIAMETER_MM,
+                        DEFAULT_PIPE_DIAMETER_MM,
+                    ),
+                ): _number(10, 100, 1, "mm"),
+                probatio.Required(
+                    CONF_STATIC_PRESSURE_BAR,
+                    default=values.get(
+                        CONF_STATIC_PRESSURE_BAR,
+                        DEFAULT_STATIC_PRESSURE_BAR,
+                    ),
+                ): _number(0.5, 12, 0.1, "bar"),
+                probatio.Required(
+                    CONF_HIGH_LEARNED_MULTIPLIER,
+                    default=values.get(
+                        CONF_HIGH_LEARNED_MULTIPLIER,
+                        DEFAULT_HIGH_LEARNED_MULTIPLIER,
+                    ),
+                ): _number(1.0, 3.0, 0.05, "×"),
+                probatio.Required(
+                    CONF_BURST_LEARNED_MULTIPLIER,
+                    default=values.get(
+                        CONF_BURST_LEARNED_MULTIPLIER,
+                        DEFAULT_BURST_LEARNED_MULTIPLIER,
+                    ),
+                ): _number(1.1, 5.0, 0.05, "×"),
+                probatio.Required(
+                    CONF_HYDRAULIC_BURST_FRACTION,
+                    default=values.get(
+                        CONF_HYDRAULIC_BURST_FRACTION,
+                        DEFAULT_HYDRAULIC_BURST_FRACTION,
+                    ),
+                ): _number(0.2, 1.0, 0.05, "×"),
+                probatio.Required(
+                    CONF_BURST_RATE_RISE_LPH_10S,
+                    default=values.get(
+                        CONF_BURST_RATE_RISE_LPH_10S,
+                        DEFAULT_BURST_RATE_RISE_LPH_10S,
+                    ),
+                ): _number(100, 20000, 100, "L/h / 10 s"),
+                probatio.Required(
+                    CONF_BURST_RATE_CONFIRM_SEC,
+                    default=values.get(
+                        CONF_BURST_RATE_CONFIRM_SEC,
+                        DEFAULT_BURST_RATE_CONFIRM_SEC,
+                    ),
+                ): _number(1, 60, 1, "s"),
+                probatio.Required(
                     CONF_SHUTOFF_SLOW,
                     default=values.get(
                         CONF_SHUTOFF_SLOW,
@@ -810,4 +891,8 @@ class WaterLeakOptionsFlow(OptionsFlow):
             return {"base": "invalid_high_quiet_threshold"}
         if float(values[CONF_BURST_RESET_LPH]) >= burst:
             return {"base": "invalid_burst_reset_threshold"}
+        high_multiplier = float(values[CONF_HIGH_LEARNED_MULTIPLIER])
+        burst_multiplier = float(values[CONF_BURST_LEARNED_MULTIPLIER])
+        if burst_multiplier <= high_multiplier:
+            return {"base": "invalid_adaptive_multiplier_order"}
         return {}
