@@ -10,8 +10,8 @@ All notable changes to Home Assistant Water Leak Detection are documented here.
 - Complete runtime localization for English and German using Home Assistant's configured language.
 - Device names, entity names, translated sensor states, action labels, and Companion notification text now follow the Home Assistant language.
 - Notification recipients can be selected during initial setup.
-- Notification recipients and expert settings can be reopened later through **Configure**.
-- Measurement source entities can be changed later through **Reconfigure**.
+- Measurement sources, notification recipients, and expert settings can all be reopened later through **Configure**.
+- Measurement source entities can additionally be changed through Home Assistant's **Reconfigure** action.
 
 ### Added
 
