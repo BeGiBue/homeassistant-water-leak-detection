@@ -1,4 +1,4 @@
-"""Switches for Home Assistant Water Leak Detection."""
+"""Switches for Water Leak Guard."""
 
 from __future__ import annotations
 
