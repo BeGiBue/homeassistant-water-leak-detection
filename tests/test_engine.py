@@ -151,3 +151,33 @@ def test_slow_candidate_resets_when_usage_enters_low_flow_range() -> None:
     engine.sample(at(1800), 200.0, None)
     assert engine.runtimes[DetectorKind.SLOW_LEAK].phase is DetectorPhase.IDLE
     assert engine.runtimes[DetectorKind.LOW_FLOW].phase is DetectorPhase.MONITORING
+
+
+def test_monitoring_state_is_not_restored_across_restart_gap() -> None:
+    engine = DetectionEngine()
+    engine.sample(at(0), 7.0, None)
+    assert engine.runtimes[DetectorKind.SLOW_LEAK].phase is DetectorPhase.MONITORING
+
+    restored = DetectionEngine()
+    restored.restore(engine.to_dict())
+
+    assert restored.runtimes[DetectorKind.SLOW_LEAK].phase is DetectorPhase.IDLE
+    assert restored.last_sample_at is None
+
+
+def test_active_state_restores_but_quiet_reset_timer_does_not() -> None:
+    settings = DetectorSettings(slow_detection_seconds=1)
+    engine = DetectionEngine(settings)
+    engine.sample(at(0), 7.0, None)
+    engine.sample(at(1), 7.0, None)
+    engine.sample(at(10), 0.0, None)
+    assert engine.runtimes[DetectorKind.SLOW_LEAK].phase is DetectorPhase.ACTIVE
+    assert engine.runtimes[DetectorKind.SLOW_LEAK].quiet_since is not None
+
+    restored = DetectionEngine(settings)
+    restored.restore(engine.to_dict())
+
+    runtime = restored.runtimes[DetectorKind.SLOW_LEAK]
+    assert runtime.phase is DetectorPhase.ACTIVE
+    assert runtime.event_id is not None
+    assert runtime.quiet_since is None
