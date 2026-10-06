@@ -383,3 +383,43 @@ async def test_burst_critical_payload_supports_ios_and_android() -> None:
     assert payload["priority"] == "high"
     assert payload["channel"] == "alarm_stream"
     assert payload["push"]["interruption-level"] == "critical"
+
+
+@pytest.mark.asyncio
+async def test_away_notification_only_offers_personal_mute() -> None:
+    controller, recipient, hass, _persisted = _controller_for_action(
+        tracker_state="not_home"
+    )
+
+    await controller._async_send_event_notification(
+        recipient,
+        "slow_leak_1",
+        "slow_leak",
+        {"flow_lph": 7.0},
+        returning_home=False,
+    )
+
+    payload = hass.services.calls[0][2]["data"]
+    actions = payload["actions"]
+    assert len(actions) == 1
+    assert "|MUTE|" in actions[0]["action"]
+
+
+@pytest.mark.asyncio
+async def test_home_notification_offers_global_acknowledgement() -> None:
+    controller, recipient, hass, _persisted = _controller_for_action(
+        tracker_state="home"
+    )
+
+    await controller._async_send_event_notification(
+        recipient,
+        "slow_leak_1",
+        "slow_leak",
+        {"flow_lph": 7.0},
+        returning_home=False,
+    )
+
+    payload = hass.services.calls[0][2]["data"]
+    actions = payload["actions"]
+    assert len(actions) == 2
+    assert any("|ACK_ALL|" in action["action"] for action in actions)
