@@ -8,7 +8,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "water_leak_detection"
 NAME = "Home Assistant Water Leak Detection"
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -21,6 +21,16 @@ CONF_FLOW_ENTITY = "flow_entity"
 CONF_TOTAL_ENTITY = "total_entity"
 CONF_SOURCE_MODE = "source_mode"
 CONF_SOURCE_DEVICE = "source_device"
+CONF_NOTIFICATION_RECIPIENTS = "notification_recipients"
+
+RECIPIENT_ID = "id"
+RECIPIENT_NAME = "name"
+RECIPIENT_NOTIFY_SERVICE = "notify_service"
+RECIPIENT_TRACKER_ENTITY = "tracker_entity"
+RECIPIENT_CRITICAL_ENABLED = "critical_enabled"
+RECIPIENT_ALLOW_GLOBAL_ACK = "allow_global_ack"
+RECIPIENT_TRUSTED_STATIONARY = "trusted_stationary"
+RECIPIENT_TOKEN = "token"
 
 CONF_SLOW_ENABLED = "slow_enabled"
 CONF_SLOW_THRESHOLD_LPH = "slow_threshold_lph"
@@ -85,6 +95,13 @@ EVENT_LEAK_STARTED = f"{DOMAIN}_event_started"
 EVENT_LEAK_ENDED = f"{DOMAIN}_event_ended"
 EVENT_SHUTOFF_REQUESTED = f"{DOMAIN}_shutoff_requested"
 EVENT_SHUTOFF_CLEARED = f"{DOMAIN}_shutoff_cleared"
+EVENT_ACKNOWLEDGED = f"{DOMAIN}_acknowledged"
+EVENT_ACK_REJECTED = f"{DOMAIN}_ack_rejected"
+
+MOBILE_ACTION_EVENT = "mobile_app_notification_action"
+ACTION_PREFIX = "WLD"
+ACTION_MUTE = "MUTE"
+ACTION_ACK_ALL = "ACK_ALL"
 
 
 class DetectorKind(StrEnum):

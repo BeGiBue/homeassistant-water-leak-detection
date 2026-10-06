@@ -47,6 +47,15 @@
   "options": {
     "step": {
       "init": {
+        "title": "Optionen",
+        "menu_options": {
+          "expert": "Experteneinstellungen",
+          "add_recipient": "Benachrichtigungsgerät hinzufügen",
+          "remove_recipient": "Benachrichtigungsgerät entfernen",
+          "edit_recipient": "Benachrichtigungsgerät bearbeiten"
+        }
+      },
+      "expert": {
         "title": "Experteneinstellungen",
         "description": "Grenzwerte, Zeiten, High-Flow-Bypass und die Zuordnung zur Absperranforderung konfigurieren.",
         "data": {
@@ -72,13 +81,56 @@
           "shutoff_high": "High Flow fordert Absperrung an",
           "shutoff_burst": "Burst Leak fordert Absperrung an"
         }
+      },
+      "add_recipient": {
+        "title": "Benachrichtigungsgerät hinzufügen",
+        "description": "Konfiguriere ein Companion-App-Gerät. Das globale Quittieren wird immer im Backend anhand des zugeordneten Device Trackers geprüft.",
+        "data": {
+          "name": "Anzeigename",
+          "notify_service": "Companion-Benachrichtigungsdienst",
+          "tracker_entity": "Device Tracker",
+          "critical_enabled": "Kritische Burst-Leak-Alarme erlauben",
+          "allow_global_ack": "Globales Quittieren erlauben, wenn Gerät zuhause",
+          "trusted_stationary": "Stationäres vertrauenswürdiges Home-Gerät"
+        }
+      },
+      "remove_recipient": {
+        "title": "Benachrichtigungsgerät entfernen",
+        "data": {
+          "id": "Gerät"
+        }
+      },
+      "edit_recipient": {
+        "title": "Benachrichtigungsgerät auswählen",
+        "data": {
+          "id": "Gerät"
+        }
+      },
+      "edit_recipient_details": {
+        "title": "Benachrichtigungsgerät bearbeiten",
+        "description": "Ändere Tracker, Critical-Alarm und Quittierungsrechte. Die interne Gerätekennung und das Action-Token bleiben erhalten.",
+        "data": {
+          "name": "Anzeigename",
+          "notify_service": "Companion-Benachrichtigungsdienst",
+          "tracker_entity": "Device Tracker",
+          "critical_enabled": "Kritische Burst-Leak-Alarme erlauben",
+          "allow_global_ack": "Globales Quittieren erlauben, wenn Gerät zuhause",
+          "trusted_stationary": "Stationäres vertrauenswürdiges Home-Gerät"
+        }
       }
     },
     "error": {
       "invalid_threshold_order": "Die Grenzwerte müssen in der Reihenfolge Slow Leak < Low Flow < High Flow < Burst Leak liegen.",
       "invalid_low_quiet_threshold": "Die Low-Flow-Ruhegrenze muss unter der Low-Flow-Startgrenze liegen.",
       "invalid_high_quiet_threshold": "Die High-Flow-Ruhegrenze muss unter der High-Flow-Grenze liegen.",
-      "invalid_burst_reset_threshold": "Die Burst-Leak-Resetgrenze muss unter der Burst-Leak-Absolutgrenze liegen."
+      "invalid_burst_reset_threshold": "Die Burst-Leak-Resetgrenze muss unter der Burst-Leak-Absolutgrenze liegen.",
+      "recipient_notify_service_exists": "Dieser Companion-Benachrichtigungsdienst ist bereits als Empfänger konfiguriert.",
+      "recipient_name_required": "Bitte gib einen Namen für das Benachrichtigungsgerät ein."
+    },
+    "abort": {
+      "no_mobile_app_notify_services": "Es wurden keine mobile_app-Benachrichtigungsdienste gefunden. Richte zuerst die Home Assistant Companion App ein.",
+      "no_recipients_configured": "Es sind noch keine Benachrichtigungsgeräte konfiguriert.",
+      "recipient_not_found": "Das ausgewählte Benachrichtigungsgerät wurde nicht mehr gefunden."
     }
   }
 }

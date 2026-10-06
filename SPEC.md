@@ -576,7 +576,7 @@ This avoids incorrectly tying acknowledgement permissions to a single person ent
 
 ## 19. Re-notification on arrival home
 
-If a device has personally muted an active event while away from home, the integration shall monitor its presence transition.
+For every configured notification device, the integration shall monitor the presence transition from away to Home while an event is active.
 
 When the device changes from:
 
@@ -586,12 +586,13 @@ the integration shall check:
 
 - is the event still active?
 - is the event not globally acknowledged?
-- had this device personally muted the event?
 
-If all conditions are true:
+If both conditions are true:
 
-- clear or override that device's personal mute for the event,
-- send the event notification to that device again.
+- clear that device's personal mute for the event if one exists,
+- send the active event notification to that device again.
+
+A prior personal mute is therefore not required for the return-home notification. Returning Home is treated as a fresh safety context.
 
 The notification should clearly state that the condition is still active and may include:
 
@@ -918,7 +919,7 @@ v0.2.0 is complete only when:
 - a device away from Home cannot globally acknowledge,
 - an authorized device at Home can globally acknowledge,
 - a trusted stationary tablet at Home can globally acknowledge,
-- a personally muted mobile device is re-notified when it returns Home while the event remains active,
+- every configured mobile device is re-notified when it returns Home while the event remains active and is not globally acknowledged,
 - global acknowledgement does not clear detection,
 - acknowledgement does not automatically clear shutoff request,
 - new physical leak occurrence creates a new event and notification cycle,

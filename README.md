@@ -2,9 +2,9 @@
 
 Backend-only Home Assistant custom integration for detecting abnormal water consumption and possible water leaks.
 
-The implementation follows [`SPEC.md`](SPEC.md). Version **0.1.0** implements the core detector and entity architecture. Companion notifications, per-device acknowledgement/geofencing and adaptive hydraulic learning are roadmap items for v0.2/v0.3.
+The implementation follows [`SPEC.md`](SPEC.md). Version **0.2.0** adds Companion notifications, device-based acknowledgement and Home-zone authorization on top of the v0.1 detector core. Adaptive hydraulic learning remains planned for v0.3.
 
-## Current v0.1.0 features
+## Current v0.2.0 features
 
 - UI configuration via Config Flow.
 - Select source sensors directly or discover compatible sensors from a Home Assistant device.
@@ -20,6 +20,15 @@ The implementation follows [`SPEC.md`](SPEC.md). Version **0.1.0** implements th
 - Independent **Water shutoff request** binary sensor for an external motorized valve automation.
 - Expert settings for all v0.1 thresholds and detector-to-shutoff mapping.
 - HA events for event start/end and shutoff-request changes.
+- Multiple Home Assistant Companion notification recipients.
+- Per-device notification target + `device_tracker.*` association.
+- Critical Burst Leak payloads for iOS and Android when enabled per recipient.
+- Actionable notifications with **Mute for this device** and **Acknowledge for everyone**.
+- Global acknowledgement is authorized in backend code only when the requesting device is currently `home`.
+- Trusted stationary Home devices (for example a shared iPad) can globally acknowledge while they remain in the Home zone.
+- A device that transitions from `not_home` to `home` is notified again if the event is still active and not globally acknowledged.
+- Acknowledgements are stored per event ID and survive Home Assistant restarts.
+- Global acknowledgement never clears the physical detector state or the independent shutoff request.
 
 ## Installation
 
@@ -64,7 +73,34 @@ The integration creates a device with these backend entities:
 
 ### Why the bypass is not a `timer.*` entity
 
-Home Assistant's `timer` domain is a helper integration rather than a normal entity platform that third-party integrations implement. v0.1 therefore exposes the same backend capability using HA-native controllable entities (switch + duration number + remaining-time sensor) and integration actions. It is directly usable from dashboards, scripts and automations without depending on a user-created helper.
+Home Assistant's `timer` domain is a helper integration rather than a normal entity platform that third-party integrations implement. The integration therefore exposes the same backend capability using HA-native controllable entities (switch + duration number + remaining-time sensor) and integration actions. It is directly usable from dashboards, scripts and automations without depending on a user-created helper.
+
+## Companion notification recipients
+
+Open the integration's **Configure** dialog and choose **Add notification device**. Each recipient stores:
+
+- a display name,
+- its `notify.mobile_app_*` service,
+- the matching `device_tracker.*`,
+- whether Burst Leak may use critical notifications,
+- whether the device may globally acknowledge while it is Home,
+- whether it is a trusted stationary Home device.
+
+Recipients are deliberately device-based rather than only person-based. This supports users with multiple devices and shared Home devices.
+
+Example:
+
+- Personal iPhone: may mute an event for itself while away; may globally acknowledge after it is Home.
+- Shared iPad that normally stays Home: mark it as a trusted stationary Home device and allow global acknowledgement. Any household member using that iPad can then acknowledge the active event for everyone.
+- If the iPhone later changes from `not_home` to `home` while the event is still active and has not been globally acknowledged, the integration sends that alarm to the iPhone again.
+
+### Acknowledgement semantics
+
+**Mute for this device** only suppresses further notifications for that recipient and event ID. It does not affect other devices, detector state or shutoff request.
+
+**Acknowledge for everyone** is accepted only when the configured tracker for the responding device is currently `home`. The authorization check happens in backend code. The physical leak event remains active until its detector reset condition is fulfilled.
+
+Each new physical event gets a new event ID, so acknowledgement never permanently disables a detector class.
 
 ## Actions
 
@@ -112,6 +148,8 @@ The integration fires:
 - `water_leak_detection_event_ended`
 - `water_leak_detection_shutoff_requested`
 - `water_leak_detection_shutoff_cleared`
+- `water_leak_detection_acknowledged`
+- `water_leak_detection_ack_rejected`
 
 These complement persistent entities and can be consumed by advanced automations.
 
@@ -125,4 +163,4 @@ See [`SPEC.md`](SPEC.md) for the binding design and definitions of done:
 
 ## Development status
 
-v0.1.0 is an initial implementation. High Flow and Burst Leak currently use provisional expert-configurable thresholds; the learned seasonal maximum and hydraulic DN/pressure model are intentionally reserved for v0.3.0.
+v0.2.0 implements the notification/device acknowledgement milestone. High Flow and Burst Leak still use provisional expert-configurable thresholds; learned seasonal maximum flow and the hydraulic DN/pressure model remain intentionally reserved for v0.3.0.

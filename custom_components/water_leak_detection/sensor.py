@@ -54,6 +54,9 @@ class WaterLeakStatusSensor(WaterLeakEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         snapshot = self.manager.engine.snapshot(self.manager.current_total_l)
+        acknowledgement = self.manager.notifications.state_for(
+            snapshot.active_event_id
+        )
         return {
             "flow_source": self.manager.flow_entity_id,
             "total_source": self.manager.total_entity_id,
@@ -62,6 +65,27 @@ class WaterLeakStatusSensor(WaterLeakEntity, SensorEntity):
             "active_detector": snapshot.active_kind.value
             if snapshot.active_kind
             else None,
+            "globally_acknowledged": (
+                acknowledgement.globally_acknowledged
+                if acknowledgement is not None
+                else False
+            ),
+            "globally_acknowledged_by": (
+                acknowledgement.globally_acknowledged_by
+                if acknowledgement is not None
+                else None
+            ),
+            "globally_acknowledged_at": (
+                acknowledgement.globally_acknowledged_at.isoformat()
+                if acknowledgement is not None
+                and acknowledgement.globally_acknowledged_at is not None
+                else None
+            ),
+            "muted_recipients": (
+                sorted(acknowledgement.muted_recipients)
+                if acknowledgement is not None
+                else []
+            ),
             "high_flow_bypass": self.manager.high_flow_bypass_active,
             "slow_leak_enabled": self.manager.engine.settings.slow_enabled,
             "low_flow_enabled": self.manager.engine.settings.low_enabled,
