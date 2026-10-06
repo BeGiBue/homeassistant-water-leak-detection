@@ -138,10 +138,11 @@ class _FakeServices:
 
 
 class _FakeHass:
-    def __init__(self, states: dict[str, str]) -> None:
+    def __init__(self, states: dict[str, str], *, language: str = "en") -> None:
         self.bus = _FakeBus()
         self.states = _FakeStates(states)
         self.services = _FakeServices()
+        self.config = SimpleNamespace(language=language)
 
 
 def _controller_for_action(*, tracker_state: str):
@@ -165,6 +166,7 @@ def _controller_for_action(*, tracker_state: str):
         manager,
         lambda: persisted.append(True),
     )
+    controller._async_common_translations = AsyncMock(return_value={})
     recipient = NotificationRecipient.from_dict(_recipient_raw())
     assert recipient is not None
     controller.recipients = {recipient.id: recipient}
@@ -423,3 +425,35 @@ async def test_home_notification_offers_global_acknowledgement() -> None:
     actions = payload["actions"]
     assert len(actions) == 2
     assert any("|ACK_ALL|" in action["action"] for action in actions)
+
+
+@pytest.mark.asyncio
+async def test_notification_uses_home_assistant_language_strings() -> None:
+    controller, recipient, hass, _persisted = _controller_for_action(
+        tracker_state="home"
+    )
+    controller._async_common_translations = AsyncMock(
+        return_value={
+            "detector_slow_leak": "Slow Leak",
+            "notification_title": "Wasserleck-Erkennung: {detector}",
+            "notification_current_flow": "Aktueller Durchfluss: {flow} L/h.",
+            "action_mute_device": "Auf diesem Gerät stummschalten",
+            "action_ack_all": "Für alle quittieren",
+        }
+    )
+
+    await controller._async_send_event_notification(
+        recipient,
+        "slow_leak_1",
+        "slow_leak",
+        {"flow_lph": 7.0},
+        returning_home=False,
+    )
+
+    service_data = hass.services.calls[0][2]
+    assert service_data["title"] == "Wasserleck-Erkennung: Slow Leak"
+    assert service_data["message"] == "Aktueller Durchfluss: 7.0 L/h."
+    assert service_data["data"]["actions"][0]["title"] == (
+        "Auf diesem Gerät stummschalten"
+    )
+    assert service_data["data"]["actions"][1]["title"] == "Für alle quittieren"
