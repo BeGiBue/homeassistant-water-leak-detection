@@ -205,6 +205,7 @@ Event payloads include the event ID and relevant detector context. Burst events 
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Changelog](CHANGELOG.md)
 - [v0.3.0 release notes](RELEASE_NOTES_0.3.0.md)
+- [Release procedure](docs/RELEASING.md)
 - [Technical specification and roadmap](SPEC.md)
 
 ## Release status
