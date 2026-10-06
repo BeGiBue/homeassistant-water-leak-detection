@@ -1,0 +1,10 @@
+{
+  "domain": "water_leak_detection",
+  "name": "Home Assistant Water Leak Detection",
+  "codeowners": ["@BeGiBue"],
+  "config_flow": true,
+  "documentation": "https://github.com/BeGiBue/homeassistant-water-leak-detection",
+  "issue_tracker": "https://github.com/BeGiBue/homeassistant-water-leak-detection/issues",
+  "iot_class": "calculated",
+  "version": "0.1.0"
+}
