@@ -32,6 +32,12 @@ async def async_setup_entry(
             ActiveEventDurationSensor(manager),
             ActiveEventVolumeSensor(manager),
             BypassRemainingSensor(manager),
+            LearnedMaximumFlowSensor(manager),
+            LearningConfidenceSensor(manager),
+            LearningCoverageSensor(manager),
+            HydraulicReferenceFlowSensor(manager),
+            EffectiveHighThresholdSensor(manager),
+            EffectiveBurstThresholdSensor(manager),
         ]
     )
 
@@ -192,4 +198,150 @@ class BypassRemainingSensor(WaterLeakEntity, SensorEntity):
             "finishes_at": self.manager.bypass_until.isoformat()
             if self.manager.bypass_until
             else None,
+        }
+
+
+class LearnedMaximumFlowSensor(WaterLeakEntity, SensorEntity):
+    """Robust rolling learned normal peak flow."""
+
+    _attr_name = "Learned maximum flow"
+    _attr_native_unit_of_measurement = UnitOfVolumeFlowRate.LITERS_PER_HOUR
+    _attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:chart-timeline-variant"
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, manager: WaterLeakManager) -> None:
+        super().__init__(manager, "learned_maximum_flow")
+
+    @property
+    def native_value(self) -> float | None:
+        value = self.manager.learning_snapshot.learned_max_lph
+        return round(value, 1) if value is not None else None
+
+    @property
+    def extra_state_attributes(self):
+        snapshot = self.manager.learning_snapshot
+        return {
+            "short_reference_lph": snapshot.short_reference_lph,
+            "long_reference_lph": snapshot.long_reference_lph,
+            "sample_count": snapshot.sample_count,
+            "coverage_days": snapshot.coverage_days,
+            "window_days": snapshot.window_days,
+            "confidence": snapshot.confidence.value,
+        }
+
+
+class LearningConfidenceSensor(WaterLeakEntity, SensorEntity):
+    """Confidence state of adaptive normal-flow learning."""
+
+    _attr_name = "Learning confidence"
+    _attr_icon = "mdi:brain"
+
+    def __init__(self, manager: WaterLeakManager) -> None:
+        super().__init__(manager, "learning_confidence")
+
+    @property
+    def native_value(self) -> str:
+        return self.manager.learning_snapshot.confidence.value
+
+    @property
+    def extra_state_attributes(self):
+        snapshot = self.manager.learning_snapshot
+        return {
+            "sample_count": snapshot.sample_count,
+            "coverage_days": snapshot.coverage_days,
+            "age_days": snapshot.age_days,
+            "window_days": snapshot.window_days,
+        }
+
+
+class LearningCoverageSensor(WaterLeakEntity, SensorEntity):
+    """Number of days represented by admitted normal-use samples."""
+
+    _attr_name = "Learning coverage"
+    _attr_native_unit_of_measurement = UnitOfTime.DAYS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:calendar-check-outline"
+
+    def __init__(self, manager: WaterLeakManager) -> None:
+        super().__init__(manager, "learning_coverage")
+
+    @property
+    def native_value(self) -> int:
+        return self.manager.learning_snapshot.coverage_days
+
+    @property
+    def extra_state_attributes(self):
+        snapshot = self.manager.learning_snapshot
+        return {
+            "learning_age_days": snapshot.age_days,
+            "sample_count": snapshot.sample_count,
+            "window_days": snapshot.window_days,
+        }
+
+
+class HydraulicReferenceFlowSensor(WaterLeakEntity, SensorEntity):
+    """Heuristic hydraulic plausibility reference flow."""
+
+    _attr_name = "Hydraulic reference flow"
+    _attr_native_unit_of_measurement = UnitOfVolumeFlowRate.LITERS_PER_HOUR
+    _attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:pipe"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_suggested_display_precision = 0
+
+    def __init__(self, manager: WaterLeakManager) -> None:
+        super().__init__(manager, "hydraulic_reference_flow")
+
+    @property
+    def native_value(self) -> float:
+        return round(self.manager.adaptive_thresholds().hydraulic_reference_lph, 0)
+
+
+class EffectiveHighThresholdSensor(WaterLeakEntity, SensorEntity):
+    """Current adaptive High Flow threshold."""
+
+    _attr_name = "Effective High Flow threshold"
+    _attr_native_unit_of_measurement = UnitOfVolumeFlowRate.LITERS_PER_HOUR
+    _attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:water-alert-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_suggested_display_precision = 0
+
+    def __init__(self, manager: WaterLeakManager) -> None:
+        super().__init__(manager, "effective_high_threshold")
+
+    @property
+    def native_value(self) -> float:
+        return round(self.manager.adaptive_thresholds().effective_high_lph, 0)
+
+
+class EffectiveBurstThresholdSensor(WaterLeakEntity, SensorEntity):
+    """Current adaptive absolute Burst Leak threshold."""
+
+    _attr_name = "Effective Burst Leak threshold"
+    _attr_native_unit_of_measurement = UnitOfVolumeFlowRate.LITERS_PER_HOUR
+    _attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:pipe-leak"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_suggested_display_precision = 0
+
+    def __init__(self, manager: WaterLeakManager) -> None:
+        super().__init__(manager, "effective_burst_threshold")
+
+    @property
+    def native_value(self) -> float:
+        return round(self.manager.adaptive_thresholds().effective_burst_lph, 0)
+
+    @property
+    def extra_state_attributes(self):
+        thresholds = self.manager.adaptive_thresholds()
+        return {
+            "normal_reference_lph": thresholds.normal_reference_lph,
+            "hydraulic_reference_lph": thresholds.hydraulic_reference_lph,
+            "hydraulic_model_is_plausibility_only": True,
         }

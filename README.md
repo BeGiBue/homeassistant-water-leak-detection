@@ -2,9 +2,9 @@
 
 Backend-only Home Assistant custom integration for detecting abnormal water consumption and possible water leaks.
 
-The implementation follows [`SPEC.md`](SPEC.md). Version **0.2.0** adds Companion notifications, device-based acknowledgement and Home-zone authorization on top of the v0.1 detector core. Adaptive hydraulic learning remains planned for v0.3.
+The implementation follows [`SPEC.md`](SPEC.md). Version **0.3.0** adds continuous adaptive normal-flow learning, confidence states, hydraulic plausibility and adaptive High/Burst thresholds on top of the v0.2 notification/acknowledgement backend.
 
-## Current v0.2.0 features
+## Current v0.3.0 features
 
 - UI configuration via Config Flow.
 - Select source sensors directly or discover compatible sensors from a Home Assistant device.
@@ -29,6 +29,17 @@ The implementation follows [`SPEC.md`](SPEC.md). Version **0.2.0** adds Companio
 - A device that transitions from `not_home` to `home` is notified again if the event is still active and not globally acknowledged.
 - Acknowledgements are stored per event ID and survive Home Assistant restarts.
 - Global acknowledgement never clears the physical detector state or the independent shutoff request.
+- Continuous rolling normal-flow learning using completed, non-suspicious water-use episodes.
+- Suspicious events and High Flow bypass periods are excluded from learning.
+- Learning confidence states: `insufficient`, `learning`, `reliable`.
+- Short-term and long-term references support seasonal adaptation.
+- Configurable learning window (default 30 days).
+- Hydraulic plausibility reference based on nominal pipe diameter and static pressure.
+- Adaptive High Flow threshold derived from trusted normal usage while remaining bounded by the hydraulic envelope.
+- Adaptive Burst Leak threshold derived from learned/manual context plus hydraulic plausibility.
+- Rapid rate-of-rise Burst detection in addition to absolute-flow Burst detection.
+- Burst detection remains active during High Flow bypass.
+- `water_leak_detection.reset_learning` action for intentionally clearing admitted learning history.
 
 ## Installation
 
@@ -70,6 +81,12 @@ The integration creates a device with these backend entities:
 - **High flow bypass** — switch to start/cancel the bypass using the configured default duration.
 - **High flow bypass duration** — editable default bypass duration in minutes.
 - **High flow bypass remaining** — remaining bypass time in seconds.
+- **Learned maximum flow** — robust rolling learned normal peak in L/h.
+- **Learning confidence** — `insufficient`, `learning` or `reliable`.
+- **Learning coverage** — number of distinct days represented in admitted learning samples.
+- **Hydraulic reference flow** — diagnostic plausibility reference, not a theoretical maximum.
+- **Effective High Flow threshold** — current adaptive High threshold.
+- **Effective Burst Leak threshold** — current adaptive absolute Burst threshold.
 
 ### Why the bypass is not a `timer.*` entity
 
@@ -121,6 +138,20 @@ If multiple integration instances exist, also provide `config_entry_id`.
 
 Cancels the bypass immediately.
 
+### `water_leak_detection.reset_learning`
+
+Clears only the admitted adaptive-learning history. Detector settings, active leak events, acknowledgements and shutoff state are not reset.
+
+## Adaptive learning and hydraulic context
+
+The learner stores the peak of completed normal water-use episodes. An episode is discarded from learning when a detector becomes suspicious/active during it or while the High Flow bypass is active. In-progress episodes are also discarded across source outages/restarts rather than being trusted as normal evidence.
+
+The default rolling window is 30 days. Recent behavior and the longer window are combined so seasonal changes can influence the learned reference without turning a single event into the permanent maximum.
+
+During **insufficient** confidence, learned values do not raise safety thresholds. During **learning**, the learned reference has reduced weight. At **reliable** confidence, the full robust learned reference may influence thresholds.
+
+Hydraulic settings (default DN25 / 25 mm and 3.5 bar for the reference installation) define a plausibility envelope only. Real deliverable flow depends on the meter, pressure reducer, pipe lengths, fittings, dynamic pressure and upstream supply. The integration therefore does not claim an exact theoretical burst-flow calculation.
+
 ## Shutoff request
 
 `binary_sensor.*_water_shutoff_request` is deliberately independent from alarm acknowledgement logic. It is intended as a stable backend endpoint for an optional motorized shutoff valve.
@@ -163,4 +194,4 @@ See [`SPEC.md`](SPEC.md) for the binding design and definitions of done:
 
 ## Development status
 
-v0.2.0 implements the notification/device acknowledgement milestone. High Flow and Burst Leak still use provisional expert-configurable thresholds; learned seasonal maximum flow and the hydraulic DN/pressure model remain intentionally reserved for v0.3.0.
+v0.3.0 implements the adaptive-learning and hydraulic-model milestone from SPEC.md. The hydraulic reference is intentionally heuristic and must be treated as plausibility context rather than a guaranteed physical maximum.

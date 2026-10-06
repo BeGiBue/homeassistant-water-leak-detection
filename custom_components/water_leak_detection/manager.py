@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
 
@@ -16,21 +17,29 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_BURST_DETECTION_SEC,
+    CONF_BURST_LEARNED_MULTIPLIER,
+    CONF_BURST_RATE_CONFIRM_SEC,
+    CONF_BURST_RATE_RISE_LPH_10S,
     CONF_BURST_RESET_LPH,
     CONF_BURST_RESET_SEC,
     CONF_BURST_THRESHOLD_LPH,
     CONF_BYPASS_DEFAULT_MIN,
     CONF_FLOW_ENTITY,
     CONF_HIGH_DETECTION_MIN,
+    CONF_HIGH_LEARNED_MULTIPLIER,
     CONF_HIGH_QUIET_LPH,
     CONF_HIGH_RESET_MIN,
     CONF_HIGH_THRESHOLD_LPH,
     CONF_HIGH_VOLUME_L,
+    CONF_HYDRAULIC_BURST_FRACTION,
+    CONF_LEARNING_WINDOW_DAYS,
     CONF_LOW_DETECTION_MIN,
     CONF_LOW_ENABLED,
     CONF_LOW_QUIET_LPH,
     CONF_LOW_RESET_MIN,
     CONF_LOW_THRESHOLD_LPH,
+    CONF_MANUAL_MAX_FLOW_LPH,
+    CONF_PIPE_DIAMETER_MM,
     CONF_SHUTOFF_BURST,
     CONF_SHUTOFF_HIGH,
     CONF_SHUTOFF_LOW,
@@ -39,22 +48,31 @@ from .const import (
     CONF_SLOW_ENABLED,
     CONF_SLOW_RESET_MIN,
     CONF_SLOW_THRESHOLD_LPH,
+    CONF_STATIC_PRESSURE_BAR,
     CONF_TOTAL_ENTITY,
     DEFAULT_BURST_DETECTION_SEC,
+    DEFAULT_BURST_LEARNED_MULTIPLIER,
+    DEFAULT_BURST_RATE_CONFIRM_SEC,
+    DEFAULT_BURST_RATE_RISE_LPH_10S,
     DEFAULT_BURST_RESET_LPH,
     DEFAULT_BURST_RESET_SEC,
     DEFAULT_BURST_THRESHOLD_LPH,
     DEFAULT_BYPASS_DEFAULT_MIN,
     DEFAULT_HIGH_DETECTION_MIN,
+    DEFAULT_HIGH_LEARNED_MULTIPLIER,
     DEFAULT_HIGH_QUIET_LPH,
     DEFAULT_HIGH_RESET_MIN,
     DEFAULT_HIGH_THRESHOLD_LPH,
     DEFAULT_HIGH_VOLUME_L,
+    DEFAULT_HYDRAULIC_BURST_FRACTION,
+    DEFAULT_LEARNING_WINDOW_DAYS,
     DEFAULT_LOW_DETECTION_MIN,
     DEFAULT_LOW_ENABLED,
     DEFAULT_LOW_QUIET_LPH,
     DEFAULT_LOW_RESET_MIN,
     DEFAULT_LOW_THRESHOLD_LPH,
+    DEFAULT_MANUAL_MAX_FLOW_LPH,
+    DEFAULT_PIPE_DIAMETER_MM,
     DEFAULT_SHUTOFF_BURST,
     DEFAULT_SHUTOFF_HIGH,
     DEFAULT_SHUTOFF_LOW,
@@ -63,6 +81,7 @@ from .const import (
     DEFAULT_SLOW_ENABLED,
     DEFAULT_SLOW_RESET_MIN,
     DEFAULT_SLOW_THRESHOLD_LPH,
+    DEFAULT_STATIC_PRESSURE_BAR,
     EVENT_LEAK_ENDED,
     EVENT_LEAK_STARTED,
     EVENT_SHUTOFF_CLEARED,
@@ -70,15 +89,28 @@ from .const import (
     STORAGE_KEY_PREFIX,
     STORAGE_VERSION,
     TICK_SECONDS,
+    DetectorKind,
     DetectorPhase,
 )
 from .engine import DetectionEngine, DetectorSettings, DetectorTransition
+from .hydraulic import hydraulic_reference_flow_lph
+from .learning import AdaptiveFlowLearner, LearningConfidence, LearningSnapshot
 from .notifications import NotificationController
 from .units import UnsupportedUnitError, normalize_flow_lph, normalize_volume_l
 
 _LOGGER = logging.getLogger(__name__)
 
 Listener = Callable[[], None]
+
+
+@dataclass(slots=True, frozen=True)
+class AdaptiveThresholds:
+    """Current adaptive thresholds and their reference context."""
+
+    normal_reference_lph: float | None
+    hydraulic_reference_lph: float
+    effective_high_lph: float
+    effective_burst_lph: float
 
 
 class WaterLeakManager:
@@ -90,6 +122,14 @@ class WaterLeakManager:
         self.flow_entity_id: str = entry.data[CONF_FLOW_ENTITY]
         self.total_entity_id: str | None = entry.data.get(CONF_TOTAL_ENTITY) or None
         self.engine = DetectionEngine(self._settings_from_options())
+        self.learner = AdaptiveFlowLearner(
+            window_days=int(
+                entry.options.get(
+                    CONF_LEARNING_WINDOW_DAYS,
+                    DEFAULT_LEARNING_WINDOW_DAYS,
+                )
+            )
+        )
         self.current_flow_lph: float | None = None
         self.current_total_l: float | None = None
         self.source_available = False
@@ -115,6 +155,7 @@ class WaterLeakManager:
             if isinstance(engine_data, dict):
                 self.engine.restore(engine_data)
             self.notifications.restore(stored.get("acknowledgements"))
+            self.learner.restore(stored.get("learning"), dt_util.utcnow())
             bypass_until = stored.get("bypass_until")
             if isinstance(bypass_until, str):
                 try:
@@ -176,6 +217,7 @@ class WaterLeakManager:
         if not self._usable_state(flow_state):
             self.source_available = False
             self.engine.suspend_for_unavailable_source()
+            self.learner.suspend_current_episode()
             self._schedule_save()
             self._notify_listeners()
             return
@@ -191,6 +233,7 @@ class WaterLeakManager:
             )
             self.source_available = False
             self.engine.suspend_for_unavailable_source()
+            self.learner.suspend_current_episode()
             self._schedule_save()
             self._notify_listeners()
             return
@@ -215,15 +258,39 @@ class WaterLeakManager:
         self.current_flow_lph = flow
         self.current_total_l = total
         now = dt_util.utcnow()
+        thresholds = self.adaptive_thresholds(now)
+        bypass_active = self.high_flow_bypass_active
         transitions = self.engine.sample(
             now,
             flow,
             total,
-            high_flow_bypassed=self.high_flow_bypass_active,
+            high_flow_bypassed=bypass_active,
+            effective_high_threshold_lph=thresholds.effective_high_lph,
+            effective_burst_threshold_lph=thresholds.effective_burst_lph,
         )
         self._handle_transitions(transitions)
         self._handle_shutoff_transition()
+
+        snapshot = self.engine.snapshot(total)
+        suspicious = (
+            snapshot.alarm_active
+            or self.engine.runtimes[DetectorKind.HIGH_FLOW].phase
+            is not DetectorPhase.IDLE
+            or self.engine.runtimes[DetectorKind.BURST_LEAK].phase
+            is not DetectorPhase.IDLE
+        )
+        learning_changed = self.learner.observe(
+            now,
+            flow,
+            suspicious=suspicious,
+            high_flow_bypassed=bypass_active,
+        )
         self._schedule_save()
+        if learning_changed:
+            _LOGGER.debug(
+                "Adaptive learning updated: %s",
+                self.learner.snapshot(now),
+            )
         self._notify_listeners()
 
     @staticmethod
@@ -302,6 +369,15 @@ class WaterLeakManager:
     def apply_options(self) -> None:
         """Apply config entry options without destroying runtime state."""
         self.engine.update_settings(self._settings_from_options())
+        self.learner.update_window(
+            int(
+                self.entry.options.get(
+                    CONF_LEARNING_WINDOW_DAYS,
+                    DEFAULT_LEARNING_WINDOW_DAYS,
+                )
+            ),
+            dt_util.utcnow(),
+        )
         self.notifications.reload_recipients()
         self._handle_shutoff_transition()
         self._schedule_save()
@@ -364,6 +440,18 @@ class WaterLeakManager:
             burst_reset_seconds=float(
                 opt.get(CONF_BURST_RESET_SEC, DEFAULT_BURST_RESET_SEC)
             ),
+            burst_rate_rise_lph_10s=float(
+                opt.get(
+                    CONF_BURST_RATE_RISE_LPH_10S,
+                    DEFAULT_BURST_RATE_RISE_LPH_10S,
+                )
+            ),
+            burst_rate_confirm_seconds=float(
+                opt.get(
+                    CONF_BURST_RATE_CONFIRM_SEC,
+                    DEFAULT_BURST_RATE_CONFIRM_SEC,
+                )
+            ),
             shutoff_slow=bool(
                 opt.get(CONF_SHUTOFF_SLOW, DEFAULT_SHUTOFF_SLOW)
             ),
@@ -375,6 +463,112 @@ class WaterLeakManager:
                 opt.get(CONF_SHUTOFF_BURST, DEFAULT_SHUTOFF_BURST)
             ),
         )
+
+    @property
+    def learning_snapshot(self) -> LearningSnapshot:
+        """Return the current adaptive-learning state."""
+        return self.learner.snapshot(dt_util.utcnow())
+
+    def adaptive_thresholds(self, now=None) -> AdaptiveThresholds:
+        """Calculate effective High/Burst thresholds from safe context."""
+        now = now or dt_util.utcnow()
+        learning = self.learner.snapshot(now)
+        opt = self.entry.options
+
+        pipe_mm = float(
+            opt.get(CONF_PIPE_DIAMETER_MM, DEFAULT_PIPE_DIAMETER_MM)
+        )
+        pressure_bar = float(
+            opt.get(CONF_STATIC_PRESSURE_BAR, DEFAULT_STATIC_PRESSURE_BAR)
+        )
+        hydraulic_reference = hydraulic_reference_flow_lph(
+            pipe_mm,
+            pressure_bar,
+        )
+        base_burst = float(
+            opt.get(CONF_BURST_THRESHOLD_LPH, DEFAULT_BURST_THRESHOLD_LPH)
+        )
+        hydraulic_fraction = float(
+            opt.get(
+                CONF_HYDRAULIC_BURST_FRACTION,
+                DEFAULT_HYDRAULIC_BURST_FRACTION,
+            )
+        )
+        hydraulic_burst_ceiling = max(
+            base_burst,
+            hydraulic_reference * hydraulic_fraction,
+        )
+
+        manual_reference = float(
+            opt.get(CONF_MANUAL_MAX_FLOW_LPH, DEFAULT_MANUAL_MAX_FLOW_LPH)
+        )
+        references: list[float] = []
+        if manual_reference > 0:
+            references.append(manual_reference)
+
+        if learning.learned_max_lph is not None:
+            if learning.confidence is LearningConfidence.RELIABLE:
+                references.append(learning.learned_max_lph)
+            elif learning.confidence is LearningConfidence.LEARNING:
+                # During the learning phase, let the model influence thresholds
+                # gradually instead of immediately trusting the full learned peak.
+                references.append(learning.learned_max_lph * 0.85)
+
+        normal_reference = max(references) if references else None
+
+        base_high = float(
+            opt.get(CONF_HIGH_THRESHOLD_LPH, DEFAULT_HIGH_THRESHOLD_LPH)
+        )
+        high_multiplier = float(
+            opt.get(
+                CONF_HIGH_LEARNED_MULTIPLIER,
+                DEFAULT_HIGH_LEARNED_MULTIPLIER,
+            )
+        )
+        adaptive_high_candidate = (
+            max(base_high, normal_reference * high_multiplier)
+            if normal_reference is not None
+            else base_high
+        )
+        # High Flow may adapt upward with learned usage, but cannot outrun the
+        # hydraulic plausibility envelope. Reserve at least 20% headroom for
+        # Burst Leak so the severity bands cannot collapse into each other.
+        high_ceiling = max(base_high, hydraulic_burst_ceiling * 0.80)
+        effective_high = min(adaptive_high_candidate, high_ceiling)
+
+        burst_multiplier = float(
+            opt.get(
+                CONF_BURST_LEARNED_MULTIPLIER,
+                DEFAULT_BURST_LEARNED_MULTIPLIER,
+            )
+        )
+        learned_burst_candidate = (
+            max(base_burst, normal_reference * burst_multiplier)
+            if normal_reference is not None
+            else base_burst
+        )
+        capped_burst = min(learned_burst_candidate, hydraulic_burst_ceiling)
+        # Keep Burst safely above High while still respecting the hydraulic
+        # plausibility ceiling established above.
+        effective_burst = max(
+            base_burst,
+            capped_burst,
+            effective_high * 1.10,
+        )
+        effective_burst = min(effective_burst, hydraulic_burst_ceiling)
+
+        return AdaptiveThresholds(
+            normal_reference_lph=normal_reference,
+            hydraulic_reference_lph=hydraulic_reference,
+            effective_high_lph=effective_high,
+            effective_burst_lph=effective_burst,
+        )
+
+    async def async_reset_learning(self) -> None:
+        """Clear all admitted adaptive learning samples."""
+        self.learner.reset()
+        await self._store.async_save(self._serialize())
+        self._notify_listeners()
 
     def _handle_transitions(self, transitions: list[DetectorTransition]) -> None:
         for transition in transitions:
@@ -394,12 +588,26 @@ class WaterLeakManager:
         if current == self._last_shutoff_request:
             return
         self._last_shutoff_request = current
+        snapshot = self.engine.snapshot(self.current_total_l)
+        runtime = (
+            self.engine.runtimes[snapshot.active_kind]
+            if snapshot.active_kind is not None
+            else None
+        )
         self.hass.bus.async_fire(
             EVENT_SHUTOFF_REQUESTED if current else EVENT_SHUTOFF_CLEARED,
             {
                 "config_entry_id": self.entry.entry_id,
-                "status": self.engine.snapshot(self.current_total_l).status,
+                "status": snapshot.status,
+                "type": (
+                    snapshot.active_kind.value
+                    if snapshot.active_kind is not None
+                    else None
+                ),
+                "event_id": snapshot.active_event_id,
                 "flow_lph": self.current_flow_lph,
+                "volume_l": round(snapshot.active_volume_l, 3),
+                "reason": runtime.reason if runtime is not None else None,
             },
         )
 
@@ -417,6 +625,7 @@ class WaterLeakManager:
             "detected_at": transition.detected_at.isoformat()
             if transition.detected_at
             else None,
+            "reason": self.engine.runtimes[transition.kind].reason,
         }
 
     def _serialize(self) -> dict[str, Any]:
@@ -426,6 +635,7 @@ class WaterLeakManager:
             if self.bypass_until
             else None,
             "acknowledgements": self.notifications.to_dict(),
+            "learning": self.learner.to_dict(),
         }
 
     @callback

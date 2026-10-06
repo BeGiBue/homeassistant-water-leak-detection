@@ -16,6 +16,7 @@ from .const import (
     DOMAIN,
     PLATFORMS,
     SERVICE_CANCEL_HIGH_FLOW_BYPASS,
+    SERVICE_RESET_LEARNING,
     SERVICE_START_HIGH_FLOW_BYPASS,
 )
 from .manager import WaterLeakManager
@@ -59,6 +60,10 @@ async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
         manager = _manager_for_call(hass, call)
         await manager.async_cancel_bypass()
 
+    async def _reset_learning(call: ServiceCall) -> None:
+        manager = _manager_for_call(hass, call)
+        await manager.async_reset_learning()
+
     hass.services.async_register(
         DOMAIN,
         SERVICE_START_HIGH_FLOW_BYPASS,
@@ -76,6 +81,12 @@ async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
         DOMAIN,
         SERVICE_CANCEL_HIGH_FLOW_BYPASS,
         _cancel_bypass,
+        schema=probatio.Schema({probatio.Optional(ATTR_CONFIG_ENTRY_ID): str}),
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_RESET_LEARNING,
+        _reset_learning,
         schema=probatio.Schema({probatio.Optional(ATTR_CONFIG_ENTRY_ID): str}),
     )
     return True

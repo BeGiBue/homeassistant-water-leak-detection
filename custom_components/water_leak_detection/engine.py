@@ -32,6 +32,8 @@ class DetectorSettings:
     burst_detection_seconds: float = 30.0
     burst_reset_lph: float = 500.0
     burst_reset_seconds: float = 60.0
+    burst_rate_rise_lph_10s: float = 1000.0
+    burst_rate_confirm_seconds: float = 10.0
     shutoff_slow: bool = False
     shutoff_low: bool = False
     shutoff_high: bool = False
@@ -49,6 +51,7 @@ class DetectorRuntime:
     event_id: str | None = None
     start_total_l: float | None = None
     estimated_volume_l: float = 0.0
+    reason: str | None = None
 
     def reset(self) -> None:
         """Reset detector runtime."""
@@ -59,6 +62,7 @@ class DetectorRuntime:
         self.event_id = None
         self.start_total_l = None
         self.estimated_volume_l = 0.0
+        self.reason = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -124,6 +128,8 @@ class DetectionEngine:
         total_l: float | None,
         *,
         high_flow_bypassed: bool = False,
+        effective_high_threshold_lph: float | None = None,
+        effective_burst_threshold_lph: float | None = None,
     ) -> list[DetectorTransition]:
         """Evaluate one measurement sample."""
         if flow_lph < 0:
@@ -140,6 +146,20 @@ class DetectionEngine:
                 if runtime.phase is not DetectorPhase.IDLE:
                     runtime.estimated_volume_l += flow_lph * delta_seconds / 3600.0
 
+        effective_high = (
+            self.settings.high_threshold_lph
+            if effective_high_threshold_lph is None
+            else max(self.settings.low_threshold_lph, float(effective_high_threshold_lph))
+        )
+        effective_burst = (
+            self.settings.burst_threshold_lph
+            if effective_burst_threshold_lph is None
+            else max(effective_high, float(effective_burst_threshold_lph))
+        )
+
+        previous_flow = self.last_flow_lph
+        previous_at = self.last_sample_at
+
         transitions: list[DetectorTransition] = []
 
         if self.settings.slow_enabled:
@@ -154,7 +174,14 @@ class DetectionEngine:
             )
 
         if self.settings.low_enabled:
-            transitions.extend(self._sample_low(now, flow_lph, total_l))
+            transitions.extend(
+                self._sample_low(
+                    now,
+                    flow_lph,
+                    total_l,
+                    self.settings.high_threshold_lph,
+                )
+            )
         elif self.runtimes[DetectorKind.LOW_FLOW].phase is not DetectorPhase.IDLE:
             self._append_transition(
                 transitions,
@@ -164,9 +191,25 @@ class DetectionEngine:
                 total_l=total_l,
             )
         transitions.extend(
-            self._sample_high(now, flow_lph, total_l, high_flow_bypassed)
+            self._sample_high(
+                now,
+                flow_lph,
+                total_l,
+                high_flow_bypassed,
+                effective_high,
+            )
         )
-        transitions.extend(self._sample_burst(now, flow_lph, total_l))
+        transitions.extend(
+            self._sample_burst(
+                now,
+                flow_lph,
+                total_l,
+                effective_burst,
+                effective_high,
+                previous_flow,
+                previous_at,
+            )
+        )
 
         self.last_sample_at = now
         self.last_flow_lph = flow_lph
@@ -312,7 +355,11 @@ class DetectionEngine:
         return out
 
     def _sample_low(
-        self, now: datetime, flow: float, total_l: float | None
+        self,
+        now: datetime,
+        flow: float,
+        total_l: float | None,
+        high_threshold_lph: float,
     ) -> list[DetectorTransition]:
         kind = DetectorKind.LOW_FLOW
         runtime = self.runtimes[kind]
@@ -320,7 +367,7 @@ class DetectionEngine:
         out: list[DetectorTransition] = []
 
         if runtime.phase is DetectorPhase.IDLE:
-            if s.low_threshold_lph <= flow < s.high_threshold_lph:
+            if s.low_threshold_lph <= flow < high_threshold_lph:
                 self._append_transition(
                     out,
                     kind,
@@ -332,7 +379,7 @@ class DetectionEngine:
 
         if (
             runtime.phase is DetectorPhase.MONITORING
-            and flow >= s.high_threshold_lph
+            and flow >= high_threshold_lph
         ):
             self._append_transition(
                 out,
@@ -376,6 +423,7 @@ class DetectionEngine:
         flow: float,
         total_l: float | None,
         bypassed: bool,
+        high_threshold_lph: float,
     ) -> list[DetectorTransition]:
         kind = DetectorKind.HIGH_FLOW
         runtime = self.runtimes[kind]
@@ -394,7 +442,7 @@ class DetectionEngine:
             return out
 
         if runtime.phase is DetectorPhase.IDLE:
-            if s.high_threshold_lph <= flow < s.burst_threshold_lph:
+            if flow >= high_threshold_lph:
                 self._append_transition(
                     out,
                     kind,
@@ -434,40 +482,66 @@ class DetectionEngine:
         return out
 
     def _sample_burst(
-        self, now: datetime, flow: float, total_l: float | None
+        self,
+        now: datetime,
+        flow: float,
+        total_l: float | None,
+        burst_threshold_lph: float,
+        high_threshold_lph: float,
+        previous_flow: float | None,
+        previous_at: datetime | None,
     ) -> list[DetectorTransition]:
         kind = DetectorKind.BURST_LEAK
         runtime = self.runtimes[kind]
         s = self.settings
         out: list[DetectorTransition] = []
 
+        rise_lph_10s = 0.0
+        if previous_flow is not None and previous_at is not None:
+            elapsed = (now - previous_at).total_seconds()
+            if 0 < elapsed <= 60:
+                rise_lph_10s = max(0.0, flow - previous_flow) * 10.0 / elapsed
+
+        dynamic_floor = max(high_threshold_lph * 1.8, burst_threshold_lph * 0.75)
+        dynamic_candidate = (
+            rise_lph_10s >= s.burst_rate_rise_lph_10s
+            and flow >= dynamic_floor
+        )
+        absolute_candidate = flow >= burst_threshold_lph
+
         if runtime.phase is DetectorPhase.IDLE:
-            if flow >= s.burst_threshold_lph:
-                self._append_transition(
+            if (
+                (absolute_candidate or dynamic_candidate)
+                and self._append_transition(
                     out,
                     kind,
                     DetectorPhase.MONITORING,
                     now=now,
                     total_l=total_l,
                 )
+            ):
+                runtime.reason = (
+                    "rapid_rise"
+                    if dynamic_candidate and not absolute_candidate
+                    else "absolute_flow"
+                )
             return out
 
         if runtime.phase is DetectorPhase.MONITORING:
-            if flow < s.burst_threshold_lph:
+            if runtime.reason == "rapid_rise":
+                still_candidate = flow >= dynamic_floor
+                confirmation = s.burst_rate_confirm_seconds
+            else:
+                still_candidate = absolute_candidate
+                confirmation = s.burst_detection_seconds
+
+            if not still_candidate:
                 self._append_transition(
-                    out,
-                    kind,
-                    DetectorPhase.IDLE,
-                    now=now,
-                    total_l=total_l,
+                    out, kind, DetectorPhase.IDLE, now=now, total_l=total_l
                 )
-            elif self._elapsed(now, runtime.started_at) >= s.burst_detection_seconds:
+            elif self._elapsed(now, runtime.started_at) >= confirmation:
                 self._append_transition(
-                    out,
-                    kind,
-                    DetectorPhase.ACTIVE,
-                    now=now,
-                    total_l=total_l,
+                    out, kind, DetectorPhase.ACTIVE, now=now, total_l=total_l
                 )
             return out
 
@@ -475,11 +549,7 @@ class DetectionEngine:
             runtime.quiet_since = runtime.quiet_since or now
             if self._elapsed(now, runtime.quiet_since) >= s.burst_reset_seconds:
                 self._append_transition(
-                    out,
-                    kind,
-                    DetectorPhase.IDLE,
-                    now=now,
-                    total_l=total_l,
+                    out, kind, DetectorPhase.IDLE, now=now, total_l=total_l
                 )
         else:
             runtime.quiet_since = None
@@ -549,6 +619,7 @@ class DetectionEngine:
                     "event_id": runtime.event_id,
                     "start_total_l": runtime.start_total_l,
                     "estimated_volume_l": runtime.estimated_volume_l,
+                    "reason": runtime.reason,
                 }
                 for kind, runtime in self.runtimes.items()
             },
@@ -589,6 +660,9 @@ class DetectionEngine:
             runtime.start_total_l = _as_float_or_none(raw.get("start_total_l"))
             runtime.estimated_volume_l = (
                 _as_float_or_none(raw.get("estimated_volume_l")) or 0.0
+            )
+            runtime.reason = (
+                str(raw.get("reason")) if raw.get("reason") is not None else None
             )
 
 

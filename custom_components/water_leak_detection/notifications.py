@@ -18,8 +18,8 @@ from .const import (
     ACTION_MUTE,
     ACTION_PREFIX,
     CONF_NOTIFICATION_RECIPIENTS,
-    EVENT_ACKNOWLEDGED,
     EVENT_ACK_REJECTED,
+    EVENT_ACKNOWLEDGED,
     EVENT_LEAK_ENDED,
     EVENT_LEAK_STARTED,
     MOBILE_ACTION_EVENT,
@@ -54,7 +54,7 @@ class NotificationRecipient:
     token: str
 
     @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> "NotificationRecipient | None":
+    def from_dict(cls, raw: dict[str, Any]) -> NotificationRecipient | None:
         """Create a recipient from config-entry options."""
         try:
             recipient_id = str(raw[RECIPIENT_ID])
@@ -109,7 +109,7 @@ class EventAcknowledgement:
         }
 
     @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> "EventAcknowledgement":
+    def from_dict(cls, raw: dict[str, Any]) -> EventAcknowledgement:
         """Restore acknowledgement state."""
         acknowledged_at = raw.get("globally_acknowledged_at")
         parsed_at = (
@@ -310,7 +310,10 @@ class NotificationController:
             await self._async_send_feedback(
                 recipient,
                 "Global acknowledgement rejected",
-                "This device is not currently in the Home zone. The alarm can only be muted for this device.",
+                (
+                    "This device is not currently in the Home zone. "
+                    "The alarm can only be muted for this device."
+                ),
             )
             return
 
