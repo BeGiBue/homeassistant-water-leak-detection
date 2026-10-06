@@ -1,0 +1,40 @@
+name: Publish 0.3.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Verify release version
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(
+              Path("custom_components/water_leak_detection/manifest.json").read_text()
+          )
+          assert manifest["version"] == "0.3.1", manifest["version"]
+          assert Path("RELEASE_NOTES_0.3.1.md").is_file()
+          print("Release metadata verified for 0.3.1")
+          PY
+
+      - name: Publish GitHub Release 0.3.1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "0.3.1" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "main" \
+            --title "Home Assistant Water Leak Detection 0.3.1" \
+            --notes-file "RELEASE_NOTES_0.3.1.md"
