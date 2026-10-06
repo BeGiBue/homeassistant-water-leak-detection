@@ -29,3 +29,14 @@ cancel_high_flow_bypass:
       required: false
       selector:
         text:
+
+reset_learning:
+  name: Reset adaptive learning
+  description: Clears all admitted normal-flow learning samples. Detector settings and active leak events are not reset.
+  fields:
+    config_entry_id:
+      name: Config entry ID
+      description: Optional when only one Water Leak Detection instance is configured.
+      required: false
+      selector:
+        text:
