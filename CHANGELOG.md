@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Home Assistant Water Leak Detection are documented here.
+All notable changes to Water Leak Guard are documented here.
 
 ## 0.3.0 — 2026-10-06
 
