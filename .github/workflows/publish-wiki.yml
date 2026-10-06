@@ -1,0 +1,48 @@
+name: Publish Wiki
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Publish docs/wiki to GitHub Wiki
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          WIKI_TOKEN: ${{ secrets.WIKI_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          TOKEN="${WIKI_TOKEN:-$GITHUB_TOKEN}"
+          WIKI_URL="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
+
+          if ! git ls-remote "$WIKI_URL" >/dev/null 2>&1; then
+            echo "::error::The GitHub Wiki is not initialized or the workflow token cannot write to it."
+            echo "::error::Open the repository Wiki tab once and create the first page. If GITHUB_TOKEN cannot push to the wiki, add a repository secret named WIKI_TOKEN with a fine-grained token that has repository write access."
+            exit 1
+          fi
+
+          git clone "$WIKI_URL" wiki
+          rsync -a --delete --exclude=".git/" docs/wiki/ wiki/
+
+          cd wiki
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "Wiki is already up to date."
+            exit 0
+          fi
+
+          git commit -m "Update Water Leak Guard project documentation"
+          git push origin HEAD
