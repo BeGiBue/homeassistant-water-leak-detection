@@ -510,14 +510,21 @@ class DetectionEngine:
         absolute_candidate = flow >= burst_threshold_lph
 
         if runtime.phase is DetectorPhase.IDLE:
-            if absolute_candidate or dynamic_candidate:
-                if self._append_transition(
-                    out, kind, DetectorPhase.MONITORING, now=now, total_l=total_l
-                ):
-                    runtime.reason = (
-                        "rapid_rise" if dynamic_candidate and not absolute_candidate
-                        else "absolute_flow"
-                    )
+            if (
+                (absolute_candidate or dynamic_candidate)
+                and self._append_transition(
+                    out,
+                    kind,
+                    DetectorPhase.MONITORING,
+                    now=now,
+                    total_l=total_l,
+                )
+            ):
+                runtime.reason = (
+                    "rapid_rise"
+                    if dynamic_candidate and not absolute_candidate
+                    else "absolute_flow"
+                )
             return out
 
         if runtime.phase is DetectorPhase.MONITORING:
