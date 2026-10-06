@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import tomllib
 from pathlib import Path
 
 from homeassistant.config_entries import OptionsFlowWithReload
@@ -198,3 +199,14 @@ def test_configure_navigation_labels_are_translated() -> None:
         german["options"]["step"]["add_recipient"]["submit"]
         == "Hinzufügen und zurück"
     )
+
+
+
+def test_repository_license_metadata() -> None:
+    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+    assert license_text.startswith("GNU AFFERO GENERAL PUBLIC LICENSE")
+    assert "Version 3, 19 November 2007" in license_text
+    assert pyproject["project"]["version"] == "1.0.2"
+    assert pyproject["project"]["license"] == "AGPL-3.0-only"
