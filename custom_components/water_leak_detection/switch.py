@@ -31,7 +31,7 @@ async def async_setup_entry(
 class SlowLeakDetectionSwitch(WaterLeakEntity, SwitchEntity):
     """Enable or disable Slow Leak detection independently."""
 
-    _attr_name = "Slow Leak detection"
+    _attr_translation_key = "slow_leak_detection"
     _attr_icon = "mdi:water-search"
 
     def __init__(self, manager: WaterLeakManager) -> None:
@@ -51,7 +51,7 @@ class SlowLeakDetectionSwitch(WaterLeakEntity, SwitchEntity):
 class LowFlowDetectionSwitch(WaterLeakEntity, SwitchEntity):
     """Enable or disable Low Flow detection independently."""
 
-    _attr_name = "Low Flow detection"
+    _attr_translation_key = "low_flow_detection"
     _attr_icon = "mdi:water-check-outline"
 
     def __init__(self, manager: WaterLeakManager) -> None:
@@ -71,7 +71,7 @@ class LowFlowDetectionSwitch(WaterLeakEntity, SwitchEntity):
 class HighFlowBypassSwitch(WaterLeakEntity, SwitchEntity):
     """Temporarily suppress only High Flow detection."""
 
-    _attr_name = "High flow bypass"
+    _attr_translation_key = "high_flow_bypass"
     _attr_icon = "mdi:water-off-outline"
 
     def __init__(self, manager: WaterLeakManager) -> None:

@@ -9,11 +9,13 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import translation
 
 from .const import (
     ATTR_CONFIG_ENTRY_ID,
     ATTR_DURATION_MINUTES,
     DOMAIN,
+    NAME,
     PLATFORMS,
     SERVICE_CANCEL_HIGH_FLOW_BYPASS,
     SERVICE_RESET_LEARNING,
@@ -94,16 +96,21 @@ async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up one configured water meter."""
+    if entry.title == NAME:
+        translations = await translation.async_get_translations(
+            hass,
+            hass.config.language,
+            "title",
+            [DOMAIN],
+        )
+        localized_title = translations.get(f"component.{DOMAIN}.title", NAME)
+        if localized_title != entry.title:
+            hass.config_entries.async_update_entry(entry, title=localized_title)
+
     manager = WaterLeakManager(hass, entry)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = manager
     await manager.async_setup()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    async def _options_updated(_hass: HomeAssistant, _entry: ConfigEntry) -> None:
-        manager.apply_options()
-        await manager.async_refresh()
-
-    entry.async_on_unload(entry.add_update_listener(_options_updated))
     return True
 
 

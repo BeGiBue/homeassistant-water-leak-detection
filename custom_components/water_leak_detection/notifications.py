@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.helpers import translation
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.util import dt as dt_util
 
@@ -18,6 +19,7 @@ from .const import (
     ACTION_MUTE,
     ACTION_PREFIX,
     CONF_NOTIFICATION_RECIPIENTS,
+    DOMAIN,
     EVENT_ACK_REJECTED,
     EVENT_ACKNOWLEDGED,
     EVENT_LEAK_ENDED,
@@ -309,11 +311,8 @@ class NotificationController:
             self._fire_rejected(event_id, recipient_id, "device_not_home")
             await self._async_send_feedback(
                 recipient,
-                "Global acknowledgement rejected",
-                (
-                    "This device is not currently in the Home zone. "
-                    "The alarm can only be muted for this device."
-                ),
+                "global_ack_rejected_title",
+                "global_ack_rejected_message",
             )
             return
 
@@ -396,24 +395,65 @@ class NotificationController:
             )
             return
 
+        strings = await self._async_common_translations()
         is_burst = detector_type == DetectorKind.BURST_LEAK.value
+        detector = self._translate(
+            strings,
+            f"detector_{detector_type}",
+            detector_type.replace("_", " ").title(),
+        )
         title = (
-            "Water leak still active"
+            self._translate(
+                strings,
+                "notification_title_returning_home",
+                "Water leak still active",
+            )
             if returning_home
-            else f"Water leak detection: {detector_type.replace('_', ' ').title()}"
+            else self._translate(
+                strings,
+                "notification_title",
+                "Water leak detection: {detector}",
+                detector=detector,
+            )
         )
 
         message_parts: list[str] = []
         if returning_home:
-            message_parts.append("You returned home while this event is still active.")
+            message_parts.append(
+                self._translate(
+                    strings,
+                    "notification_returned_home",
+                    "You returned home while this event is still active.",
+                )
+            )
         flow = payload.get("flow_lph")
         if isinstance(flow, (int, float)):
-            message_parts.append(f"Current flow: {float(flow):.1f} L/h.")
+            message_parts.append(
+                self._translate(
+                    strings,
+                    "notification_current_flow",
+                    "Current flow: {flow} L/h.",
+                    flow=f"{float(flow):.1f}",
+                )
+            )
         volume = payload.get("volume_l")
         if isinstance(volume, (int, float)):
-            message_parts.append(f"Volume since detection started: {float(volume):.1f} L.")
+            message_parts.append(
+                self._translate(
+                    strings,
+                    "notification_volume",
+                    "Volume since detection started: {volume} L.",
+                    volume=f"{float(volume):.1f}",
+                )
+            )
         if not message_parts:
-            message_parts.append("A water event is active.")
+            message_parts.append(
+                self._translate(
+                    strings,
+                    "notification_event_active",
+                    "A water event is active.",
+                )
+            )
 
         notification_data: dict[str, Any] = {
             "tag": f"wld_{self.entry.entry_id}_{event_id}",
@@ -424,7 +464,11 @@ class NotificationController:
                     "action": self._action_id(
                         ACTION_MUTE, event_id, recipient
                     ),
-                    "title": "Mute for this device",
+                    "title": self._translate(
+                        strings,
+                        "action_mute_device",
+                        "Mute for this device",
+                    ),
                 }
             ],
         }
@@ -437,7 +481,11 @@ class NotificationController:
                     "action": self._action_id(
                         ACTION_ACK_ALL, event_id, recipient
                     ),
-                    "title": "Acknowledge for everyone",
+                    "title": self._translate(
+                        strings,
+                        "action_ack_all",
+                        "Acknowledge for everyone",
+                    ),
                 }
             )
 
@@ -465,18 +513,62 @@ class NotificationController:
     async def _async_send_feedback(
         self,
         recipient: NotificationRecipient,
-        title: str,
-        message: str,
+        title_key: str,
+        message_key: str,
     ) -> None:
         domain, service = recipient.notify_service.split(".", 1)
         if not self.hass.services.has_service(domain, service):
             return
+        strings = await self._async_common_translations()
         await self.hass.services.async_call(
             domain,
             service,
-            {"title": title, "message": message},
+            {
+                "title": self._translate(
+                    strings,
+                    title_key,
+                    "Global acknowledgement rejected",
+                ),
+                "message": self._translate(
+                    strings,
+                    message_key,
+                    (
+                        "This device is not currently in the Home zone. "
+                        "The alarm can only be muted for this device."
+                    ),
+                ),
+            },
             blocking=False,
         )
+
+    async def _async_common_translations(self) -> dict[str, str]:
+        """Load notification strings in the configured Home Assistant language."""
+        translations = await translation.async_get_translations(
+            self.hass,
+            self.hass.config.language,
+            "common",
+            [DOMAIN],
+        )
+        prefix = f"component.{DOMAIN}.common."
+        return {
+            key.removeprefix(prefix): value
+            for key, value in translations.items()
+            if key.startswith(prefix)
+        }
+
+    @staticmethod
+    def _translate(
+        strings: dict[str, str],
+        key: str,
+        fallback: str,
+        **placeholders: str,
+    ) -> str:
+        """Translate a runtime notification string with an English fallback."""
+        value = strings.get(key, fallback)
+        try:
+            return value.format(**placeholders)
+        except KeyError:
+            return fallback.format(**placeholders)
 
     def _action_id(
         self,

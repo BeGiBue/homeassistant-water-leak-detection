@@ -26,7 +26,7 @@ async def async_setup_entry(
 class HighFlowBypassDurationNumber(WaterLeakEntity, NumberEntity):
     """Default duration used when High Flow bypass is switched on."""
 
-    _attr_name = "High flow bypass duration"
+    _attr_translation_key = "high_flow_bypass_duration"
     _attr_icon = "mdi:timer-cog-outline"
     _attr_native_min_value = 1
     _attr_native_max_value = 1440

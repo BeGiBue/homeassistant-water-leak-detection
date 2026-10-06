@@ -24,7 +24,7 @@ jobs:
       - name: Validate JSON
         run: |
           python -m json.tool custom_components/water_leak_detection/manifest.json >/dev/null
-          python -m json.tool custom_components/water_leak_detection/strings.json >/dev/null
+          python -m json.tool custom_components/water_leak_detection/translations/en.json >/dev/null
           python -m json.tool custom_components/water_leak_detection/translations/de.json >/dev/null
           python -m json.tool hacs.json >/dev/null
       - name: Compile

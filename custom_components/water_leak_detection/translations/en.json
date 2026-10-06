@@ -1,0 +1,465 @@
+{
+  "title": "Water leak detection",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Select measurement source type",
+        "description": "Choose whether to select the water meter sensors directly or discover compatible sensors from a Home Assistant device.",
+        "data": {
+          "source_mode": "Source type"
+        }
+      },
+      "entities": {
+        "title": "Measurement sources",
+        "description": "Select the flow sensor and, if available, the cumulative water consumption sensor.",
+        "data": {
+          "flow_entity": "Flow rate sensor",
+          "total_entity": "Total consumption sensor (optional)"
+        }
+      },
+      "device": {
+        "title": "Water meter device",
+        "description": "Select the Home Assistant device that contains the water meter sensors.",
+        "data": {
+          "source_device": "Device"
+        }
+      },
+      "device_entities": {
+        "title": "Detected measurement sources",
+        "description": "Confirm the compatible sensors detected on the selected device.",
+        "data": {
+          "flow_entity": "Flow rate sensor",
+          "total_entity": "Total consumption sensor"
+        }
+      },
+      "notifications": {
+        "title": "Notification recipients",
+        "description": "Add one or more Companion App devices now, or finish setup without recipients. Recipients can be changed later at any time through Configure.",
+        "menu_options": {
+          "add_initial_recipient": "Add notification device",
+          "finish_setup": "Finish setup"
+        }
+      },
+      "add_initial_recipient": {
+        "title": "Add notification device",
+        "description": "Select the Companion notification service and its matching device tracker. Global acknowledgement is checked in the backend using the Home state.",
+        "data": {
+          "name": "Display name",
+          "notify_service": "Companion notification service",
+          "tracker_entity": "Device tracker",
+          "critical_enabled": "Allow critical Burst Leak alerts",
+          "allow_global_ack": "Allow global acknowledgement when device is home",
+          "trusted_stationary": "Trusted stationary home device"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure measurement sources",
+        "description": "Change the flow sensor and optional total-consumption sensor. The integration will reload afterwards.",
+        "data": {
+          "flow_entity": "Flow rate sensor",
+          "total_entity": "Total consumption sensor (optional)"
+        }
+      }
+    },
+    "error": {
+      "entity_not_available": "The selected entity is not currently available.",
+      "unsupported_flow_unit": "The flow sensor uses an unsupported unit.",
+      "unsupported_volume_unit": "The total sensor uses an unsupported unit.",
+      "same_source_entity": "Flow and total consumption must use different entities.",
+      "recipient_notify_service_exists": "This Companion notification service is already selected as a recipient.",
+      "recipient_name_required": "Enter a name for the notification device."
+    },
+    "abort": {
+      "already_configured": "This flow sensor is already configured.",
+      "device_has_no_flow_sensor": "No compatible flow-rate sensor was found on this device."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configuration",
+        "description": "Change notification recipients or expert settings. Measurement sources can be changed through Reconfigure.",
+        "menu_options": {
+          "notifications": "Notification recipients",
+          "expert": "Expert settings"
+        }
+      },
+      "expert": {
+        "title": "Expert settings",
+        "description": "Adjust detector thresholds, timing, bypass duration and which detector classes request a water shutoff.",
+        "data": {
+          "slow_threshold_lph": "Slow Leak threshold",
+          "slow_detection_minutes": "Slow Leak detection time",
+          "slow_reset_minutes": "Slow Leak reset time",
+          "low_threshold_lph": "Low Flow start threshold",
+          "low_detection_minutes": "Low Flow detection time",
+          "low_quiet_lph": "Low Flow quiet threshold",
+          "low_reset_minutes": "Low Flow quiet/reset time",
+          "high_threshold_lph": "High Flow threshold",
+          "high_detection_minutes": "High Flow detection time",
+          "high_volume_l": "High Flow volume threshold",
+          "high_quiet_lph": "High Flow quiet threshold",
+          "high_reset_minutes": "High Flow reset time",
+          "burst_threshold_lph": "Burst Leak absolute threshold",
+          "burst_detection_seconds": "Burst Leak confirmation time",
+          "burst_reset_lph": "Burst Leak reset threshold",
+          "burst_reset_seconds": "Burst Leak reset time",
+          "bypass_default_minutes": "Default High Flow bypass duration",
+          "shutoff_slow": "Slow Leak requests shutoff",
+          "shutoff_low": "Low Flow requests shutoff",
+          "shutoff_high": "High Flow requests shutoff",
+          "shutoff_burst": "Burst Leak requests shutoff",
+          "learning_window_days": "Learning window",
+          "manual_max_flow_lph": "Known maximum normal flow (0 = disabled)",
+          "pipe_diameter_mm": "Nominal pipe diameter",
+          "static_pressure_bar": "Static supply pressure",
+          "high_learned_multiplier": "High Flow multiplier on learned maximum",
+          "burst_learned_multiplier": "Burst Leak multiplier on learned maximum",
+          "hydraulic_burst_fraction": "Hydraulic Burst plausibility fraction",
+          "burst_rate_rise_lph_10s": "Burst rate-of-rise threshold per 10 seconds",
+          "burst_rate_confirm_seconds": "Rapid-rise Burst confirmation time"
+        }
+      },
+      "add_recipient": {
+        "title": "Add notification device",
+        "description": "Configure one Companion App device. Global acknowledgement is always authorized in the backend using the assigned device tracker.",
+        "data": {
+          "name": "Display name",
+          "notify_service": "Companion notification service",
+          "tracker_entity": "Device tracker",
+          "critical_enabled": "Allow critical Burst Leak alerts",
+          "allow_global_ack": "Allow global acknowledgement when device is home",
+          "trusted_stationary": "Trusted stationary home device"
+        }
+      },
+      "remove_recipient": {
+        "title": "Remove notification device",
+        "data": {
+          "id": "Device"
+        }
+      },
+      "edit_recipient": {
+        "title": "Select notification device",
+        "data": {
+          "id": "Device"
+        }
+      },
+      "edit_recipient_details": {
+        "title": "Edit notification device",
+        "description": "Change tracker, critical-alert and acknowledgement settings. The internal device ID and action token are preserved.",
+        "data": {
+          "name": "Display name",
+          "notify_service": "Companion notification service",
+          "tracker_entity": "Device tracker",
+          "critical_enabled": "Allow critical Burst Leak alerts",
+          "allow_global_ack": "Allow global acknowledgement when device is home",
+          "trusted_stationary": "Trusted stationary home device"
+        }
+      },
+      "notifications": {
+        "title": "Notification recipients",
+        "description": "Manage the Companion App devices that receive leak alerts.",
+        "menu_options": {
+          "add_recipient": "Add recipient",
+          "edit_recipient": "Edit recipient",
+          "remove_recipient": "Remove recipient"
+        }
+      }
+    },
+    "error": {
+      "invalid_threshold_order": "Thresholds must be ordered Slow Leak < Low Flow < High Flow < Burst Leak.",
+      "invalid_low_quiet_threshold": "The Low Flow quiet threshold must be below the Low Flow start threshold.",
+      "invalid_high_quiet_threshold": "The High Flow quiet threshold must be below the High Flow threshold.",
+      "invalid_burst_reset_threshold": "The Burst Leak reset threshold must be below the Burst Leak absolute threshold.",
+      "recipient_notify_service_exists": "This Companion notification service is already configured as a recipient.",
+      "recipient_name_required": "Enter a name for the notification device.",
+      "invalid_adaptive_multiplier_order": "The Burst Leak multiplier must be greater than the High Flow multiplier."
+    },
+    "abort": {
+      "no_mobile_app_notify_services": "No mobile_app notification services were found. Set up the Home Assistant Companion App first.",
+      "no_recipients_configured": "No notification devices are configured yet.",
+      "recipient_not_found": "The selected notification device no longer exists."
+    }
+  },
+  "selector": {
+    "source_mode": {
+      "options": {
+        "entities": "Select individual entities",
+        "device": "Select Home Assistant device"
+      }
+    }
+  },
+  "device": {
+    "water_leak_detection": {
+      "name": "Water leak detection"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "source_unavailable": "Source unavailable",
+          "idle": "Idle",
+          "slow_leak_monitoring": "Monitoring Slow Leak",
+          "low_flow_monitoring": "Monitoring Low Flow",
+          "high_flow_monitoring": "Monitoring High Flow",
+          "burst_leak_monitoring": "Monitoring Burst Leak",
+          "slow_leak": "Slow Leak",
+          "low_flow": "Low Flow",
+          "high_flow": "High Flow",
+          "burst_leak": "Burst Leak"
+        },
+        "state_attributes": {
+          "flow_source": {
+            "name": "Flow source"
+          },
+          "total_source": {
+            "name": "Total source"
+          },
+          "source_available": {
+            "name": "Source available"
+          },
+          "active_event_id": {
+            "name": "Active event ID"
+          },
+          "active_detector": {
+            "name": "Active detector"
+          },
+          "globally_acknowledged": {
+            "name": "Globally acknowledged"
+          },
+          "globally_acknowledged_by": {
+            "name": "Globally acknowledged by"
+          },
+          "globally_acknowledged_at": {
+            "name": "Globally acknowledged at"
+          },
+          "muted_recipients": {
+            "name": "Muted recipients"
+          },
+          "high_flow_bypass": {
+            "name": "High Flow bypass"
+          },
+          "slow_leak_enabled": {
+            "name": "Slow Leak enabled"
+          },
+          "low_flow_enabled": {
+            "name": "Low Flow enabled"
+          },
+          "detectors": {
+            "name": "Detector states"
+          }
+        }
+      },
+      "current_flow": {
+        "name": "Current flow"
+      },
+      "active_event_duration": {
+        "name": "Active event duration"
+      },
+      "active_event_volume": {
+        "name": "Active event volume"
+      },
+      "high_flow_bypass_remaining": {
+        "name": "High Flow bypass remaining",
+        "state_attributes": {
+          "active": {
+            "name": "Active"
+          },
+          "finishes_at": {
+            "name": "Finishes at"
+          }
+        }
+      },
+      "learned_maximum_flow": {
+        "name": "Learned maximum flow",
+        "state_attributes": {
+          "short_reference_lph": {
+            "name": "Short-term reference"
+          },
+          "long_reference_lph": {
+            "name": "Long-term reference"
+          },
+          "sample_count": {
+            "name": "Sample count"
+          },
+          "coverage_days": {
+            "name": "Coverage days"
+          },
+          "window_days": {
+            "name": "Learning window"
+          },
+          "confidence": {
+            "name": "Learning confidence"
+          }
+        }
+      },
+      "learning_confidence": {
+        "name": "Learning confidence",
+        "state": {
+          "insufficient": "Insufficient",
+          "learning": "Learning",
+          "reliable": "Reliable"
+        },
+        "state_attributes": {
+          "sample_count": {
+            "name": "Sample count"
+          },
+          "coverage_days": {
+            "name": "Coverage days"
+          },
+          "age_days": {
+            "name": "Learning age"
+          },
+          "window_days": {
+            "name": "Learning window"
+          }
+        }
+      },
+      "learning_coverage": {
+        "name": "Learning coverage",
+        "state_attributes": {
+          "learning_age_days": {
+            "name": "Learning age"
+          },
+          "sample_count": {
+            "name": "Sample count"
+          },
+          "window_days": {
+            "name": "Learning window"
+          }
+        }
+      },
+      "hydraulic_reference_flow": {
+        "name": "Hydraulic reference flow"
+      },
+      "effective_high_threshold": {
+        "name": "Effective High Flow threshold"
+      },
+      "effective_burst_threshold": {
+        "name": "Effective Burst Leak threshold",
+        "state_attributes": {
+          "normal_reference_lph": {
+            "name": "Normal-flow reference"
+          },
+          "hydraulic_reference_lph": {
+            "name": "Hydraulic reference"
+          },
+          "hydraulic_model_is_plausibility_only": {
+            "name": "Hydraulic model is plausibility only"
+          }
+        }
+      }
+    },
+    "binary_sensor": {
+      "leak_alarm": {
+        "name": "Leak alarm",
+        "state_attributes": {
+          "status": {
+            "name": "Status"
+          },
+          "event_id": {
+            "name": "Event ID"
+          },
+          "detector": {
+            "name": "Detector"
+          }
+        }
+      },
+      "shutoff_request": {
+        "name": "Water shutoff request",
+        "state_attributes": {
+          "decoupled_from_alarm_acknowledgement": {
+            "name": "Decoupled from alarm acknowledgement"
+          },
+          "status": {
+            "name": "Status"
+          },
+          "event_id": {
+            "name": "Event ID"
+          }
+        }
+      }
+    },
+    "switch": {
+      "slow_leak_detection": {
+        "name": "Slow Leak detection"
+      },
+      "low_flow_detection": {
+        "name": "Low Flow detection"
+      },
+      "high_flow_bypass": {
+        "name": "High Flow bypass",
+        "state_attributes": {
+          "remaining_seconds": {
+            "name": "Remaining time"
+          },
+          "finishes_at": {
+            "name": "Finishes at"
+          },
+          "burst_leak_protection_active": {
+            "name": "Burst Leak protection active"
+          }
+        }
+      }
+    },
+    "number": {
+      "high_flow_bypass_duration": {
+        "name": "High Flow bypass duration"
+      }
+    }
+  },
+  "common": {
+    "detector_slow_leak": "Slow Leak",
+    "detector_low_flow": "Low Flow",
+    "detector_high_flow": "High Flow",
+    "detector_burst_leak": "Burst Leak",
+    "notification_title": "Water leak detection: {detector}",
+    "notification_title_returning_home": "Water leak still active",
+    "notification_returned_home": "You returned home while this event is still active.",
+    "notification_current_flow": "Current flow: {flow} L/h.",
+    "notification_volume": "Volume since detection started: {volume} L.",
+    "notification_event_active": "A water event is active.",
+    "action_mute_device": "Mute for this device",
+    "action_ack_all": "Acknowledge for everyone",
+    "global_ack_rejected_title": "Global acknowledgement rejected",
+    "global_ack_rejected_message": "This device is not currently in the Home zone. The alarm can only be muted for this device."
+  },
+  "services": {
+    "start_high_flow_bypass": {
+      "name": "Start High Flow bypass",
+      "description": "Temporarily suppresses High Flow. Burst Leak remains fully active.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Config entry ID",
+          "description": "Optional when only one instance is configured."
+        },
+        "duration_minutes": {
+          "name": "Duration",
+          "description": "Bypass duration in minutes."
+        }
+      }
+    },
+    "cancel_high_flow_bypass": {
+      "name": "Cancel High Flow bypass",
+      "description": "Ends the High Flow bypass immediately.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Config entry ID",
+          "description": "Optional when only one instance is configured."
+        }
+      }
+    },
+    "reset_learning": {
+      "name": "Reset adaptive learning",
+      "description": "Clears all admitted learning samples. Active leak events and settings remain unchanged.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Config entry ID",
+          "description": "Optional when only one instance is configured."
+        }
+      }
+    }
+  }
+}

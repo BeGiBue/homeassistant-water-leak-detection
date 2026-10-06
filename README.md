@@ -111,6 +111,22 @@ The integration creates a Home Assistant device with backend entities including:
 - **Effective High Flow threshold**
 - **Effective Burst Leak threshold**
 
+## Language and later configuration
+
+The integration follows the configured Home Assistant backend language.
+
+- German Home Assistant: German integration title, device/entity names, configuration dialogs, states, service actions, and Companion notification text.
+- Other supported languages fall back to English unless a matching translation file is provided.
+
+During initial setup, notification recipients can already be added after selecting the measurement sources.
+
+After installation:
+
+- **Configure** opens notification-recipient management and expert settings.
+- **Reconfigure** changes the flow-rate and optional total-consumption source sensors.
+
+Changes made through the options flow reload the integration automatically.
+
 ## Companion notifications and acknowledgement
 
 Notification recipients are configured per Companion App device. Each device can have its own:
