@@ -10,14 +10,14 @@
 - [x] Integration has local brand assets.
 - [x] Manifest contains domain, documentation, issue tracker, code owners, name, and version.
 
-## Version 0.3.0
+## Version 0.3.1
 
-- [x] Manifest version is 0.3.0.
+- [x] Manifest version is 0.3.1.
 - [x] Python/JSON/compile/Ruff/tests validated.
-- [x] Release notes are prepared in `RELEASE_NOTES_0.3.0.md`.
+- [x] Release notes are prepared in `RELEASE_NOTES_0.3.1.md`.
 - [x] Changelog updated.
-- [ ] Publish GitHub Release with tag `0.3.0` pointing to the release-preparation merge commit.
-- [ ] Use `RELEASE_NOTES_0.3.0.md` as the release body.
+- [ ] Publish GitHub Release with tag `0.3.1` pointing to the release-preparation merge commit.
+- [ ] Use `RELEASE_NOTES_0.3.1.md` as the release body.
 - [ ] Run the manual **HACS** workflow after Topics and Release are published.
 
 ## HACS behavior
