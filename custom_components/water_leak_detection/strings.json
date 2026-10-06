@@ -124,7 +124,8 @@
       "invalid_low_quiet_threshold": "The Low Flow quiet threshold must be below the Low Flow start threshold.",
       "invalid_high_quiet_threshold": "The High Flow quiet threshold must be below the High Flow threshold.",
       "invalid_burst_reset_threshold": "The Burst Leak reset threshold must be below the Burst Leak absolute threshold.",
-      "recipient_notify_service_exists": "This Companion notification service is already configured as a recipient."
+      "recipient_notify_service_exists": "This Companion notification service is already configured as a recipient.",
+      "recipient_name_required": "Enter a name for the notification device."
     },
     "abort": {
       "no_mobile_app_notify_services": "No mobile_app notification services were found. Set up the Home Assistant Companion App first.",
