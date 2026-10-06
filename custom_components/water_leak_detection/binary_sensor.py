@@ -1,4 +1,4 @@
-"""Binary sensors for Home Assistant Water Leak Detection."""
+"""Binary sensors for Water Leak Guard."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up Water Leak Detection binary sensors."""
+    """Set up Water Leak Guard binary sensors."""
     manager: WaterLeakManager = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
         [LeakAlarmBinarySensor(manager), ShutoffRequestBinarySensor(manager)]
