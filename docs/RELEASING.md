@@ -1,6 +1,6 @@
-# Releasing 0.3.0
+# Releasing 0.3.1
 
-This repository is prepared so release 0.3.0 can be published without building a ZIP artifact.
+This repository is prepared so release 0.3.1 can be published without building a ZIP artifact.
 
 HACS installs the integration directly from:
 
@@ -32,15 +32,15 @@ The HACS workflow uses the official `hacs/action@main` validator.
 After the release-preparation changes are merged into `main`:
 
 1. Open **Actions**.
-2. Select **Publish 0.3.0**.
+2. Select **Publish 0.3.1**.
 3. Choose **Run workflow**.
 4. Run it on `main`.
 
-The workflow verifies that the manifest version is exactly `0.3.0`, then runs:
+The workflow verifies that the manifest version is exactly `0.3.1`, then runs:
 
-`gh release create 0.3.0 --target main`
+`gh release create 0.3.1 --target main`
 
-using `RELEASE_NOTES_0.3.0.md` as the release body.
+using `RELEASE_NOTES_0.3.1.md` as the release body.
 
 If the tag does not yet exist, GitHub CLI creates the tag for the target commit as part of publishing the release.
 
@@ -52,9 +52,9 @@ A standalone Git tag without a GitHub Release is not enough for HACS release ver
 
 ## Post-release verification
 
-- Confirm the GitHub Release page shows version `0.3.0`.
+- Confirm the GitHub Release page shows version `0.3.1`.
 - Open the HACS repository deep link from README.
-- Confirm HACS offers version `0.3.0`.
+- Confirm HACS offers version `0.3.1`.
 - Install on a test Home Assistant instance.
 - Restart Home Assistant.
 - Add the integration through Devices & Services.
