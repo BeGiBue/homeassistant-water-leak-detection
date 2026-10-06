@@ -1,4 +1,4 @@
-"""Constants for Home Assistant Water Leak Detection."""
+"""Constants for Water Leak Guard."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from enum import StrEnum
 from homeassistant.const import Platform
 
 DOMAIN = "water_leak_detection"
-NAME = "Home Assistant Water Leak Detection"
+NAME = "Water Leak Guard"
 VERSION = "0.3.0"
 
 PLATFORMS: tuple[Platform, ...] = (
