@@ -19,6 +19,7 @@ jobs:
         run: |
           python - <<'PY'
           import json
+          import tomllib
           from pathlib import Path
 
           manifest = json.loads(
@@ -28,7 +29,13 @@ jobs:
           assert manifest["integration_type"] == "service", manifest["integration_type"]
           assert manifest["name"] == "Water Leak Guard", manifest["name"]
           assert Path("RELEASE_NOTES_1.0.2.md").is_file()
-          print("Release metadata verified for 1.0.2")
+          assert Path("LICENSE").is_file()
+
+          pyproject = tomllib.loads(Path("pyproject.toml").read_text())
+          assert pyproject["project"]["version"] == "1.0.2"
+          assert pyproject["project"]["license"] == "AGPL-3.0-only"
+
+          print("Release metadata verified for 1.0.2 / AGPL-3.0-only")
           PY
 
       - name: Publish GitHub Release 1.0.2
