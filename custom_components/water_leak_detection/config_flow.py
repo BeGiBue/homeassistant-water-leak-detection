@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from secrets import token_urlsafe
 from typing import Any
+from uuid import uuid4
 
 import probatio
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
@@ -21,6 +23,7 @@ from homeassistant.helpers.selector import (
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
+    TextSelector,
 )
 
 from .const import (
@@ -39,6 +42,7 @@ from .const import (
     CONF_LOW_QUIET_LPH,
     CONF_LOW_RESET_MIN,
     CONF_LOW_THRESHOLD_LPH,
+    CONF_NOTIFICATION_RECIPIENTS,
     CONF_SHUTOFF_BURST,
     CONF_SHUTOFF_HIGH,
     CONF_SHUTOFF_LOW,
@@ -72,6 +76,14 @@ from .const import (
     DEFAULT_SLOW_THRESHOLD_LPH,
     DOMAIN,
     NAME,
+    RECIPIENT_ALLOW_GLOBAL_ACK,
+    RECIPIENT_CRITICAL_ENABLED,
+    RECIPIENT_ID,
+    RECIPIENT_NAME,
+    RECIPIENT_NOTIFY_SERVICE,
+    RECIPIENT_TOKEN,
+    RECIPIENT_TRACKER_ENTITY,
+    RECIPIENT_TRUSTED_STATIONARY,
 )
 from .units import is_supported_flow_unit, is_supported_volume_unit
 
@@ -318,17 +330,31 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class WaterLeakOptionsFlow(OptionsFlow):
-    """Expert detector settings."""
+    """Options for detector settings and Companion recipients."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Edit expert settings."""
+        """Show the options menu."""
+        menu_options = ["expert", "add_recipient"]
+        if self._raw_recipients():
+            menu_options.append("remove_recipient")
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=menu_options,
+        )
+
+    async def async_step_expert(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Edit expert detector settings."""
         errors: dict[str, str] = {}
         if user_input is not None:
             errors = self._validate_expert_options(user_input)
             if not errors:
-                return self.async_create_entry(title="", data=user_input)
+                updated = dict(self.config_entry.options)
+                updated.update(user_input)
+                return self.async_create_entry(title="", data=updated)
 
         options = self.config_entry.options
         values = user_input if user_input is not None else options
@@ -484,9 +510,137 @@ class WaterLeakOptionsFlow(OptionsFlow):
             }
         )
         return self.async_show_form(
-            step_id="init",
+            step_id="expert",
             data_schema=schema,
             errors=errors,
+        )
+
+    async def async_step_add_recipient(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Add one Companion notification recipient."""
+        notify_services = self._mobile_notify_services()
+        if not notify_services:
+            return self.async_abort(reason="no_mobile_app_notify_services")
+
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            existing = self._raw_recipients()
+            notify_service = str(user_input[RECIPIENT_NOTIFY_SERVICE])
+            tracker_entity = str(user_input[RECIPIENT_TRACKER_ENTITY])
+
+            if any(
+                raw.get(RECIPIENT_NOTIFY_SERVICE) == notify_service
+                for raw in existing
+            ):
+                errors["base"] = "recipient_notify_service_exists"
+            else:
+                recipient = {
+                    RECIPIENT_ID: uuid4().hex[:10],
+                    RECIPIENT_NAME: str(user_input[RECIPIENT_NAME]).strip(),
+                    RECIPIENT_NOTIFY_SERVICE: notify_service,
+                    RECIPIENT_TRACKER_ENTITY: tracker_entity,
+                    RECIPIENT_CRITICAL_ENABLED: bool(
+                        user_input[RECIPIENT_CRITICAL_ENABLED]
+                    ),
+                    RECIPIENT_ALLOW_GLOBAL_ACK: bool(
+                        user_input[RECIPIENT_ALLOW_GLOBAL_ACK]
+                    ),
+                    RECIPIENT_TRUSTED_STATIONARY: bool(
+                        user_input[RECIPIENT_TRUSTED_STATIONARY]
+                    ),
+                    RECIPIENT_TOKEN: token_urlsafe(12),
+                }
+                updated = dict(self.config_entry.options)
+                updated[CONF_NOTIFICATION_RECIPIENTS] = [*existing, recipient]
+                return self.async_create_entry(title="", data=updated)
+
+        service_options = [
+            SelectOptionDict(value=service, label=service)
+            for service in notify_services
+        ]
+        return self.async_show_form(
+            step_id="add_recipient",
+            data_schema=probatio.Schema(
+                {
+                    probatio.Required(RECIPIENT_NAME): TextSelector(),
+                    probatio.Required(RECIPIENT_NOTIFY_SERVICE): SelectSelector(
+                        SelectSelectorConfig(options=service_options)
+                    ),
+                    probatio.Required(RECIPIENT_TRACKER_ENTITY): EntitySelector(
+                        EntitySelectorConfig(
+                            domain="device_tracker",
+                            multiple=False,
+                        )
+                    ),
+                    probatio.Required(
+                        RECIPIENT_CRITICAL_ENABLED,
+                        default=True,
+                    ): BooleanSelector(),
+                    probatio.Required(
+                        RECIPIENT_ALLOW_GLOBAL_ACK,
+                        default=True,
+                    ): BooleanSelector(),
+                    probatio.Required(
+                        RECIPIENT_TRUSTED_STATIONARY,
+                        default=False,
+                    ): BooleanSelector(),
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_remove_recipient(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Remove one configured notification recipient."""
+        recipients = self._raw_recipients()
+        if not recipients:
+            return self.async_abort(reason="no_recipients_configured")
+
+        if user_input is not None:
+            remove_id = str(user_input[RECIPIENT_ID])
+            updated = dict(self.config_entry.options)
+            updated[CONF_NOTIFICATION_RECIPIENTS] = [
+                raw
+                for raw in recipients
+                if str(raw.get(RECIPIENT_ID, "")) != remove_id
+            ]
+            return self.async_create_entry(title="", data=updated)
+
+        options = [
+            SelectOptionDict(
+                value=str(raw[RECIPIENT_ID]),
+                label=str(raw.get(RECIPIENT_NAME, raw[RECIPIENT_ID])),
+            )
+            for raw in recipients
+            if raw.get(RECIPIENT_ID)
+        ]
+        return self.async_show_form(
+            step_id="remove_recipient",
+            data_schema=probatio.Schema(
+                {
+                    probatio.Required(RECIPIENT_ID): SelectSelector(
+                        SelectSelectorConfig(options=options)
+                    )
+                }
+            ),
+        )
+
+    def _raw_recipients(self) -> list[dict[str, Any]]:
+        """Return valid raw recipient option dictionaries."""
+        raw = self.config_entry.options.get(CONF_NOTIFICATION_RECIPIENTS, [])
+        if not isinstance(raw, list):
+            return []
+        return [item for item in raw if isinstance(item, dict)]
+
+    def _mobile_notify_services(self) -> list[str]:
+        """Return currently registered Companion mobile notification services."""
+        services = self.hass.services.async_services().get("notify", {})
+        return sorted(
+            f"notify.{service}"
+            for service in services
+            if service.startswith("mobile_app_")
         )
 
     @staticmethod
