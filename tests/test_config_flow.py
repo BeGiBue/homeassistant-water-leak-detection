@@ -7,9 +7,6 @@ from custom_components.water_leak_detection.config_flow import (
     _recipient_description_placeholders,
 )
 from custom_components.water_leak_detection.const import (
-    RECIPIENT_NAME,
-    RECIPIENT_NOTIFY_SERVICE,
-    RECIPIENT_TRACKER_ENTITY,
     CONF_BURST_LEARNED_MULTIPLIER,
     CONF_BURST_RESET_LPH,
     CONF_BURST_THRESHOLD_LPH,
@@ -19,6 +16,9 @@ from custom_components.water_leak_detection.const import (
     CONF_LOW_QUIET_LPH,
     CONF_LOW_THRESHOLD_LPH,
     CONF_SLOW_THRESHOLD_LPH,
+    RECIPIENT_NAME,
+    RECIPIENT_NOTIFY_SERVICE,
+    RECIPIENT_TRACKER_ENTITY,
 )
 
 
