@@ -2,11 +2,6 @@ name: Publish 1.0.1
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/release-1.0.1.yml"
 
 permissions:
   contents: write
@@ -17,6 +12,8 @@ jobs:
     steps:
       - name: Check out release commit
         uses: actions/checkout@v7
+        with:
+          ref: main
 
       - name: Verify release metadata
         run: |
@@ -43,4 +40,4 @@ jobs:
             exit 0
           fi
 
-          gh release create "1.0.1"             --repo "${GITHUB_REPOSITORY}"             --target "${GITHUB_SHA}"             --title "Water Leak Guard 1.0.1"             --notes-file "RELEASE_NOTES_1.0.1.md"
+          gh release create "1.0.1"             --repo "${GITHUB_REPOSITORY}"             --target "main"             --title "Water Leak Guard 1.0.1"             --notes-file "RELEASE_NOTES_1.0.1.md"

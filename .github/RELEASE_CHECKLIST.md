@@ -16,6 +16,6 @@
 - [x] Recipient overview is implemented for initial setup and later configuration.
 - [x] Release notes are prepared in `RELEASE_NOTES_1.0.1.md`.
 - [x] Changelog updated.
-- [ ] Publish GitHub Release with tag `1.0.1`.
-- [ ] Verify the tagged manifest still says `service`.
+- [x] Publish GitHub Release with tag `1.0.1`.
+- [x] Verify the tagged manifest still says `service`.
 - [ ] Verify HACS sees `1.0.1`.
