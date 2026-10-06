@@ -435,7 +435,7 @@ async def test_notification_uses_home_assistant_language_strings() -> None:
     controller._async_common_translations = AsyncMock(
         return_value={
             "detector_slow_leak": "Slow Leak",
-            "notification_title": "Wasserleck-Erkennung: {detector}",
+            "notification_title": "Wasserwächter: {detector}",
             "notification_current_flow": "Aktueller Durchfluss: {flow} L/h.",
             "action_mute_device": "Auf diesem Gerät stummschalten",
             "action_ack_all": "Für alle quittieren",
@@ -451,7 +451,7 @@ async def test_notification_uses_home_assistant_language_strings() -> None:
     )
 
     service_data = hass.services.calls[0][2]
-    assert service_data["title"] == "Wasserleck-Erkennung: Slow Leak"
+    assert service_data["title"] == "Wasserwächter: Slow Leak"
     assert service_data["message"] == "Aktueller Durchfluss: 7.0 L/h."
     assert service_data["data"]["actions"][0]["title"] == (
         "Auf diesem Gerät stummschalten"
