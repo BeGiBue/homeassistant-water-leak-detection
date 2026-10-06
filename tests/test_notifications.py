@@ -119,10 +119,29 @@ class _FakeStates:
         return SimpleNamespace(state=value) if value is not None else None
 
 
+class _FakeServices:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str, dict[str, object]]] = []
+
+    def has_service(self, domain: str, service: str) -> bool:
+        return True
+
+    async def async_call(
+        self,
+        domain: str,
+        service: str,
+        data: dict[str, object],
+        *,
+        blocking: bool,
+    ) -> None:
+        self.calls.append((domain, service, data))
+
+
 class _FakeHass:
     def __init__(self, states: dict[str, str]) -> None:
         self.bus = _FakeBus()
         self.states = _FakeStates(states)
+        self.services = _FakeServices()
 
 
 def _controller_for_action(*, tracker_state: str):
@@ -270,3 +289,97 @@ async def test_arriving_home_does_not_retrigger_globally_acknowledged_event() ->
     await controller._async_tracker_changed(event)
 
     controller._async_send_event_notification.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_event_start_notifies_multiple_devices() -> None:
+    controller, recipient, _hass, _persisted = _controller_for_action(
+        tracker_state="home"
+    )
+    second_raw = _recipient_raw()
+    second_raw[RECIPIENT_ID] = "iphone_personal"
+    second_raw[RECIPIENT_NAME] = "Personal iPhone"
+    second_raw[RECIPIENT_NOTIFY_SERVICE] = "notify.mobile_app_iphone"
+    second_raw[RECIPIENT_TRACKER_ENTITY] = "device_tracker.iphone"
+    second_raw[RECIPIENT_TOKEN] = "other-token"
+    second = NotificationRecipient.from_dict(second_raw)
+    assert second is not None
+    controller.recipients[second.id] = second
+    controller._async_send_event_notification = AsyncMock()
+
+    event = SimpleNamespace(
+        data={
+            "config_entry_id": "entry123",
+            "event_id": "slow_leak_1",
+            "type": "slow_leak",
+            "flow_lph": 7.0,
+            "volume_l": 7.0,
+        }
+    )
+
+    await controller._async_leak_started(event)
+
+    assert controller._async_send_event_notification.await_count == 2
+    assert "slow_leak_1" in controller.acknowledgements
+
+
+@pytest.mark.asyncio
+async def test_event_end_removes_ack_and_new_event_starts_clean() -> None:
+    controller, recipient, _hass, _persisted = _controller_for_action(
+        tracker_state="home"
+    )
+    controller._async_send_event_notification = AsyncMock()
+    controller.acknowledgements["slow_leak_old"] = EventAcknowledgement(
+        globally_acknowledged=True,
+        globally_acknowledged_by=recipient.id,
+    )
+
+    await controller._async_leak_ended(
+        SimpleNamespace(
+            data={
+                "config_entry_id": "entry123",
+                "event_id": "slow_leak_old",
+            }
+        )
+    )
+    assert "slow_leak_old" not in controller.acknowledgements
+
+    await controller._async_leak_started(
+        SimpleNamespace(
+            data={
+                "config_entry_id": "entry123",
+                "event_id": "slow_leak_new",
+                "type": "slow_leak",
+            }
+        )
+    )
+
+    new_state = controller.acknowledgements["slow_leak_new"]
+    assert new_state.globally_acknowledged is False
+    assert new_state.muted_recipients == set()
+
+
+@pytest.mark.asyncio
+async def test_burst_critical_payload_supports_ios_and_android() -> None:
+    controller, recipient, hass, _persisted = _controller_for_action(
+        tracker_state="home"
+    )
+
+    await controller._async_send_event_notification(
+        recipient,
+        "burst_leak_1",
+        "burst_leak",
+        {"flow_lph": 2500.0, "volume_l": 20.0},
+        returning_home=False,
+    )
+
+    assert len(hass.services.calls) == 1
+    domain, service, service_data = hass.services.calls[0]
+    assert domain == "notify"
+    assert service == "mobile_app_ipad"
+
+    payload = service_data["data"]
+    assert payload["ttl"] == 0
+    assert payload["priority"] == "high"
+    assert payload["channel"] == "alarm_stream"
+    assert payload["push"]["interruption-level"] == "critical"
