@@ -531,10 +531,13 @@ class WaterLeakOptionsFlow(OptionsFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             existing = self._raw_recipients()
+            name = str(user_input[RECIPIENT_NAME]).strip()
             notify_service = str(user_input[RECIPIENT_NOTIFY_SERVICE])
             tracker_entity = str(user_input[RECIPIENT_TRACKER_ENTITY])
 
-            if any(
+            if not name:
+                errors["base"] = "recipient_name_required"
+            elif any(
                 raw.get(RECIPIENT_NOTIFY_SERVICE) == notify_service
                 for raw in existing
             ):
@@ -542,7 +545,7 @@ class WaterLeakOptionsFlow(OptionsFlow):
             else:
                 recipient = {
                     RECIPIENT_ID: uuid4().hex[:10],
-                    RECIPIENT_NAME: str(user_input[RECIPIENT_NAME]).strip(),
+                    RECIPIENT_NAME: name,
                     RECIPIENT_NOTIFY_SERVICE: notify_service,
                     RECIPIENT_TRACKER_ENTITY: tracker_entity,
                     RECIPIENT_CRITICAL_ENABLED: bool(
@@ -651,8 +654,11 @@ class WaterLeakOptionsFlow(OptionsFlow):
 
         errors: dict[str, str] = {}
         if user_input is not None:
+            name = str(user_input[RECIPIENT_NAME]).strip()
             notify_service = str(user_input[RECIPIENT_NOTIFY_SERVICE])
-            if any(
+            if not name:
+                errors["base"] = "recipient_name_required"
+            elif any(
                 str(raw.get(RECIPIENT_ID, "")) != recipient_id
                 and raw.get(RECIPIENT_NOTIFY_SERVICE) == notify_service
                 for raw in recipients
@@ -661,7 +667,7 @@ class WaterLeakOptionsFlow(OptionsFlow):
             else:
                 replacement = {
                     RECIPIENT_ID: str(current[RECIPIENT_ID]),
-                    RECIPIENT_NAME: str(user_input[RECIPIENT_NAME]).strip(),
+                    RECIPIENT_NAME: name,
                     RECIPIENT_NOTIFY_SERVICE: notify_service,
                     RECIPIENT_TRACKER_ENTITY: str(
                         user_input[RECIPIENT_TRACKER_ENTITY]
