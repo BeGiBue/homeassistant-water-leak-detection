@@ -31,13 +31,43 @@
           "flow_entity": "Durchflusssensor",
           "total_entity": "Gesamtverbrauchssensor"
         }
+      },
+      "notifications": {
+        "title": "Benachrichtigungsempfänger",
+        "description": "Füge jetzt ein oder mehrere Companion-App-Geräte als Empfänger hinzu oder schließe die Einrichtung ohne Empfänger ab. Empfänger können später jederzeit über „Konfigurieren“ geändert werden.",
+        "menu_options": {
+          "add_initial_recipient": "Benachrichtigungsgerät hinzufügen",
+          "finish_setup": "Einrichtung abschließen"
+        }
+      },
+      "add_initial_recipient": {
+        "title": "Benachrichtigungsgerät hinzufügen",
+        "description": "Wähle den Companion-Benachrichtigungsdienst und den zugehörigen Device Tracker. Das globale Quittieren wird im Backend anhand des Home-Status geprüft.",
+        "data": {
+          "name": "Anzeigename",
+          "notify_service": "Companion-Benachrichtigungsdienst",
+          "tracker_entity": "Device Tracker",
+          "critical_enabled": "Kritische Burst-Leak-Alarme erlauben",
+          "allow_global_ack": "Globales Quittieren erlauben, wenn Gerät zuhause",
+          "trusted_stationary": "Stationäres vertrauenswürdiges Home-Gerät"
+        }
+      },
+      "reconfigure": {
+        "title": "Messquellen neu konfigurieren",
+        "description": "Ändere den Durchflusssensor und optional den Gesamtverbrauchssensor. Die Integration wird anschließend neu geladen.",
+        "data": {
+          "flow_entity": "Durchflusssensor",
+          "total_entity": "Gesamtverbrauchssensor (optional)"
+        }
       }
     },
     "error": {
       "entity_not_available": "Die ausgewählte Entität ist derzeit nicht verfügbar.",
       "unsupported_flow_unit": "Der Durchflusssensor verwendet eine nicht unterstützte Einheit.",
       "unsupported_volume_unit": "Der Verbrauchssensor verwendet eine nicht unterstützte Einheit.",
-      "same_source_entity": "Durchfluss und Gesamtverbrauch müssen unterschiedliche Entitäten sein."
+      "same_source_entity": "Durchfluss und Gesamtverbrauch müssen unterschiedliche Entitäten sein.",
+      "recipient_notify_service_exists": "Dieser Companion-Benachrichtigungsdienst ist bereits als Empfänger ausgewählt.",
+      "recipient_name_required": "Bitte gib einen Namen für das Benachrichtigungsgerät ein."
     },
     "abort": {
       "already_configured": "Dieser Durchflusssensor ist bereits konfiguriert.",
@@ -47,12 +77,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "Optionen",
+        "title": "Konfiguration",
+        "description": "Passe Benachrichtigungsempfänger oder Experteneinstellungen an. Messquellen können über „Neu konfigurieren“ geändert werden.",
         "menu_options": {
-          "expert": "Experteneinstellungen",
-          "add_recipient": "Benachrichtigungsgerät hinzufügen",
-          "remove_recipient": "Benachrichtigungsgerät entfernen",
-          "edit_recipient": "Benachrichtigungsgerät bearbeiten"
+          "notifications": "Benachrichtigungsempfänger",
+          "expert": "Experteneinstellungen"
         }
       },
       "expert": {
@@ -126,6 +155,15 @@
           "allow_global_ack": "Globales Quittieren erlauben, wenn Gerät zuhause",
           "trusted_stationary": "Stationäres vertrauenswürdiges Home-Gerät"
         }
+      },
+      "notifications": {
+        "title": "Benachrichtigungsempfänger",
+        "description": "Verwalte die Companion-App-Geräte, die Leckagealarme erhalten.",
+        "menu_options": {
+          "add_recipient": "Empfänger hinzufügen",
+          "edit_recipient": "Empfänger bearbeiten",
+          "remove_recipient": "Empfänger entfernen"
+        }
       }
     },
     "error": {
@@ -141,6 +179,287 @@
       "no_mobile_app_notify_services": "Es wurden keine mobile_app-Benachrichtigungsdienste gefunden. Richte zuerst die Home Assistant Companion App ein.",
       "no_recipients_configured": "Es sind noch keine Benachrichtigungsgeräte konfiguriert.",
       "recipient_not_found": "Das ausgewählte Benachrichtigungsgerät wurde nicht mehr gefunden."
+    }
+  },
+  "selector": {
+    "source_mode": {
+      "options": {
+        "entities": "Einzelne Entitäten auswählen",
+        "device": "Home-Assistant-Gerät auswählen"
+      }
+    }
+  },
+  "device": {
+    "water_leak_detection": {
+      "name": "Wasserleck-Erkennung"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "source_unavailable": "Messquelle nicht verfügbar",
+          "idle": "Bereit",
+          "slow_leak_monitoring": "Slow Leak wird geprüft",
+          "low_flow_monitoring": "Low Flow wird geprüft",
+          "high_flow_monitoring": "High Flow wird geprüft",
+          "burst_leak_monitoring": "Burst Leak wird geprüft",
+          "slow_leak": "Slow Leak",
+          "low_flow": "Low Flow",
+          "high_flow": "High Flow",
+          "burst_leak": "Burst Leak"
+        },
+        "state_attributes": {
+          "flow_source": {
+            "name": "Durchflussquelle"
+          },
+          "total_source": {
+            "name": "Gesamtverbrauchsquelle"
+          },
+          "source_available": {
+            "name": "Messquelle verfügbar"
+          },
+          "active_event_id": {
+            "name": "Aktive Ereignis-ID"
+          },
+          "active_detector": {
+            "name": "Aktiver Detektor"
+          },
+          "globally_acknowledged": {
+            "name": "Global quittiert"
+          },
+          "globally_acknowledged_by": {
+            "name": "Global quittiert von"
+          },
+          "globally_acknowledged_at": {
+            "name": "Global quittiert um"
+          },
+          "muted_recipients": {
+            "name": "Stummgeschaltete Empfänger"
+          },
+          "high_flow_bypass": {
+            "name": "High-Flow-Bypass"
+          },
+          "slow_leak_enabled": {
+            "name": "Slow Leak aktiviert"
+          },
+          "low_flow_enabled": {
+            "name": "Low Flow aktiviert"
+          },
+          "detectors": {
+            "name": "Detektorzustände"
+          }
+        }
+      },
+      "current_flow": {
+        "name": "Aktueller Durchfluss"
+      },
+      "active_event_duration": {
+        "name": "Dauer des aktiven Ereignisses"
+      },
+      "active_event_volume": {
+        "name": "Volumen des aktiven Ereignisses"
+      },
+      "high_flow_bypass_remaining": {
+        "name": "Restzeit High-Flow-Bypass",
+        "state_attributes": {
+          "active": {
+            "name": "Aktiv"
+          },
+          "finishes_at": {
+            "name": "Endet um"
+          }
+        }
+      },
+      "learned_maximum_flow": {
+        "name": "Gelernter Maximaldurchfluss",
+        "state_attributes": {
+          "short_reference_lph": {
+            "name": "Kurzzeitreferenz"
+          },
+          "long_reference_lph": {
+            "name": "Langzeitreferenz"
+          },
+          "sample_count": {
+            "name": "Anzahl Lernwerte"
+          },
+          "coverage_days": {
+            "name": "Abgedeckte Tage"
+          },
+          "window_days": {
+            "name": "Lernfenster"
+          },
+          "confidence": {
+            "name": "Lernzuverlässigkeit"
+          }
+        }
+      },
+      "learning_confidence": {
+        "name": "Lernzuverlässigkeit",
+        "state": {
+          "insufficient": "Unzureichend gelernt",
+          "learning": "Lernen aktiv",
+          "reliable": "Zuverlässig gelernt"
+        },
+        "state_attributes": {
+          "sample_count": {
+            "name": "Anzahl Lernwerte"
+          },
+          "coverage_days": {
+            "name": "Abgedeckte Tage"
+          },
+          "age_days": {
+            "name": "Alter der Lerndaten"
+          },
+          "window_days": {
+            "name": "Lernfenster"
+          }
+        }
+      },
+      "learning_coverage": {
+        "name": "Lernabdeckung",
+        "state_attributes": {
+          "learning_age_days": {
+            "name": "Alter der Lerndaten"
+          },
+          "sample_count": {
+            "name": "Anzahl Lernwerte"
+          },
+          "window_days": {
+            "name": "Lernfenster"
+          }
+        }
+      },
+      "hydraulic_reference_flow": {
+        "name": "Hydraulischer Referenzdurchfluss"
+      },
+      "effective_high_threshold": {
+        "name": "Effektive High-Flow-Grenze"
+      },
+      "effective_burst_threshold": {
+        "name": "Effektive Burst-Leak-Grenze",
+        "state_attributes": {
+          "normal_reference_lph": {
+            "name": "Normaldurchfluss-Referenz"
+          },
+          "hydraulic_reference_lph": {
+            "name": "Hydraulische Referenz"
+          },
+          "hydraulic_model_is_plausibility_only": {
+            "name": "Hydraulikmodell nur Plausibilitätsprüfung"
+          }
+        }
+      }
+    },
+    "binary_sensor": {
+      "leak_alarm": {
+        "name": "Leckalarm",
+        "state_attributes": {
+          "status": {
+            "name": "Status"
+          },
+          "event_id": {
+            "name": "Ereignis-ID"
+          },
+          "detector": {
+            "name": "Detektor"
+          }
+        }
+      },
+      "shutoff_request": {
+        "name": "Absperranforderung",
+        "state_attributes": {
+          "decoupled_from_alarm_acknowledgement": {
+            "name": "Von Alarmquittierung entkoppelt"
+          },
+          "status": {
+            "name": "Status"
+          },
+          "event_id": {
+            "name": "Ereignis-ID"
+          }
+        }
+      }
+    },
+    "switch": {
+      "slow_leak_detection": {
+        "name": "Slow-Leak-Erkennung"
+      },
+      "low_flow_detection": {
+        "name": "Low-Flow-Erkennung"
+      },
+      "high_flow_bypass": {
+        "name": "High-Flow-Bypass",
+        "state_attributes": {
+          "remaining_seconds": {
+            "name": "Restzeit"
+          },
+          "finishes_at": {
+            "name": "Endet um"
+          },
+          "burst_leak_protection_active": {
+            "name": "Burst-Leak-Schutz aktiv"
+          }
+        }
+      }
+    },
+    "number": {
+      "high_flow_bypass_duration": {
+        "name": "Dauer High-Flow-Bypass"
+      }
+    }
+  },
+  "common": {
+    "detector_slow_leak": "Slow Leak",
+    "detector_low_flow": "Low Flow",
+    "detector_high_flow": "High Flow",
+    "detector_burst_leak": "Burst Leak",
+    "notification_title": "Wasserleck-Erkennung: {detector}",
+    "notification_title_returning_home": "Wasserleck weiterhin aktiv",
+    "notification_returned_home": "Du bist nach Hause zurückgekehrt, während dieses Ereignis noch aktiv ist.",
+    "notification_current_flow": "Aktueller Durchfluss: {flow} L/h.",
+    "notification_volume": "Volumen seit Beginn der Erkennung: {volume} L.",
+    "notification_event_active": "Ein Wasserereignis ist aktiv.",
+    "action_mute_device": "Auf diesem Gerät stummschalten",
+    "action_ack_all": "Für alle quittieren",
+    "global_ack_rejected_title": "Globale Quittierung abgelehnt",
+    "global_ack_rejected_message": "Dieses Gerät befindet sich aktuell nicht in der Home-Zone. Der Alarm kann nur für dieses Gerät stummgeschaltet werden."
+  },
+  "services": {
+    "start_high_flow_bypass": {
+      "name": "High-Flow-Bypass starten",
+      "description": "Unterdrückt High Flow vorübergehend. Burst Leak bleibt vollständig aktiv.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Konfigurationseintrag-ID",
+          "description": "Optional, wenn nur eine Instanz eingerichtet ist."
+        },
+        "duration_minutes": {
+          "name": "Dauer",
+          "description": "Dauer des Bypass in Minuten."
+        }
+      }
+    },
+    "cancel_high_flow_bypass": {
+      "name": "High-Flow-Bypass beenden",
+      "description": "Beendet den High-Flow-Bypass sofort.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Konfigurationseintrag-ID",
+          "description": "Optional, wenn nur eine Instanz eingerichtet ist."
+        }
+      }
+    },
+    "reset_learning": {
+      "name": "Lernmodell zurücksetzen",
+      "description": "Löscht alle zugelassenen Lernwerte. Aktive Leckereignisse und Einstellungen bleiben erhalten.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Konfigurationseintrag-ID",
+          "description": "Optional, wenn nur eine Instanz eingerichtet ist."
+        }
+      }
     }
   }
 }
