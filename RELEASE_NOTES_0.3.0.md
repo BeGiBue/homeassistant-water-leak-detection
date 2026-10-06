@@ -1,4 +1,4 @@
-# Home Assistant Water Leak Detection 0.3.0
+# Water Leak Guard 0.3.0
 
 Version 0.3.0 completes the original backend roadmap through adaptive detection and hydraulic plausibility.
 
@@ -33,7 +33,7 @@ Recommended: install through HACS as a custom Integration repository:
 
 Minimum Home Assistant: 2026.9.0.
 
-After HACS installation, restart Home Assistant and add **Home Assistant Water Leak Detection** under **Settings → Devices & services**.
+After HACS installation, restart Home Assistant and add **Water Leak Guard** under **Settings → Devices & services**.
 
 ## Upgrade notes
 
