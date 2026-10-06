@@ -16,9 +16,9 @@
 - [x] Manifest classifies the component as `integration_type: "service"`, never `helper`.
 - [x] Release notes are prepared in `RELEASE_NOTES_1.0.0.md`.
 - [x] Changelog updated.
-- [ ] Publish GitHub Release with tag `1.0.0` pointing to the release-preparation commit.
-- [ ] Use `RELEASE_NOTES_1.0.0.md` as the release body.
-- [ ] Verify the tagged manifest still says `service`.
+- [x] Publish GitHub Release with tag `1.0.0` pointing to the release-preparation commit.
+- [x] Use `RELEASE_NOTES_1.0.0.md` as the release body.
+- [x] Verify the tagged manifest still says `service`.
 - [ ] Run the manual **HACS** workflow if a release validation is desired.
 
 ## HACS behavior
