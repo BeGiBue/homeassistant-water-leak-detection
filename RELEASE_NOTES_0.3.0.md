@@ -2,6 +2,14 @@
 
 Version 0.3.0 completes the original backend roadmap through adaptive detection and hydraulic plausibility.
 
+## Home Assistant UI
+
+- Appears as a normal integration under **Settings → Devices & services → Integrations**.
+- Uses the configured Home Assistant language for the integration title, device/entity names, states, configuration dialogs, service actions, and Companion notification text.
+- Complete German (`de`) runtime translation is included; English is the fallback.
+- Notification recipients can be configured during initial setup and later through **Configure**.
+- Source sensors can be changed later through **Reconfigure**.
+
 ## Highlights
 
 - Four independent detector classes: Slow Leak, Low Flow, High Flow, Burst Leak.
