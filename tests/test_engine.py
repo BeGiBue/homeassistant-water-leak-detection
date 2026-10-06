@@ -44,6 +44,15 @@ def test_low_flow_seven_minute_quiet_period_resets() -> None:
     assert engine.runtimes[DetectorKind.LOW_FLOW].phase is DetectorPhase.IDLE
 
 
+def test_pool_fill_band_does_not_start_slow_or_low_when_high_is_bypassed() -> None:
+    engine = DetectionEngine()
+    engine.sample(at(0), 800.0, None, high_flow_bypassed=True)
+    assert engine.runtimes[DetectorKind.SLOW_LEAK].phase is DetectorPhase.IDLE
+    assert engine.runtimes[DetectorKind.LOW_FLOW].phase is DetectorPhase.IDLE
+    assert engine.runtimes[DetectorKind.HIGH_FLOW].phase is DetectorPhase.IDLE
+    assert engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.IDLE
+
+
 def test_high_flow_bypass_only_resets_high_flow() -> None:
     settings = DetectorSettings(
         high_detection_seconds=10,
