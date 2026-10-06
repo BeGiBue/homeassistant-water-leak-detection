@@ -245,3 +245,45 @@ def test_burst_shutdown_request_can_be_disabled_independently() -> None:
     snapshot = engine.snapshot()
     assert snapshot.alarm_active is True
     assert snapshot.shutoff_request is False
+
+
+def test_disabling_slow_detector_clears_only_slow_state() -> None:
+    settings = DetectorSettings(
+        slow_detection_seconds=1,
+        low_detection_seconds=3600,
+    )
+    engine = DetectionEngine(settings)
+    engine.sample(at(0), 7.0, None)
+    engine.sample(at(1), 7.0, None)
+    assert engine.runtimes[DetectorKind.SLOW_LEAK].phase is DetectorPhase.ACTIVE
+
+    engine.update_settings(
+        DetectorSettings(
+            slow_enabled=False,
+            low_enabled=True,
+            low_detection_seconds=3600,
+        )
+    )
+    transitions = engine.sample(at(2), 7.0, None)
+
+    assert engine.runtimes[DetectorKind.SLOW_LEAK].phase is DetectorPhase.IDLE
+    assert any(
+        transition.kind is DetectorKind.SLOW_LEAK
+        and transition.old_phase is DetectorPhase.ACTIVE
+        and transition.new_phase is DetectorPhase.IDLE
+        for transition in transitions
+    )
+
+
+def test_disabling_low_detector_does_not_disable_burst() -> None:
+    settings = DetectorSettings(
+        low_enabled=False,
+        burst_threshold_lph=2000,
+        burst_detection_seconds=1,
+    )
+    engine = DetectionEngine(settings)
+    engine.sample(at(0), 2500.0, None)
+    engine.sample(at(1), 2500.0, None)
+
+    assert engine.runtimes[DetectorKind.LOW_FLOW].phase is DetectorPhase.IDLE
+    assert engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.ACTIVE
