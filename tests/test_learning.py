@@ -64,26 +64,38 @@ def test_rolling_window_prunes_old_samples() -> None:
     assert snapshot.learned_max_lph == 500.0
 
 
-def test_short_term_reference_adapts_to_seasonal_change() -> None:
+def test_learning_adapts_to_recent_seasonal_change() -> None:
     learner = AdaptiveFlowLearner(window_days=30, quiet_seconds=10)
 
     def add_episode(start: datetime, peak: float) -> None:
         learner.observe(start, peak, suspicious=False, high_flow_bypassed=False)
-        learner.observe(start + timedelta(seconds=10), 0.0, suspicious=False, high_flow_bypassed=False)
-        learner.observe(start + timedelta(seconds=20), 0.0, suspicious=False, high_flow_bypassed=False)
+        learner.observe(
+            start + timedelta(seconds=10),
+            0.0,
+            suspicious=False,
+            high_flow_bypassed=False,
+        )
+        learner.observe(
+            start + timedelta(seconds=20),
+            0.0,
+            suspicious=False,
+            high_flow_bypassed=False,
+        )
 
     for day in range(12):
         add_episode(BASE + timedelta(days=day), 700.0)
+
+    baseline = learner.snapshot(BASE + timedelta(days=12))
+    assert baseline.learned_max_lph is not None
+
     for day in range(20, 28):
         add_episode(BASE + timedelta(days=day), 1200.0)
 
-    snapshot = learner.snapshot(BASE + timedelta(days=28))
-    assert snapshot.short_reference_lph is not None
-    assert snapshot.long_reference_lph is not None
-    assert snapshot.short_reference_lph > snapshot.long_reference_lph
-    assert snapshot.learned_max_lph is not None
-    assert snapshot.learned_max_lph > snapshot.long_reference_lph
-
+    changed = learner.snapshot(BASE + timedelta(days=28))
+    assert changed.short_reference_lph is not None
+    assert changed.learned_max_lph is not None
+    assert changed.short_reference_lph >= 1200.0
+    assert changed.learned_max_lph > baseline.learned_max_lph
 
 def test_confidence_progresses_with_samples_and_coverage() -> None:
     learner = AdaptiveFlowLearner(window_days=30, quiet_seconds=10)
