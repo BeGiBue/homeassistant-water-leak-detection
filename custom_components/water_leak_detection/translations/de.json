@@ -51,7 +51,8 @@
         "menu_options": {
           "expert": "Experteneinstellungen",
           "add_recipient": "Benachrichtigungsgerät hinzufügen",
-          "remove_recipient": "Benachrichtigungsgerät entfernen"
+          "remove_recipient": "Benachrichtigungsgerät entfernen",
+          "edit_recipient": "Benachrichtigungsgerät bearbeiten"
         }
       },
       "expert": {
@@ -98,6 +99,24 @@
         "data": {
           "id": "Gerät"
         }
+      },
+      "edit_recipient": {
+        "title": "Benachrichtigungsgerät auswählen",
+        "data": {
+          "id": "Gerät"
+        }
+      },
+      "edit_recipient_details": {
+        "title": "Benachrichtigungsgerät bearbeiten",
+        "description": "Ändere Tracker, Critical-Alarm und Quittierungsrechte. Die interne Gerätekennung und das Action-Token bleiben erhalten.",
+        "data": {
+          "name": "Anzeigename",
+          "notify_service": "Companion-Benachrichtigungsdienst",
+          "tracker_entity": "Device Tracker",
+          "critical_enabled": "Kritische Burst-Leak-Alarme erlauben",
+          "allow_global_ack": "Globales Quittieren erlauben, wenn Gerät zuhause",
+          "trusted_stationary": "Stationäres vertrauenswürdiges Home-Gerät"
+        }
       }
     },
     "error": {
@@ -109,7 +128,8 @@
     },
     "abort": {
       "no_mobile_app_notify_services": "Es wurden keine mobile_app-Benachrichtigungsdienste gefunden. Richte zuerst die Home Assistant Companion App ein.",
-      "no_recipients_configured": "Es sind noch keine Benachrichtigungsgeräte konfiguriert."
+      "no_recipients_configured": "Es sind noch keine Benachrichtigungsgeräte konfiguriert.",
+      "recipient_not_found": "Das ausgewählte Benachrichtigungsgerät wurde nicht mehr gefunden."
     }
   }
 }
