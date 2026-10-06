@@ -558,8 +558,92 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         """Show the options menu."""
         return self.async_show_menu(
             step_id="init",
-            menu_options=["notifications", "expert"],
+            menu_options=["sources", "notifications", "expert"],
         )
+
+    async def async_step_sources(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Edit measurement sources from the normal Configure dialog."""
+        errors: dict[str, str] = {}
+        entry = self.config_entry
+
+        if user_input is not None:
+            flow_entity = str(user_input[CONF_FLOW_ENTITY])
+            total_entity = user_input.get(CONF_TOTAL_ENTITY) or None
+            errors = self._validate_sources(flow_entity, total_entity)
+
+            if not errors:
+                for current in self.hass.config_entries.async_entries(DOMAIN):
+                    if (
+                        current.entry_id != entry.entry_id
+                        and current.data.get(CONF_FLOW_ENTITY) == flow_entity
+                    ):
+                        errors["base"] = "already_configured"
+                        break
+
+            if not errors:
+                data = dict(entry.data)
+                data[CONF_FLOW_ENTITY] = flow_entity
+                if total_entity:
+                    data[CONF_TOTAL_ENTITY] = total_entity
+                else:
+                    data.pop(CONF_TOTAL_ENTITY, None)
+                data.pop(CONF_SOURCE_DEVICE, None)
+                self.hass.config_entries.async_update_entry(entry, data=data)
+                self.hass.config_entries.async_schedule_reload(entry.entry_id)
+                return self.async_create_entry(
+                    title="",
+                    data=dict(entry.options),
+                )
+
+        return self.async_show_form(
+            step_id="sources",
+            data_schema=probatio.Schema(
+                {
+                    probatio.Required(
+                        CONF_FLOW_ENTITY,
+                        default=entry.data[CONF_FLOW_ENTITY],
+                    ): EntitySelector(
+                        EntitySelectorConfig(domain="sensor", multiple=False)
+                    ),
+                    probatio.Optional(
+                        CONF_TOTAL_ENTITY,
+                        default=entry.data.get(CONF_TOTAL_ENTITY),
+                    ): EntitySelector(
+                        EntitySelectorConfig(domain="sensor", multiple=False)
+                    ),
+                }
+            ),
+            errors=errors,
+        )
+
+    def _validate_sources(
+        self,
+        flow_entity: str,
+        total_entity: str | None,
+    ) -> dict[str, str]:
+        """Validate measurement sources in the options flow."""
+        errors: dict[str, str] = {}
+        flow_state = self.hass.states.get(flow_entity)
+        if flow_state is None:
+            errors[CONF_FLOW_ENTITY] = "entity_not_available"
+        elif not is_supported_flow_unit(
+            flow_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
+        ):
+            errors[CONF_FLOW_ENTITY] = "unsupported_flow_unit"
+
+        if total_entity:
+            total_state = self.hass.states.get(total_entity)
+            if total_state is None:
+                errors[CONF_TOTAL_ENTITY] = "entity_not_available"
+            elif not is_supported_volume_unit(
+                total_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
+            ):
+                errors[CONF_TOTAL_ENTITY] = "unsupported_volume_unit"
+            elif total_entity == flow_entity:
+                errors[CONF_TOTAL_ENTITY] = "same_source_entity"
+        return errors
 
     async def async_step_notifications(
         self, user_input: dict[str, Any] | None = None
