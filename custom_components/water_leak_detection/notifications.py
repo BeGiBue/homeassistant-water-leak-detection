@@ -18,7 +18,6 @@ from .const import (
     ACTION_MUTE,
     ACTION_PREFIX,
     CONF_NOTIFICATION_RECIPIENTS,
-    DetectorKind,
     EVENT_ACK_REJECTED,
     EVENT_ACKNOWLEDGED,
     EVENT_LEAK_ENDED,
@@ -32,6 +31,7 @@ from .const import (
     RECIPIENT_TOKEN,
     RECIPIENT_TRACKER_ENTITY,
     RECIPIENT_TRUSTED_STATIONARY,
+    DetectorKind,
 )
 
 if TYPE_CHECKING:
