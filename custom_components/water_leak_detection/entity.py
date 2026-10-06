@@ -1,4 +1,4 @@
-"""Base entity for Water Leak Detection."""
+"""Base entity for Water Leak Guard."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from .manager import WaterLeakManager
 
 
 class WaterLeakEntity(Entity):
-    """Base entity bound to one Water Leak Detection config entry."""
+    """Base entity bound to one Water Leak Guard config entry."""
 
     _attr_has_entity_name = True
 
@@ -21,7 +21,7 @@ class WaterLeakEntity(Entity):
             identifiers={(DOMAIN, manager.entry.entry_id)},
             translation_key="water_leak_detection",
             manufacturer="BeGiBue",
-            model="Water Leak Detection",
+            model="Water Leak Guard",
         )
 
     async def async_added_to_hass(self) -> None:
