@@ -12,6 +12,8 @@ The configuration remains editable and contains:
 
 The measurement-source form is also available through Home Assistant's **Reconfigure** action.
 
+Saving a Configure subsection keeps the options flow open. Measurement sources and expert settings return to the main Configure menu; recipient add/edit/remove actions return to the notification-recipient submenu. That submenu includes an explicit **Back to configuration** action.
+
 ## Measurement sources
 
 A flow-rate sensor is required. A cumulative consumption sensor is optional but recommended.
@@ -93,7 +95,7 @@ The bypass expires automatically and its expiry is persisted across Home Assista
 
 ## Companion notification devices
 
-Recipients can be selected during initial setup and managed later under **Configure → Notification recipients**.
+Recipients can be selected during initial setup and managed later under **Configure → Notification recipients**. The overview shows the configured display names in a compact list; technical notification-service and tracker IDs remain available in the edit forms instead of being repeated in the overview.
 
 Each recipient is configured independently with:
 

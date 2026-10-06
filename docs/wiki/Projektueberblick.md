@@ -9,7 +9,7 @@
 | Technische Domain | `water_leak_detection` |
 | Plattform | Home Assistant |
 | Integrationstyp | Service-Integration |
-| Aktueller Stand | 0.3.0 |
+| Aktueller Stand | 1.0.2 |
 | Repository | `BeGiBue/homeassistant-water-leak-detection` |
 | Fokus | Backend-Integration |
 | Sprache | folgt der in Home Assistant eingestellten Sprache; Deutsch und Englisch enthalten |

@@ -76,4 +76,6 @@ After the integration is installed, open **Settings → Devices & services → I
 
 Home Assistant's separate **Reconfigure** action for measurement sources remains supported as an additional path.
 
+Saving a Configure subsection returns to the appropriate menu instead of closing the full dialog. Under **Notification recipients**, use **Back to configuration** to return to the main menu. The X in the header closes the complete options flow.
+
 Notification recipients do not have to be configured only during initial installation; they can be added, edited, or removed later.

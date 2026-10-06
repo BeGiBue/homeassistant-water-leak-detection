@@ -26,7 +26,7 @@ def test_manifest_is_normal_service_integration() -> None:
 
     assert manifest["integration_type"] == "service"
     assert manifest["config_flow"] is True
-    assert manifest["version"] == "1.0.1"
+    assert manifest["version"] == "1.0.2"
     assert manifest["name"] == "Water Leak Guard"
     assert NAME == "Water Leak Guard"
 
@@ -159,3 +159,42 @@ def test_entity_platforms_do_not_hardcode_visible_names() -> None:
     ):
         source = (INTEGRATION / filename).read_text(encoding="utf-8")
         assert "_attr_name =" not in source
+
+
+
+def test_configure_translations_do_not_contain_literal_newline_escapes() -> None:
+    def assert_clean(value) -> None:
+        if isinstance(value, str):
+            assert "\\\\n" not in value
+        elif isinstance(value, dict):
+            for nested in value.values():
+                assert_clean(nested)
+        elif isinstance(value, list):
+            for nested in value:
+                assert_clean(nested)
+
+    for language in ("de", "en"):
+        translation = _load_json(INTEGRATION / "translations" / f"{language}.json")
+        assert_clean(translation["config"])
+        assert_clean(translation["options"])
+
+
+def test_configure_navigation_labels_are_translated() -> None:
+    german = _load_json(INTEGRATION / "translations" / "de.json")
+    english = _load_json(INTEGRATION / "translations" / "en.json")
+
+    assert (
+        german["options"]["step"]["notifications"]["menu_options"]["back_to_main"]
+        == "Zurück zur Konfiguration"
+    )
+    assert (
+        english["options"]["step"]["notifications"]["menu_options"]["back_to_main"]
+        == "Back to configuration"
+    )
+
+    assert german["options"]["step"]["sources"]["submit"] == "Speichern und zurück"
+    assert german["options"]["step"]["expert"]["submit"] == "Speichern und zurück"
+    assert (
+        german["options"]["step"]["add_recipient"]["submit"]
+        == "Hinzufügen und zurück"
+    )

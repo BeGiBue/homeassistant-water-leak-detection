@@ -77,6 +77,15 @@ stehen drei Bereiche zur Verfügung:
 - hinzufügen
 - bearbeiten
 - entfernen
+- **Zurück zur Konfiguration** führt wieder ins Hauptmenü
+
+Beim Speichern bleibt der Konfigurator geöffnet:
+
+- Hinzufügen, Bearbeiten und Entfernen führen zurück zur Empfängerübersicht.
+- Messquellen und Experteneinstellungen führen zurück zur Hauptübersicht.
+- Das X oben links beendet den Options-Flow vollständig.
+
+Die Empfängerübersicht zeigt bewusst nur die vergebenen Anzeigenamen. Technische `notify.*`- und `device_tracker.*`-IDs werden dort nicht mehr ausgeschrieben.
 
 ### Experteneinstellungen
 

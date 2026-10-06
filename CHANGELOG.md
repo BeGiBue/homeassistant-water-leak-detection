@@ -2,6 +2,19 @@
 
 All notable changes to Water Leak Guard are documented here.
 
+## 1.0.2 — 2026-10-07
+
+### Fixed
+
+- Saving a Configure subsection no longer closes the complete Home Assistant options flow.
+- Measurement-source and expert-setting changes return to the main Configure menu after saving.
+- Adding, editing, or removing a notification recipient returns to the notification-recipient submenu.
+- Added an explicit **Back to configuration** entry to the notification-recipient submenu.
+- Fixed literal `\\n\\n` escape sequences being rendered in recipient descriptions.
+- Simplified the recipient overview to compact Markdown names instead of long notification-service and tracker IDs.
+- Added clearer **Save/Add/Remove and go back** action labels.
+- Added regression coverage for Configure navigation and description rendering.
+
 ## 1.0.1 — 2026-10-06
 
 ### Improved

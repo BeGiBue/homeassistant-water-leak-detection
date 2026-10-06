@@ -139,14 +139,10 @@ def _recipient_description_placeholders(
             "configured_recipients": "—",
         }
 
-    lines: list[str] = []
-    for recipient in valid:
-        name = str(recipient.get(RECIPIENT_NAME) or "—")
-        notify_service = str(
-            recipient.get(RECIPIENT_NOTIFY_SERVICE) or "—"
-        )
-        tracker = str(recipient.get(RECIPIENT_TRACKER_ENTITY) or "—")
-        lines.append(f"- {name} · {notify_service} · {tracker}")
+    lines = [
+        f"- **{str(recipient.get(RECIPIENT_NAME) or '—')}**"
+        for recipient in valid
+    ]
 
     return {
         "recipient_count": str(len(valid)),
@@ -622,15 +618,13 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
                 else:
                     data.pop(CONF_TOTAL_ENTITY, None)
                 data.pop(CONF_SOURCE_DEVICE, None)
-                self.hass.config_entries.async_update_entry(entry, data=data)
-                self.hass.config_entries.async_schedule_reload(entry.entry_id)
-                return self.async_create_entry(
-                    title="",
-                    data=dict(entry.options),
-                )
+                if self.hass.config_entries.async_update_entry(entry, data=data):
+                    self.hass.config_entries.async_schedule_reload(entry.entry_id)
+                return await self.async_step_init()
 
         return self.async_show_form(
             step_id="sources",
+            last_step=False,
             data_schema=probatio.Schema(
                 {
                     probatio.Required(
@@ -685,6 +679,7 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         menu_options = ["add_recipient"]
         if recipients:
             menu_options.extend(["edit_recipient", "remove_recipient"])
+        menu_options.append("back_to_main")
         return self.async_show_menu(
             step_id="notifications",
             menu_options=menu_options,
@@ -692,6 +687,12 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
                 recipients
             ),
         )
+
+    async def async_step_back_to_main(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Return from a submenu to the main Configure menu."""
+        return await self.async_step_init()
 
     async def async_step_expert(
         self, user_input: dict[str, Any] | None = None
@@ -703,7 +704,8 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
             if not errors:
                 updated = dict(self.config_entry.options)
                 updated.update(user_input)
-                return self.async_create_entry(title="", data=updated)
+                self._persist_options(updated)
+                return await self.async_step_init()
 
         options = self.config_entry.options
         values = user_input if user_input is not None else options
@@ -923,6 +925,7 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         )
         return self.async_show_form(
             step_id="expert",
+            last_step=False,
             data_schema=schema,
             errors=errors,
         )
@@ -968,10 +971,12 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
                 }
                 updated = dict(self.config_entry.options)
                 updated[CONF_NOTIFICATION_RECIPIENTS] = [*existing, recipient]
-                return self.async_create_entry(title="", data=updated)
+                self._persist_options(updated)
+                return await self.async_step_notifications()
 
         return self.async_show_form(
             step_id="add_recipient",
+            last_step=False,
             data_schema=WaterLeakConfigFlow._recipient_schema(notify_services),
             errors=errors,
             description_placeholders=_recipient_description_placeholders(
@@ -1001,6 +1006,7 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         ]
         return self.async_show_form(
             step_id="edit_recipient",
+            last_step=False,
             data_schema=probatio.Schema(
                 {
                     probatio.Required(RECIPIENT_ID): SelectSelector(
@@ -1074,10 +1080,13 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
                     else raw
                     for raw in recipients
                 ]
-                return self.async_create_entry(title="", data=updated)
+                self._persist_options(updated)
+                self._editing_recipient_id = None
+                return await self.async_step_notifications()
 
         return self.async_show_form(
             step_id="edit_recipient_details",
+            last_step=False,
             data_schema=WaterLeakConfigFlow._recipient_schema(
                 notify_services,
                 current=current,
@@ -1104,7 +1113,8 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
                 for raw in recipients
                 if str(raw.get(RECIPIENT_ID, "")) != remove_id
             ]
-            return self.async_create_entry(title="", data=updated)
+            self._persist_options(updated)
+            return await self.async_step_notifications()
 
         options = [
             SelectOptionDict(
@@ -1116,6 +1126,7 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         ]
         return self.async_show_form(
             step_id="remove_recipient",
+            last_step=False,
             data_schema=probatio.Schema(
                 {
                     probatio.Required(RECIPIENT_ID): SelectSelector(
@@ -1127,6 +1138,16 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
                 recipients
             ),
         )
+
+    def _persist_options(self, updated: dict[str, Any]) -> None:
+        """Save options immediately while keeping the Configure flow open."""
+        if self.hass.config_entries.async_update_entry(
+            self.config_entry,
+            options=updated,
+        ):
+            self.hass.config_entries.async_schedule_reload(
+                self.config_entry.entry_id
+            )
 
     def _raw_recipients(self) -> list[dict[str, Any]]:
         """Return valid raw recipient option dictionaries."""
