@@ -123,7 +123,7 @@ Daher bleibt die Absperranforderung bestehen, solange die physische Detektionslo
 
 # 6. Aktuelle Ventilsteuerung
 
-Version 0.3.0 steuert **nicht direkt** ein Ventil.
+Version 1.0.2 steuert **nicht direkt** ein Ventil.
 
 Stattdessen stellt die Integration einen stabilen Backend-Ausgang zur Verfügung.
 
