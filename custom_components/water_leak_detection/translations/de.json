@@ -5,7 +5,9 @@
       "user": {
         "title": "Messquelle auswählen",
         "description": "Wähle, ob die Wasserzähler-Sensoren direkt ausgewählt oder über ein Home-Assistant-Gerät erkannt werden sollen.",
-        "data": {"source_mode": "Art der Quelle"}
+        "data": {
+          "source_mode": "Art der Quelle"
+        }
       },
       "entities": {
         "title": "Messquellen",
@@ -18,7 +20,9 @@
       "device": {
         "title": "Wasserzähler-Gerät",
         "description": "Wähle das Home-Assistant-Gerät mit den Wasserzähler-Sensoren.",
-        "data": {"source_device": "Gerät"}
+        "data": {
+          "source_device": "Gerät"
+        }
       },
       "device_entities": {
         "title": "Erkannte Messquellen",
@@ -69,6 +73,12 @@
           "shutoff_burst": "Burst Leak fordert Absperrung an"
         }
       }
+    },
+    "error": {
+      "invalid_threshold_order": "Die Grenzwerte müssen in der Reihenfolge Slow Leak < Low Flow < High Flow < Burst Leak liegen.",
+      "invalid_low_quiet_threshold": "Die Low-Flow-Ruhegrenze muss unter der Low-Flow-Startgrenze liegen.",
+      "invalid_high_quiet_threshold": "Die High-Flow-Ruhegrenze muss unter der High-Flow-Grenze liegen.",
+      "invalid_burst_reset_threshold": "Die Burst-Leak-Resetgrenze muss unter der Burst-Leak-Absolutgrenze liegen."
     }
   }
 }
