@@ -15,6 +15,7 @@ import pytest
         "custom_components.water_leak_detection.engine",
         "custom_components.water_leak_detection.entity",
         "custom_components.water_leak_detection.manager",
+        "custom_components.water_leak_detection.notifications",
         "custom_components.water_leak_detection.number",
         "custom_components.water_leak_detection.sensor",
         "custom_components.water_leak_detection.switch",
