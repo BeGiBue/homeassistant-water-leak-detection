@@ -225,6 +225,7 @@ Event payloads include the event ID and relevant detector context. Burst events 
 - [Changelog](CHANGELOG.md)
 - [v0.3.0 release notes](RELEASE_NOTES_0.3.0.md)
 - [Release procedure](docs/RELEASING.md)
+- [Project Wiki](https://github.com/BeGiBue/homeassistant-water-leak-detection/wiki)
 - [Technical specification and roadmap](SPEC.md)
 
 ## Release status
