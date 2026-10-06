@@ -1,6 +1,6 @@
 {
   "domain": "water_leak_detection",
-  "name": "Home Assistant Water Leak Detection",
+  "name": "Water Leak Guard",
   "codeowners": [
     "@BeGiBue"
   ],
