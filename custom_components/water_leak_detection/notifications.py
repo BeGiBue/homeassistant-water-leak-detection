@@ -426,7 +426,9 @@ class NotificationController:
             ],
         }
 
-        if recipient.allow_global_ack:
+        tracker = self.hass.states.get(recipient.tracker_entity)
+        device_is_home = tracker is not None and tracker.state == "home"
+        if recipient.allow_global_ack and device_is_home:
             notification_data["actions"].append(
                 {
                     "action": self._action_id(
