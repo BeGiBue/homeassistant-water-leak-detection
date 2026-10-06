@@ -163,16 +163,20 @@ def test_entity_platforms_do_not_hardcode_visible_names() -> None:
 
 
 def test_configure_translations_do_not_contain_literal_newline_escapes() -> None:
+    def assert_clean(value) -> None:
+        if isinstance(value, str):
+            assert "\\\\n" not in value
+        elif isinstance(value, dict):
+            for nested in value.values():
+                assert_clean(nested)
+        elif isinstance(value, list):
+            for nested in value:
+                assert_clean(nested)
+
     for language in ("de", "en"):
         translation = _load_json(INTEGRATION / "translations" / f"{language}.json")
-        serialized = json.dumps(
-            {
-                "config": translation["config"],
-                "options": translation["options"],
-            },
-            ensure_ascii=False,
-        )
-        assert "\\\\n" not in serialized
+        assert_clean(translation["config"])
+        assert_clean(translation["options"])
 
 
 def test_configure_navigation_labels_are_translated() -> None:
