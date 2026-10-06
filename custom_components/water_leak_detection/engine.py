@@ -312,10 +312,13 @@ class DetectionEngine:
             runtime.phase is DetectorPhase.MONITORING
             and flow >= s.high_threshold_lph
         ):
-            if tr := self._transition(
-                kind, DetectorPhase.IDLE, now=now, total_l=total_l
-            ):
-                out.append(tr)
+            self._append_transition(
+                out,
+                kind,
+                DetectorPhase.IDLE,
+                now=now,
+                total_l=total_l,
+            )
             return out
 
         if flow < s.low_quiet_lph:
