@@ -1,4 +1,4 @@
-"""Runtime manager for Home Assistant Water Leak Detection."""
+"""Runtime manager for Water Leak Guard."""
 
 from __future__ import annotations
 
