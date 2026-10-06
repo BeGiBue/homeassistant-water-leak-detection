@@ -2,16 +2,24 @@
 
 All notable changes to Home Assistant Water Leak Detection are documented here.
 
-## 0.3.0 — 2026-10-06
+## 0.3.1 — 2026-10-06
 
-### Fixed before first 0.3.0 release
+### Fixed
 
-- Integration is classified as a normal Home Assistant service integration instead of a helper, so it appears under **Settings → Devices & services → Integrations**.
-- Complete runtime localization for English and German using Home Assistant's configured language.
-- Device names, entity names, translated sensor states, action labels, and Companion notification text now follow the Home Assistant language.
+- The integration is now classified as a normal Home Assistant service integration instead of a helper, so it appears under **Settings → Devices & services → Integrations**.
+- Complete English and German runtime translations now follow the configured Home Assistant language.
+- Device names, entity names, translated sensor states, service actions, and Companion notification text are localized.
 - Notification recipients can be selected during initial setup.
 - Notification recipients and expert settings can be reopened later through **Configure**.
 - Measurement source entities can be changed later through **Reconfigure**.
+- Options changes reload the integration through Home Assistant's native reloadable options flow.
+
+### Compatibility
+
+- No detector thresholds, adaptive-learning algorithms, shutoff semantics, or acknowledgement rules were changed from 0.3.0.
+- Existing runtime state and learning history remain compatible.
+
+## 0.3.0 — 2026-10-06
 
 ### Added
 
