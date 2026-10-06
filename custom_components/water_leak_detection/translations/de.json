@@ -81,7 +81,8 @@
         "description": "Passe Benachrichtigungsempfänger oder Experteneinstellungen an. Messquellen können über „Neu konfigurieren“ geändert werden.",
         "menu_options": {
           "notifications": "Benachrichtigungsempfänger",
-          "expert": "Experteneinstellungen"
+          "expert": "Experteneinstellungen",
+          "sources": "Messquellen"
         }
       },
       "expert": {
@@ -164,6 +165,14 @@
           "edit_recipient": "Empfänger bearbeiten",
           "remove_recipient": "Empfänger entfernen"
         }
+      },
+      "sources": {
+        "title": "Messquellen",
+        "description": "Ändere den Durchflusssensor und optional den Gesamtverbrauchssensor. Die Integration wird anschließend automatisch neu geladen.",
+        "data": {
+          "flow_entity": "Durchflusssensor",
+          "total_entity": "Gesamtverbrauchssensor (optional)"
+        }
       }
     },
     "error": {
@@ -173,7 +182,12 @@
       "invalid_burst_reset_threshold": "Die Burst-Leak-Resetgrenze muss unter der Burst-Leak-Absolutgrenze liegen.",
       "recipient_notify_service_exists": "Dieser Companion-Benachrichtigungsdienst ist bereits als Empfänger konfiguriert.",
       "recipient_name_required": "Bitte gib einen Namen für das Benachrichtigungsgerät ein.",
-      "invalid_adaptive_multiplier_order": "Der Burst-Leak-Faktor muss größer als der High-Flow-Faktor sein."
+      "invalid_adaptive_multiplier_order": "Der Burst-Leak-Faktor muss größer als der High-Flow-Faktor sein.",
+      "entity_not_available": "Die ausgewählte Entität ist derzeit nicht verfügbar.",
+      "unsupported_flow_unit": "Der Durchflusssensor verwendet eine nicht unterstützte Einheit.",
+      "unsupported_volume_unit": "Der Verbrauchssensor verwendet eine nicht unterstützte Einheit.",
+      "same_source_entity": "Durchfluss und Gesamtverbrauch müssen unterschiedliche Entitäten sein.",
+      "already_configured": "Dieser Durchflusssensor wird bereits von einem anderen Eintrag verwendet."
     },
     "abort": {
       "no_mobile_app_notify_services": "Es wurden keine mobile_app-Benachrichtigungsdienste gefunden. Richte zuerst die Home Assistant Companion App ein.",
