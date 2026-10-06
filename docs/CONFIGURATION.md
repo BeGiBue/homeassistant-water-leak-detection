@@ -2,7 +2,7 @@
 
 ## Reopening the configuration
 
-After installation, open **Settings → Devices & services → Integrations → Water leak detection → Configure**.
+After installation, open **Settings → Devices & services → Integrations → Water Leak Guard → Configure**.
 
 The configuration remains editable and contains:
 
