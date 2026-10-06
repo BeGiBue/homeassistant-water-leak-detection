@@ -8,7 +8,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "water_leak_detection"
 NAME = "Home Assistant Water Leak Detection"
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -51,6 +51,15 @@ CONF_BURST_DETECTION_SEC = "burst_detection_seconds"
 CONF_BURST_RESET_LPH = "burst_reset_lph"
 CONF_BURST_RESET_SEC = "burst_reset_seconds"
 CONF_BYPASS_DEFAULT_MIN = "bypass_default_minutes"
+CONF_LEARNING_WINDOW_DAYS = "learning_window_days"
+CONF_MANUAL_MAX_FLOW_LPH = "manual_max_flow_lph"
+CONF_PIPE_DIAMETER_MM = "pipe_diameter_mm"
+CONF_STATIC_PRESSURE_BAR = "static_pressure_bar"
+CONF_HIGH_LEARNED_MULTIPLIER = "high_learned_multiplier"
+CONF_BURST_LEARNED_MULTIPLIER = "burst_learned_multiplier"
+CONF_HYDRAULIC_BURST_FRACTION = "hydraulic_burst_fraction"
+CONF_BURST_RATE_RISE_LPH_10S = "burst_rate_rise_lph_10s"
+CONF_BURST_RATE_CONFIRM_SEC = "burst_rate_confirm_seconds"
 
 CONF_SHUTOFF_SLOW = "shutoff_slow"
 CONF_SHUTOFF_LOW = "shutoff_low"
@@ -76,6 +85,15 @@ DEFAULT_BURST_DETECTION_SEC = 30.0
 DEFAULT_BURST_RESET_LPH = 500.0
 DEFAULT_BURST_RESET_SEC = 60.0
 DEFAULT_BYPASS_DEFAULT_MIN = 240.0
+DEFAULT_LEARNING_WINDOW_DAYS = 30
+DEFAULT_MANUAL_MAX_FLOW_LPH = 0.0
+DEFAULT_PIPE_DIAMETER_MM = 25.0
+DEFAULT_STATIC_PRESSURE_BAR = 3.5
+DEFAULT_HIGH_LEARNED_MULTIPLIER = 1.20
+DEFAULT_BURST_LEARNED_MULTIPLIER = 1.80
+DEFAULT_HYDRAULIC_BURST_FRACTION = 0.75
+DEFAULT_BURST_RATE_RISE_LPH_10S = 1000.0
+DEFAULT_BURST_RATE_CONFIRM_SEC = 10.0
 
 DEFAULT_SHUTOFF_SLOW = False
 DEFAULT_SHUTOFF_LOW = False
@@ -88,6 +106,7 @@ TICK_SECONDS = 10
 
 SERVICE_START_HIGH_FLOW_BYPASS = "start_high_flow_bypass"
 SERVICE_CANCEL_HIGH_FLOW_BYPASS = "cancel_high_flow_bypass"
+SERVICE_RESET_LEARNING = "reset_learning"
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 ATTR_DURATION_MINUTES = "duration_minutes"
 
