@@ -46,3 +46,8 @@ German Home Assistant installations receive the corresponding German labels auto
 - Technical domain remains `water_leak_detection`.
 - Integration type remains `service`.
 - No detector or safety behavior is changed.
+
+
+## License
+
+This release is distributed under the **GNU Affero General Public License v3.0 only (AGPL-3.0-only)**.
