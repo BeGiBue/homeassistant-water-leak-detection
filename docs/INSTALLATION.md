@@ -56,3 +56,19 @@ If you configured external automations that react to the **Water shutoff request
 ## Versioning
 
 When GitHub Releases are published, HACS uses the latest published release tag as the remote version. A Git tag without a published GitHub Release is not sufficient for HACS release versioning.
+
+
+## Language
+
+The integration uses the language configured in Home Assistant. German (`de`) is included as a complete runtime translation; English is the fallback.
+
+Entity and device names are translated by Home Assistant when they are created. Existing user-renamed entities are not overwritten.
+
+## Changing the configuration later
+
+After the integration is installed, open **Settings → Devices & services → Integrations → Water leak detection**.
+
+- **Configure** manages notification recipients and expert detector settings.
+- **Reconfigure** changes the flow-rate and optional cumulative-consumption source entities.
+
+Notification recipients do not have to be configured only during the initial installation; they can be added, edited, or removed later.
