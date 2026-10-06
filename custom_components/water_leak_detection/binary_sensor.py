@@ -27,7 +27,7 @@ async def async_setup_entry(
 class LeakAlarmBinarySensor(WaterLeakEntity, BinarySensorEntity):
     """Whether any leak detector is active."""
 
-    _attr_name = "Leak alarm"
+    _attr_translation_key = "leak_alarm"
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
     _attr_icon = "mdi:pipe-leak"
 
@@ -55,7 +55,7 @@ class LeakAlarmBinarySensor(WaterLeakEntity, BinarySensorEntity):
 class ShutoffRequestBinarySensor(WaterLeakEntity, BinarySensorEntity):
     """Independent request for an external motorized shutoff valve."""
 
-    _attr_name = "Water shutoff request"
+    _attr_translation_key = "shutoff_request"
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
     _attr_icon = "mdi:valve-closed"
 
