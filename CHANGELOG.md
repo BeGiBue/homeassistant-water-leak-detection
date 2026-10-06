@@ -2,6 +2,17 @@
 
 All notable changes to Water Leak Guard are documented here.
 
+## 1.0.0 — 2026-10-06
+
+### Stable release
+
+- First stable release of Water Leak Guard / Wasserwächter.
+- The published manifest explicitly uses `integration_type: "service"`; the integration is therefore exposed through **Settings → Devices & services → Integrations**, not through **Helpers**.
+- Supersedes the 0.3.0 GitHub release, whose tag was created before the integration-type and visible-name corrections landed on `main`.
+- Keeps the existing technical domain `water_leak_detection` and config-entry model, so an update does not create a new helper/domain.
+- Includes the completed detection, notification, acknowledgement, Water Shut Off, adaptive-learning, hydraulic-plausibility, localization, and post-install configuration work from the 0.x roadmap.
+- Adds release metadata regression coverage that requires the manifest to stay a normal `service` integration.
+
 ## 0.3.0 — 2026-10-06
 
 ### Fixed before first 0.3.0 release

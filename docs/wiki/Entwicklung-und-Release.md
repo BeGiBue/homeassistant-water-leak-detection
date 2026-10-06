@@ -46,7 +46,7 @@ Die Tests sind bewusst deterministisch und decken unter anderem ab:
 - Rückkehr-nach-Hause
 - Übersetzungs-/UI-Metadaten
 
-Der Stand vor dem ersten 0.3.0-Release wurde mit **94 Tests** erfolgreich geprüft.
+Der Stand vor dem ersten 0.3.0-Release wurde mit **94 Tests** erfolgreich geprüft. Die Release-Metadaten werden zusätzlich darauf geprüft, dass die Integration **nicht** als Home-Assistant-Helfer klassifiziert ist.
 
 ---
 
@@ -77,7 +77,7 @@ Workflows:
 - Validate
 - Hassfest
 - HACS
-- Publish 0.3.0
+- Publish 1.0.0
 
 ---
 
@@ -103,15 +103,17 @@ Deutsch wird erst innerhalb Home Assistant zu:
 
 ---
 
-# 6. Release 0.3.0
+# 6. Release 1.0.0
 
 Das Repository enthält:
 
 - `CHANGELOG.md`
-- `RELEASE_NOTES_0.3.0.md`
+- `RELEASE_NOTES_1.0.0.md`
 - manuellen Publish-Workflow
 
-Der Release-Workflow prüft die Manifest-Version und erzeugt den GitHub Release `0.3.0`.
+Der Release-Workflow prüft die Manifest-Version **und** `integration_type: "service"` und erzeugt den GitHub Release `1.0.0`.
+
+Der veröffentlichte 0.3.0-Tag enthielt noch `integration_type: "helper"`. Das wurde erst nach dem Tag auf `main` korrigiert. 1.0.0 ist deshalb der erste stabile Release, der von Home Assistant als normale Integration und nicht als Helfer einsortiert wird.
 
 ---
 
@@ -142,5 +144,6 @@ Adaptives Lernen, Confidence, Hydraulik und Rapid-Rise-Burst.
 - verdächtige Episoden das Lernmodell erhöhen
 - ein Away-Gerät global quittieren kann
 - Slow und Low nur noch gemeinsam abschaltbar sind
+- die Integration im Manifest wieder als `helper` statt als normale `service`-Integration klassifiziert wird
 
 Diese Punkte sollten bei Änderungen an Engine, Manager oder Notifications immer als Regressionstests erhalten bleiben.

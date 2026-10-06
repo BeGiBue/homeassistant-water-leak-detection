@@ -4,7 +4,7 @@
 
 A backend-focused Home Assistant custom integration for detecting abnormal water consumption and possible water leaks from an existing water-meter flow sensor.
 
-**Current release:** 0.3.0  
+**Current release:** 1.0.0  
 **Minimum Home Assistant:** 2026.9.0  
 **Integration domain:** `water_leak_detection`
 
@@ -223,17 +223,19 @@ Event payloads include the event ID and relevant detector context. Burst events 
 - [Configuration reference](docs/CONFIGURATION.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Changelog](CHANGELOG.md)
-- [v0.3.0 release notes](RELEASE_NOTES_0.3.0.md)
+- [v1.0.0 release notes](RELEASE_NOTES_1.0.0.md)
 - [Release procedure](docs/RELEASING.md)
 - [Project Wiki](https://github.com/BeGiBue/homeassistant-water-leak-detection/wiki)
 - [Technical specification and roadmap](SPEC.md)
 
 ## Release status
 
-Version 0.3.0 implements the original v0.1 → v0.3 backend roadmap:
+Version 1.0.0 is the first stable release and includes the complete original v0.1 → v0.3 backend roadmap:
 
 - **v0.1.0** — detection core and backend entities
 - **v0.2.0** — notifications, device acknowledgement, and geofencing
 - **v0.3.0** — adaptive learning and hydraulic plausibility
+
+The previously published **0.3.0** GitHub release was tagged before the Home Assistant integration-type correction and still declared itself as a `helper`. **1.0.0 supersedes that release and explicitly declares `integration_type: "service"`, so Home Assistant loads it as a normal integration rather than a Helper.**
 
 The release is validated against Home Assistant 2026.9.4 / Python 3.14.2 with compile checks, Ruff, JSON validation, and automated tests.
