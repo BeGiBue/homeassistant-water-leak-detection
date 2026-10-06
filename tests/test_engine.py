@@ -80,6 +80,23 @@ def test_shutdown_mapping_is_independent() -> None:
     assert snapshot.shutoff_request is True
 
 
+def test_active_to_idle_transition_keeps_event_metadata() -> None:
+    engine = DetectionEngine()
+    engine.sample(at(0), 7.0, 1000.0)
+    started = engine.sample(at(3600), 7.0, 1007.0)
+    event_id = started[-1].event_id
+
+    engine.sample(at(4200), 0.0, 1007.0)
+    ended = engine.sample(at(4800), 0.0, 1007.0)[-1]
+
+    assert ended.old_phase is DetectorPhase.ACTIVE
+    assert ended.new_phase is DetectorPhase.IDLE
+    assert ended.event_id == event_id
+    assert ended.started_at == at(0)
+    assert ended.detected_at == at(3600)
+    assert ended.volume_l == 7.0
+
+
 def test_engine_runtime_round_trip() -> None:
     settings = DetectorSettings(slow_detection_seconds=1)
     engine = DetectionEngine(settings)
