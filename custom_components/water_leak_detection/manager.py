@@ -467,6 +467,30 @@ class WaterLeakManager:
         learning = self.learner.snapshot(now)
         opt = self.entry.options
 
+        pipe_mm = float(
+            opt.get(CONF_PIPE_DIAMETER_MM, DEFAULT_PIPE_DIAMETER_MM)
+        )
+        pressure_bar = float(
+            opt.get(CONF_STATIC_PRESSURE_BAR, DEFAULT_STATIC_PRESSURE_BAR)
+        )
+        hydraulic_reference = hydraulic_reference_flow_lph(
+            pipe_mm,
+            pressure_bar,
+        )
+        base_burst = float(
+            opt.get(CONF_BURST_THRESHOLD_LPH, DEFAULT_BURST_THRESHOLD_LPH)
+        )
+        hydraulic_fraction = float(
+            opt.get(
+                CONF_HYDRAULIC_BURST_FRACTION,
+                DEFAULT_HYDRAULIC_BURST_FRACTION,
+            )
+        )
+        hydraulic_burst_ceiling = max(
+            base_burst,
+            hydraulic_reference * hydraulic_fraction,
+        )
+
         manual_reference = float(
             opt.get(CONF_MANUAL_MAX_FLOW_LPH, DEFAULT_MANUAL_MAX_FLOW_LPH)
         )
@@ -483,6 +507,7 @@ class WaterLeakManager:
                 references.append(learning.learned_max_lph * 0.85)
 
         normal_reference = max(references) if references else None
+
         base_high = float(
             opt.get(CONF_HIGH_THRESHOLD_LPH, DEFAULT_HIGH_THRESHOLD_LPH)
         )
@@ -492,49 +517,37 @@ class WaterLeakManager:
                 DEFAULT_HIGH_LEARNED_MULTIPLIER,
             )
         )
-        effective_high = (
+        adaptive_high_candidate = (
             max(base_high, normal_reference * high_multiplier)
             if normal_reference is not None
             else base_high
         )
+        # High Flow may adapt upward with learned usage, but cannot outrun the
+        # hydraulic plausibility envelope. Reserve at least 20% headroom for
+        # Burst Leak so the severity bands cannot collapse into each other.
+        high_ceiling = max(base_high, hydraulic_burst_ceiling * 0.80)
+        effective_high = min(adaptive_high_candidate, high_ceiling)
 
-        pipe_mm = float(
-            opt.get(CONF_PIPE_DIAMETER_MM, DEFAULT_PIPE_DIAMETER_MM)
-        )
-        pressure_bar = float(
-            opt.get(CONF_STATIC_PRESSURE_BAR, DEFAULT_STATIC_PRESSURE_BAR)
-        )
-        hydraulic_reference = hydraulic_reference_flow_lph(
-            pipe_mm,
-            pressure_bar,
-        )
-
-        base_burst = float(
-            opt.get(CONF_BURST_THRESHOLD_LPH, DEFAULT_BURST_THRESHOLD_LPH)
-        )
         burst_multiplier = float(
             opt.get(
                 CONF_BURST_LEARNED_MULTIPLIER,
                 DEFAULT_BURST_LEARNED_MULTIPLIER,
             )
         )
-        learned_burst = (
+        learned_burst_candidate = (
             max(base_burst, normal_reference * burst_multiplier)
             if normal_reference is not None
             else base_burst
         )
-        hydraulic_fraction = float(
-            opt.get(
-                CONF_HYDRAULIC_BURST_FRACTION,
-                DEFAULT_HYDRAULIC_BURST_FRACTION,
-            )
-        )
-        hydraulic_ceiling = max(
+        capped_burst = min(learned_burst_candidate, hydraulic_burst_ceiling)
+        # Keep Burst safely above High while still respecting the hydraulic
+        # plausibility ceiling established above.
+        effective_burst = max(
             base_burst,
-            hydraulic_reference * hydraulic_fraction,
+            capped_burst,
+            effective_high * 1.10,
         )
-        effective_burst = min(learned_burst, hydraulic_ceiling)
-        effective_burst = max(effective_burst, effective_high)
+        effective_burst = min(effective_burst, hydraulic_burst_ceiling)
 
         return AdaptiveThresholds(
             normal_reference_lph=normal_reference,
