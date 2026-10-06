@@ -185,6 +185,24 @@ class DetectionEngine:
             volume_l=self._event_volume(runtime, total_l),
         )
 
+    def _append_transition(
+        self,
+        out: list[DetectorTransition],
+        kind: DetectorKind,
+        new_phase: DetectorPhase,
+        *,
+        now: datetime,
+        total_l: float | None,
+    ) -> bool:
+        """Append a transition when one occurred."""
+        transition = self._transition(
+            kind, new_phase, now=now, total_l=total_l
+        )
+        if transition is None:
+            return False
+        out.append(transition)
+        return True
+
     @staticmethod
     def _new_event_id(kind: DetectorKind, now: datetime) -> str:
         return f"{kind.value}_{now.strftime('%Y%m%dT%H%M%S')}_{uuid4().hex[:6]}"
@@ -212,10 +230,13 @@ class DetectionEngine:
 
         if runtime.phase is DetectorPhase.IDLE:
             if s.slow_threshold_lph <= flow < s.low_threshold_lph:
-                if tr := self._transition(
-                    kind, DetectorPhase.MONITORING, now=now, total_l=total_l
-                ):
-                    out.append(tr)
+                self._append_transition(
+                    out,
+                    kind,
+                    DetectorPhase.MONITORING,
+                    now=now,
+                    total_l=total_l,
+                )
             return out
 
         if runtime.phase is DetectorPhase.MONITORING:
@@ -223,24 +244,33 @@ class DetectionEngine:
             # larger draw interrupts the evidence window but does not clear an
             # already confirmed Slow Leak.
             if flow < s.slow_threshold_lph or flow >= s.low_threshold_lph:
-                if tr := self._transition(
-                    kind, DetectorPhase.IDLE, now=now, total_l=total_l
-                ):
-                    out.append(tr)
+                self._append_transition(
+                    out,
+                    kind,
+                    DetectorPhase.IDLE,
+                    now=now,
+                    total_l=total_l,
+                )
             elif self._elapsed(now, runtime.started_at) >= s.slow_detection_seconds:
-                if tr := self._transition(
-                    kind, DetectorPhase.ACTIVE, now=now, total_l=total_l
-                ):
-                    out.append(tr)
+                self._append_transition(
+                    out,
+                    kind,
+                    DetectorPhase.ACTIVE,
+                    now=now,
+                    total_l=total_l,
+                )
             return out
 
         if flow < s.slow_threshold_lph:
             runtime.quiet_since = runtime.quiet_since or now
             if self._elapsed(now, runtime.quiet_since) >= s.slow_reset_seconds:
-                if tr := self._transition(
-                    kind, DetectorPhase.IDLE, now=now, total_l=total_l
-                ):
-                    out.append(tr)
+                self._append_transition(
+                    out,
+                    kind,
+                    DetectorPhase.IDLE,
+                    now=now,
+                    total_l=total_l,
+                )
         else:
             runtime.quiet_since = None
         return out
@@ -255,19 +285,25 @@ class DetectionEngine:
 
         if runtime.phase is DetectorPhase.IDLE:
             if s.low_threshold_lph <= flow < s.high_threshold_lph:
-                if tr := self._transition(
-                    kind, DetectorPhase.MONITORING, now=now, total_l=total_l
-                ):
-                    out.append(tr)
+                self._append_transition(
+                    out,
+                    kind,
+                    DetectorPhase.MONITORING,
+                    now=now,
+                    total_l=total_l,
+                )
             return out
 
         if flow < s.low_quiet_lph:
             runtime.quiet_since = runtime.quiet_since or now
             if self._elapsed(now, runtime.quiet_since) >= s.low_reset_seconds:
-                if tr := self._transition(
-                    kind, DetectorPhase.IDLE, now=now, total_l=total_l
-                ):
-                    out.append(tr)
+                self._append_transition(
+                    out,
+                    kind,
+                    DetectorPhase.IDLE,
+                    now=now,
+                    total_l=total_l,
+                )
                 return out
         else:
             runtime.quiet_since = None
@@ -276,10 +312,13 @@ class DetectionEngine:
             runtime.phase is DetectorPhase.MONITORING
             and self._elapsed(now, runtime.started_at) >= s.low_detection_seconds
         ):
-            if tr := self._transition(
-                kind, DetectorPhase.ACTIVE, now=now, total_l=total_l
-            ):
-                out.append(tr)
+            self._append_transition(
+                out,
+                kind,
+                DetectorPhase.ACTIVE,
+                now=now,
+                total_l=total_l,
+            )
         return out
 
     def _sample_high(
@@ -296,27 +335,36 @@ class DetectionEngine:
 
         if bypassed:
             if runtime.phase is not DetectorPhase.IDLE:
-                if tr := self._transition(
-                    kind, DetectorPhase.IDLE, now=now, total_l=total_l
-                ):
-                    out.append(tr)
+                self._append_transition(
+                    out,
+                    kind,
+                    DetectorPhase.IDLE,
+                    now=now,
+                    total_l=total_l,
+                )
             return out
 
         if runtime.phase is DetectorPhase.IDLE:
             if s.high_threshold_lph <= flow < s.burst_threshold_lph:
-                if tr := self._transition(
-                    kind, DetectorPhase.MONITORING, now=now, total_l=total_l
-                ):
-                    out.append(tr)
+                self._append_transition(
+                    out,
+                    kind,
+                    DetectorPhase.MONITORING,
+                    now=now,
+                    total_l=total_l,
+                )
             return out
 
         if flow < s.high_quiet_lph:
             runtime.quiet_since = runtime.quiet_since or now
             if self._elapsed(now, runtime.quiet_since) >= s.high_reset_seconds:
-                if tr := self._transition(
-                    kind, DetectorPhase.IDLE, now=now, total_l=total_l
-                ):
-                    out.append(tr)
+                self._append_transition(
+                    out,
+                    kind,
+                    DetectorPhase.IDLE,
+                    now=now,
+                    total_l=total_l,
+                )
                 return out
         else:
             runtime.quiet_since = None
@@ -327,10 +375,13 @@ class DetectionEngine:
                 self._elapsed(now, runtime.started_at) >= s.high_detection_seconds
                 or volume >= s.high_volume_l
             ):
-                if tr := self._transition(
-                    kind, DetectorPhase.ACTIVE, now=now, total_l=total_l
-                ):
-                    out.append(tr)
+                self._append_transition(
+                    out,
+                    kind,
+                    DetectorPhase.ACTIVE,
+                    now=now,
+                    total_l=total_l,
+                )
         return out
 
     def _sample_burst(
@@ -343,32 +394,44 @@ class DetectionEngine:
 
         if runtime.phase is DetectorPhase.IDLE:
             if flow >= s.burst_threshold_lph:
-                if tr := self._transition(
-                    kind, DetectorPhase.MONITORING, now=now, total_l=total_l
-                ):
-                    out.append(tr)
+                self._append_transition(
+                    out,
+                    kind,
+                    DetectorPhase.MONITORING,
+                    now=now,
+                    total_l=total_l,
+                )
             return out
 
         if runtime.phase is DetectorPhase.MONITORING:
             if flow < s.burst_threshold_lph:
-                if tr := self._transition(
-                    kind, DetectorPhase.IDLE, now=now, total_l=total_l
-                ):
-                    out.append(tr)
+                self._append_transition(
+                    out,
+                    kind,
+                    DetectorPhase.IDLE,
+                    now=now,
+                    total_l=total_l,
+                )
             elif self._elapsed(now, runtime.started_at) >= s.burst_detection_seconds:
-                if tr := self._transition(
-                    kind, DetectorPhase.ACTIVE, now=now, total_l=total_l
-                ):
-                    out.append(tr)
+                self._append_transition(
+                    out,
+                    kind,
+                    DetectorPhase.ACTIVE,
+                    now=now,
+                    total_l=total_l,
+                )
             return out
 
         if flow < s.burst_reset_lph:
             runtime.quiet_since = runtime.quiet_since or now
             if self._elapsed(now, runtime.quiet_since) >= s.burst_reset_seconds:
-                if tr := self._transition(
-                    kind, DetectorPhase.IDLE, now=now, total_l=total_l
-                ):
-                    out.append(tr)
+                self._append_transition(
+                    out,
+                    kind,
+                    DetectorPhase.IDLE,
+                    now=now,
+                    total_l=total_l,
+                )
         else:
             runtime.quiet_since = None
         return out
