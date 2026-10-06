@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 
 import probatio
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
