@@ -22,7 +22,7 @@ def test_manifest_is_normal_service_integration() -> None:
 
     assert manifest["integration_type"] == "service"
     assert manifest["config_flow"] is True
-    assert manifest["version"] == "0.3.0"
+    assert manifest["version"] == "0.3.1"
 
 
 def test_runtime_translations_exist_for_english_and_german() -> None:
