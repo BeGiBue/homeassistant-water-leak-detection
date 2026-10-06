@@ -474,11 +474,13 @@ class WaterLeakManager:
         if manual_reference > 0:
             references.append(manual_reference)
 
-        if (
-            learning.learned_max_lph is not None
-            and learning.confidence is not LearningConfidence.INSUFFICIENT
-        ):
-            references.append(learning.learned_max_lph)
+        if learning.learned_max_lph is not None:
+            if learning.confidence is LearningConfidence.RELIABLE:
+                references.append(learning.learned_max_lph)
+            elif learning.confidence is LearningConfidence.LEARNING:
+                # During the learning phase, let the model influence thresholds
+                # gradually instead of immediately trusting the full learned peak.
+                references.append(learning.learned_max_lph * 0.85)
 
         normal_reference = max(references) if references else None
         base_high = float(
