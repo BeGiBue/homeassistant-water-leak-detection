@@ -82,8 +82,6 @@ from .const import (
     DEFAULT_SLOW_RESET_MIN,
     DEFAULT_SLOW_THRESHOLD_LPH,
     DEFAULT_STATIC_PRESSURE_BAR,
-    DetectorKind,
-    DetectorPhase,
     EVENT_LEAK_ENDED,
     EVENT_LEAK_STARTED,
     EVENT_SHUTOFF_CLEARED,
@@ -91,6 +89,8 @@ from .const import (
     STORAGE_KEY_PREFIX,
     STORAGE_VERSION,
     TICK_SECONDS,
+    DetectorKind,
+    DetectorPhase,
 )
 from .engine import DetectionEngine, DetectorSettings, DetectorTransition
 from .hydraulic import hydraulic_reference_flow_lph
