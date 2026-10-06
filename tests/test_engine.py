@@ -97,6 +97,32 @@ def test_active_to_idle_transition_keeps_event_metadata() -> None:
     assert ended.volume_l == 7.0
 
 
+def test_unavailable_source_discards_unconfirmed_evidence() -> None:
+    engine = DetectionEngine()
+    engine.sample(at(0), 7.0, None)
+    assert engine.runtimes[DetectorKind.SLOW_LEAK].phase is DetectorPhase.MONITORING
+
+    engine.suspend_for_unavailable_source()
+
+    assert engine.runtimes[DetectorKind.SLOW_LEAK].phase is DetectorPhase.IDLE
+    engine.sample(at(7200), 7.0, None)
+    assert engine.runtimes[DetectorKind.SLOW_LEAK].phase is DetectorPhase.MONITORING
+
+
+def test_unavailable_source_preserves_confirmed_alarm() -> None:
+    settings = DetectorSettings(slow_detection_seconds=1)
+    engine = DetectionEngine(settings)
+    engine.sample(at(0), 7.0, None)
+    engine.sample(at(1), 7.0, None)
+    event_id = engine.runtimes[DetectorKind.SLOW_LEAK].event_id
+
+    engine.suspend_for_unavailable_source()
+
+    assert engine.runtimes[DetectorKind.SLOW_LEAK].phase is DetectorPhase.ACTIVE
+    assert engine.runtimes[DetectorKind.SLOW_LEAK].event_id == event_id
+    assert engine.runtimes[DetectorKind.SLOW_LEAK].quiet_since is None
+
+
 def test_engine_runtime_round_trip() -> None:
     settings = DetectorSettings(slow_detection_seconds=1)
     engine = DetectionEngine(settings)
