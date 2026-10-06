@@ -8,7 +8,8 @@ Version 0.3.0 completes the original backend roadmap through adaptive detection 
 - Uses the configured Home Assistant language for the integration title, device/entity names, states, configuration dialogs, service actions, and Companion notification text.
 - Complete German (`de`) runtime translation is included; English is the fallback.
 - Notification recipients can be configured during initial setup and later through **Configure**.
-- Source sensors can be changed later through **Reconfigure**.
+- **Configure** also exposes measurement sources and expert settings after installation.
+- Source sensors can additionally be changed through Home Assistant's **Reconfigure** action.
 
 ## Highlights
 
