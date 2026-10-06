@@ -1,4 +1,6 @@
-"""Tests for expert option validation."""
+"""Tests for expert option validation and Configure flow UX."""
+
+import inspect
 
 from custom_components.water_leak_detection.config_flow import (
     WaterLeakOptionsFlow,
@@ -101,12 +103,9 @@ def test_recipient_overview_lists_all_configured_devices() -> None:
     placeholders = _recipient_description_placeholders(recipients)
 
     assert placeholders["recipient_count"] == "2"
-    assert "Phone · notify.mobile_app_phone · device_tracker.phone" in placeholders[
-        "configured_recipients"
-    ]
-    assert "Tablet · notify.mobile_app_tablet · device_tracker.tablet" in placeholders[
-        "configured_recipients"
-    ]
+    assert placeholders["configured_recipients"] == "- **Phone**\n- **Tablet**"
+    assert "notify.mobile_app" not in placeholders["configured_recipients"]
+    assert "device_tracker." not in placeholders["configured_recipients"]
 
 
 def test_recipient_overview_handles_empty_list() -> None:
@@ -114,3 +113,41 @@ def test_recipient_overview_handles_empty_list() -> None:
         "recipient_count": "0",
         "configured_recipients": "—",
     }
+
+
+
+def test_options_flow_save_steps_do_not_finish_the_flow() -> None:
+    """Saving a subsection must return to a menu instead of closing Configure."""
+    methods = (
+        WaterLeakOptionsFlow.async_step_sources,
+        WaterLeakOptionsFlow.async_step_expert,
+        WaterLeakOptionsFlow.async_step_add_recipient,
+        WaterLeakOptionsFlow.async_step_edit_recipient_details,
+        WaterLeakOptionsFlow.async_step_remove_recipient,
+    )
+
+    for method in methods:
+        source = inspect.getsource(method)
+        assert "async_create_entry" not in source
+
+    assert "async_step_init()" in inspect.getsource(
+        WaterLeakOptionsFlow.async_step_sources
+    )
+    assert "async_step_init()" in inspect.getsource(
+        WaterLeakOptionsFlow.async_step_expert
+    )
+    assert "async_step_notifications()" in inspect.getsource(
+        WaterLeakOptionsFlow.async_step_add_recipient
+    )
+    assert "async_step_notifications()" in inspect.getsource(
+        WaterLeakOptionsFlow.async_step_edit_recipient_details
+    )
+    assert "async_step_notifications()" in inspect.getsource(
+        WaterLeakOptionsFlow.async_step_remove_recipient
+    )
+
+
+def test_notification_submenu_has_back_navigation() -> None:
+    source = inspect.getsource(WaterLeakOptionsFlow.async_step_notifications)
+    assert 'menu_options.append("back_to_main")' in source
+    assert hasattr(WaterLeakOptionsFlow, "async_step_back_to_main")
