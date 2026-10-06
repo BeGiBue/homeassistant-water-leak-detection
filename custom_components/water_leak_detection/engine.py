@@ -175,7 +175,12 @@ class DetectionEngine:
 
         if self.settings.low_enabled:
             transitions.extend(
-                self._sample_low(now, flow_lph, total_l, effective_high)
+                self._sample_low(
+                    now,
+                    flow_lph,
+                    total_l,
+                    self.settings.high_threshold_lph,
+                )
             )
         elif self.runtimes[DetectorKind.LOW_FLOW].phase is not DetectorPhase.IDLE:
             self._append_transition(
