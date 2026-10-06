@@ -15,7 +15,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
 from homeassistant.core import callback
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import entity_registry as er, translation
 from homeassistant.helpers.selector import (
     BooleanSelector,
     DeviceSelector,
@@ -400,8 +400,16 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Create the config entry after source and recipient setup."""
+        translations = await translation.async_get_translations(
+            self.hass,
+            self.hass.config.language,
+            "title",
+            [DOMAIN],
+            config_flow=True,
+        )
+        title = translations.get(f"component.{DOMAIN}.title", NAME)
         return self.async_create_entry(
-            title=NAME,
+            title=title,
             data=self._entry_data,
             options={CONF_NOTIFICATION_RECIPIENTS: self._initial_recipients},
         )
