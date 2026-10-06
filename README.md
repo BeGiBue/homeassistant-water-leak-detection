@@ -14,6 +14,7 @@ The implementation follows [`SPEC.md`](SPEC.md). Version **0.1.0** implements th
 - Low Flow defaults: starts at 150 L/h; detects after 60 min unless a 7 min quiet period below 20 L/h occurs.
 - Provisional High Flow detector using flow + duration + accumulated event volume.
 - Provisional absolute Burst Leak detector, kept fully independent of High Flow.
+- Slow Leak and Low Flow can be disabled independently through dedicated HA switch entities.
 - High Flow bypass that **never disables Burst Leak**.
 - Persistent active detector state and bypass expiry across HA restarts.
 - Independent **Water shutoff request** binary sensor for an external motorized valve automation.
@@ -55,6 +56,8 @@ The integration creates a device with these backend entities:
 - **Water shutoff request** — independent endpoint intended for a valve automation.
 - **Active event duration** — duration of the highest-priority active event.
 - **Active event volume** — water used since that event began.
+- **Slow Leak detection** — independent switch to enable/disable the Slow Leak detector.
+- **Low Flow detection** — independent switch to enable/disable the Low Flow detector.
 - **High flow bypass** — switch to start/cancel the bypass using the configured default duration.
 - **High flow bypass duration** — editable default bypass duration in minutes.
 - **High flow bypass remaining** — remaining bypass time in seconds.
