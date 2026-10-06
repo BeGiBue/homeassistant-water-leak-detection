@@ -98,12 +98,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = manager
     await manager.async_setup()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    async def _options_updated(_hass: HomeAssistant, _entry: ConfigEntry) -> None:
-        manager.apply_options()
-        await manager.async_refresh()
-
-    entry.async_on_unload(entry.add_update_listener(_options_updated))
     return True
 
 
