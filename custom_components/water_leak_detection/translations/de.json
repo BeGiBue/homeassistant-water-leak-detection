@@ -124,7 +124,8 @@
       "invalid_low_quiet_threshold": "Die Low-Flow-Ruhegrenze muss unter der Low-Flow-Startgrenze liegen.",
       "invalid_high_quiet_threshold": "Die High-Flow-Ruhegrenze muss unter der High-Flow-Grenze liegen.",
       "invalid_burst_reset_threshold": "Die Burst-Leak-Resetgrenze muss unter der Burst-Leak-Absolutgrenze liegen.",
-      "recipient_notify_service_exists": "Dieser Companion-Benachrichtigungsdienst ist bereits als Empfänger konfiguriert."
+      "recipient_notify_service_exists": "Dieser Companion-Benachrichtigungsdienst ist bereits als Empfänger konfiguriert.",
+      "recipient_name_required": "Bitte gib einen Namen für das Benachrichtigungsgerät ein."
     },
     "abort": {
       "no_mobile_app_notify_services": "Es wurden keine mobile_app-Benachrichtigungsdienste gefunden. Richte zuerst die Home Assistant Companion App ein.",
