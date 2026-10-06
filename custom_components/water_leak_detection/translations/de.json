@@ -78,7 +78,7 @@
     "step": {
       "init": {
         "title": "Konfiguration",
-        "description": "Passe Benachrichtigungsempfänger oder Experteneinstellungen an. Messquellen können über „Neu konfigurieren“ geändert werden.",
+        "description": "Passe Messquellen, Benachrichtigungsempfänger und Experteneinstellungen jederzeit an.",
         "menu_options": {
           "notifications": "Benachrichtigungsempfänger",
           "expert": "Experteneinstellungen",
