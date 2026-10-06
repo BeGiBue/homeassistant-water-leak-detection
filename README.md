@@ -120,12 +120,15 @@ The integration follows the configured Home Assistant backend language.
 
 During initial setup, notification recipients can already be added after selecting the measurement sources.
 
-After installation:
+After installation, **Configure** can be opened again at any time. It contains:
 
-- **Configure** opens notification-recipient management and expert settings.
-- **Reconfigure** changes the flow-rate and optional total-consumption source sensors.
+- **Measurement sources** — change the flow-rate and optional total-consumption sensors.
+- **Notification recipients** — add, edit, or remove Companion App devices.
+- **Expert settings** — change detector thresholds, learning, hydraulic context, bypass, and shutoff mapping.
 
-Changes made through the options flow reload the integration automatically.
+Home Assistant's separate **Reconfigure** action for the measurement sources is also supported.
+
+Changes are applied by reloading the integration automatically.
 
 ## Companion notifications and acknowledgement
 

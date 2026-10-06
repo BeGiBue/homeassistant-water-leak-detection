@@ -7,7 +7,10 @@ from pathlib import Path
 
 from homeassistant.config_entries import OptionsFlowWithReload
 
-from custom_components.water_leak_detection.config_flow import WaterLeakOptionsFlow
+from custom_components.water_leak_detection.config_flow import (
+    WaterLeakConfigFlow,
+    WaterLeakOptionsFlow,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 INTEGRATION = ROOT / "custom_components" / "water_leak_detection"
@@ -81,3 +84,71 @@ def test_setup_and_options_recipient_translations_exist() -> None:
 
 def test_options_flow_reloads_integration_after_changes() -> None:
     assert issubclass(WaterLeakOptionsFlow, OptionsFlowWithReload)
+
+
+def test_custom_integration_uses_runtime_translation_files_only() -> None:
+    assert not (INTEGRATION / "strings.json").exists()
+    assert (INTEGRATION / "translations" / "en.json").is_file()
+    assert (INTEGRATION / "translations" / "de.json").is_file()
+
+
+def test_configure_menu_covers_all_runtime_configuration() -> None:
+    german = _load_json(INTEGRATION / "translations" / "de.json")
+    menu = german["options"]["step"]["init"]["menu_options"]
+
+    assert set(menu) == {"sources", "notifications", "expert"}
+    assert menu["sources"] == "Messquellen"
+    assert menu["notifications"] == "Benachrichtigungsempfänger"
+    assert menu["expert"] == "Experteneinstellungen"
+
+
+def test_initial_setup_supports_notification_recipients() -> None:
+    assert hasattr(WaterLeakConfigFlow, "async_step_notifications")
+    assert hasattr(WaterLeakConfigFlow, "async_step_add_initial_recipient")
+    assert hasattr(WaterLeakConfigFlow, "async_step_finish_setup")
+
+
+def test_existing_entries_can_be_reconfigured() -> None:
+    assert hasattr(WaterLeakConfigFlow, "async_step_reconfigure")
+    assert hasattr(WaterLeakOptionsFlow, "async_step_sources")
+    assert hasattr(WaterLeakOptionsFlow, "async_step_notifications")
+    assert hasattr(WaterLeakOptionsFlow, "async_step_expert")
+
+
+def test_german_selector_and_learning_states_are_translated() -> None:
+    german = _load_json(INTEGRATION / "translations" / "de.json")
+
+    source_options = german["selector"]["source_mode"]["options"]
+    assert source_options["entities"] == "Einzelne Entitäten auswählen"
+    assert source_options["device"] == "Home-Assistant-Gerät auswählen"
+
+    learning_states = german["entity"]["sensor"]["learning_confidence"]["state"]
+    assert learning_states == {
+        "insufficient": "Unzureichend gelernt",
+        "learning": "Lernen aktiv",
+        "reliable": "Zuverlässig gelernt",
+    }
+
+
+def test_all_service_actions_have_german_translations() -> None:
+    german = _load_json(INTEGRATION / "translations" / "de.json")
+
+    assert set(german["services"]) == {
+        "start_high_flow_bypass",
+        "cancel_high_flow_bypass",
+        "reset_learning",
+    }
+    for service in german["services"].values():
+        assert service["name"]
+        assert service["description"]
+
+
+def test_entity_platforms_do_not_hardcode_visible_names() -> None:
+    for filename in (
+        "sensor.py",
+        "binary_sensor.py",
+        "switch.py",
+        "number.py",
+    ):
+        source = (INTEGRATION / filename).read_text(encoding="utf-8")
+        assert "_attr_name =" not in source

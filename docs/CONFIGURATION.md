@@ -1,5 +1,17 @@
 # Configuration reference
 
+## Reopening the configuration
+
+After installation, open **Settings → Devices & services → Integrations → Water leak detection → Configure**.
+
+The configuration remains editable and contains:
+
+- **Measurement sources**
+- **Notification recipients**
+- **Expert settings**
+
+The measurement-source form is also available through Home Assistant's **Reconfigure** action.
+
 ## Measurement sources
 
 A flow-rate sensor is required. A cumulative consumption sensor is optional but recommended.
@@ -80,6 +92,8 @@ Backend controls:
 The bypass expires automatically and its expiry is persisted across Home Assistant restarts.
 
 ## Companion notification devices
+
+Recipients can be selected during initial setup and managed later under **Configure → Notification recipients**.
 
 Each recipient is configured independently with:
 
