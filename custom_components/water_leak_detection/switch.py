@@ -17,9 +17,55 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up bypass switch."""
+    """Set up detector and bypass switches."""
     manager: WaterLeakManager = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([HighFlowBypassSwitch(manager)])
+    async_add_entities(
+        [
+            SlowLeakDetectionSwitch(manager),
+            LowFlowDetectionSwitch(manager),
+            HighFlowBypassSwitch(manager),
+        ]
+    )
+
+
+class SlowLeakDetectionSwitch(WaterLeakEntity, SwitchEntity):
+    """Enable or disable Slow Leak detection independently."""
+
+    _attr_name = "Slow Leak detection"
+    _attr_icon = "mdi:water-search"
+
+    def __init__(self, manager: WaterLeakManager) -> None:
+        super().__init__(manager, "slow_leak_detection")
+
+    @property
+    def is_on(self) -> bool:
+        return self.manager.engine.settings.slow_enabled
+
+    async def async_turn_on(self, **kwargs) -> None:
+        await self.manager.async_set_detector_enabled("slow", True)
+
+    async def async_turn_off(self, **kwargs) -> None:
+        await self.manager.async_set_detector_enabled("slow", False)
+
+
+class LowFlowDetectionSwitch(WaterLeakEntity, SwitchEntity):
+    """Enable or disable Low Flow detection independently."""
+
+    _attr_name = "Low Flow detection"
+    _attr_icon = "mdi:water-check-outline"
+
+    def __init__(self, manager: WaterLeakManager) -> None:
+        super().__init__(manager, "low_flow_detection")
+
+    @property
+    def is_on(self) -> bool:
+        return self.manager.engine.settings.low_enabled
+
+    async def async_turn_on(self, **kwargs) -> None:
+        await self.manager.async_set_detector_enabled("low", True)
+
+    async def async_turn_off(self, **kwargs) -> None:
+        await self.manager.async_set_detector_enabled("low", False)
 
 
 class HighFlowBypassSwitch(WaterLeakEntity, SwitchEntity):
