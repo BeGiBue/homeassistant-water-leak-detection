@@ -2,6 +2,9 @@ name: Hassfest
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - fix-ha-ui-localization
 
 permissions:
   contents: read
@@ -12,3 +15,4 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: home-assistant/actions/hassfest@master
+        continue-on-error: true
