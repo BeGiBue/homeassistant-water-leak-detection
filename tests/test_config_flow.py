@@ -2,8 +2,10 @@
 
 from custom_components.water_leak_detection.config_flow import WaterLeakOptionsFlow
 from custom_components.water_leak_detection.const import (
+    CONF_BURST_LEARNED_MULTIPLIER,
     CONF_BURST_RESET_LPH,
     CONF_BURST_THRESHOLD_LPH,
+    CONF_HIGH_LEARNED_MULTIPLIER,
     CONF_HIGH_QUIET_LPH,
     CONF_HIGH_THRESHOLD_LPH,
     CONF_LOW_QUIET_LPH,
@@ -21,6 +23,8 @@ def _valid_values() -> dict[str, float]:
         CONF_HIGH_QUIET_LPH: 100.0,
         CONF_BURST_THRESHOLD_LPH: 2000.0,
         CONF_BURST_RESET_LPH: 500.0,
+        CONF_HIGH_LEARNED_MULTIPLIER: 1.2,
+        CONF_BURST_LEARNED_MULTIPLIER: 1.8,
     }
 
 
@@ -61,4 +65,14 @@ def test_burst_reset_must_be_below_burst_start() -> None:
 
     assert WaterLeakOptionsFlow._validate_expert_options(values) == {
         "base": "invalid_burst_reset_threshold"
+    }
+
+
+def test_adaptive_burst_multiplier_must_exceed_high_multiplier() -> None:
+    values = _valid_values()
+    values[CONF_HIGH_LEARNED_MULTIPLIER] = 2.0
+    values[CONF_BURST_LEARNED_MULTIPLIER] = 1.8
+
+    assert WaterLeakOptionsFlow._validate_expert_options(values) == {
+        "base": "invalid_adaptive_multiplier_order"
     }
