@@ -1,0 +1,74 @@
+{
+  "title": "Wasserleck-Erkennung",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Messquelle auswählen",
+        "description": "Wähle, ob die Wasserzähler-Sensoren direkt ausgewählt oder über ein Home-Assistant-Gerät erkannt werden sollen.",
+        "data": {"source_mode": "Art der Quelle"}
+      },
+      "entities": {
+        "title": "Messquellen",
+        "description": "Wähle den Durchflusssensor und optional den kumulierten Verbrauchssensor.",
+        "data": {
+          "flow_entity": "Durchflusssensor",
+          "total_entity": "Gesamtverbrauchssensor (optional)"
+        }
+      },
+      "device": {
+        "title": "Wasserzähler-Gerät",
+        "description": "Wähle das Home-Assistant-Gerät mit den Wasserzähler-Sensoren.",
+        "data": {"source_device": "Gerät"}
+      },
+      "device_entities": {
+        "title": "Erkannte Messquellen",
+        "description": "Bestätige die kompatiblen Sensoren des ausgewählten Geräts.",
+        "data": {
+          "flow_entity": "Durchflusssensor",
+          "total_entity": "Gesamtverbrauchssensor"
+        }
+      }
+    },
+    "error": {
+      "entity_not_available": "Die ausgewählte Entität ist derzeit nicht verfügbar.",
+      "unsupported_flow_unit": "Der Durchflusssensor verwendet eine nicht unterstützte Einheit.",
+      "unsupported_volume_unit": "Der Verbrauchssensor verwendet eine nicht unterstützte Einheit.",
+      "same_source_entity": "Durchfluss und Gesamtverbrauch müssen unterschiedliche Entitäten sein."
+    },
+    "abort": {
+      "already_configured": "Dieser Durchflusssensor ist bereits konfiguriert.",
+      "device_has_no_flow_sensor": "Auf diesem Gerät wurde kein kompatibler Durchflusssensor gefunden."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Experteneinstellungen",
+        "description": "Grenzwerte, Zeiten, High-Flow-Bypass und die Zuordnung zur Absperranforderung konfigurieren.",
+        "data": {
+          "slow_threshold_lph": "Slow-Leak-Grenze",
+          "slow_detection_minutes": "Slow-Leak-Erkennungszeit",
+          "slow_reset_minutes": "Slow-Leak-Resetzeit",
+          "low_threshold_lph": "Low-Flow-Startgrenze",
+          "low_detection_minutes": "Low-Flow-Erkennungszeit",
+          "low_quiet_lph": "Low-Flow-Ruhegrenze",
+          "low_reset_minutes": "Low-Flow-Ruhe-/Resetzeit",
+          "high_threshold_lph": "High-Flow-Grenze",
+          "high_detection_minutes": "High-Flow-Erkennungszeit",
+          "high_volume_l": "High-Flow-Mengengrenze",
+          "high_quiet_lph": "High-Flow-Ruhegrenze",
+          "high_reset_minutes": "High-Flow-Resetzeit",
+          "burst_threshold_lph": "Burst-Leak-Absolutgrenze",
+          "burst_detection_seconds": "Burst-Leak-Bestätigungszeit",
+          "burst_reset_lph": "Burst-Leak-Resetgrenze",
+          "burst_reset_seconds": "Burst-Leak-Resetzeit",
+          "bypass_default_minutes": "Standarddauer High-Flow-Bypass",
+          "shutoff_slow": "Slow Leak fordert Absperrung an",
+          "shutoff_low": "Low Flow fordert Absperrung an",
+          "shutoff_high": "High Flow fordert Absperrung an",
+          "shutoff_burst": "Burst Leak fordert Absperrung an"
+        }
+      }
+    }
+  }
+}
