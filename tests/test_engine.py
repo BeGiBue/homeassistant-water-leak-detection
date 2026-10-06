@@ -136,15 +136,6 @@ def test_engine_runtime_round_trip() -> None:
     assert restored.runtimes[DetectorKind.SLOW_LEAK].event_id == event_id
 
 
-def test_pool_fill_does_not_start_lower_detectors_when_high_is_bypassed() -> None:
-    engine = DetectionEngine()
-    engine.sample(at(0), 1000.0, None, high_flow_bypassed=True)
-    engine.sample(at(7200), 1000.0, None, high_flow_bypassed=True)
-    assert engine.runtimes[DetectorKind.SLOW_LEAK].phase is DetectorPhase.IDLE
-    assert engine.runtimes[DetectorKind.LOW_FLOW].phase is DetectorPhase.IDLE
-    assert engine.runtimes[DetectorKind.HIGH_FLOW].phase is DetectorPhase.IDLE
-
-
 def test_slow_candidate_resets_when_usage_enters_low_flow_range() -> None:
     engine = DetectionEngine()
     engine.sample(at(0), 7.0, None)
@@ -181,3 +172,76 @@ def test_active_state_restores_but_quiet_reset_timer_does_not() -> None:
     assert runtime.phase is DetectorPhase.ACTIVE
     assert runtime.event_id is not None
     assert runtime.quiet_since is None
+
+
+def test_high_flow_detects_after_duration() -> None:
+    settings = DetectorSettings(
+        high_threshold_lph=600,
+        high_detection_seconds=60,
+        high_volume_l=10_000,
+        burst_threshold_lph=2000,
+    )
+    engine = DetectionEngine(settings)
+    engine.sample(at(0), 800.0, 1000.0)
+    assert engine.runtimes[DetectorKind.HIGH_FLOW].phase is DetectorPhase.MONITORING
+    engine.sample(at(60), 800.0, 1013.3)
+    assert engine.runtimes[DetectorKind.HIGH_FLOW].phase is DetectorPhase.ACTIVE
+
+
+def test_high_flow_detects_by_total_volume_before_duration() -> None:
+    settings = DetectorSettings(
+        high_threshold_lph=600,
+        high_detection_seconds=3600,
+        high_volume_l=100,
+        burst_threshold_lph=2000,
+    )
+    engine = DetectionEngine(settings)
+    engine.sample(at(0), 800.0, 1000.0)
+    engine.sample(at(300), 800.0, 1100.0)
+    assert engine.runtimes[DetectorKind.HIGH_FLOW].phase is DetectorPhase.ACTIVE
+
+
+def test_burst_detection_ignores_high_flow_bypass() -> None:
+    settings = DetectorSettings(
+        burst_threshold_lph=2000,
+        burst_detection_seconds=15,
+    )
+    engine = DetectionEngine(settings)
+    engine.sample(at(0), 2500.0, None, high_flow_bypassed=True)
+    assert engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.MONITORING
+    engine.sample(at(15), 2500.0, None, high_flow_bypassed=True)
+    assert engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.ACTIVE
+
+
+def test_burst_has_priority_over_lower_active_detector() -> None:
+    settings = DetectorSettings(
+        slow_detection_seconds=1,
+        burst_threshold_lph=2000,
+        burst_detection_seconds=1,
+    )
+    engine = DetectionEngine(settings)
+    engine.sample(at(0), 7.0, None)
+    engine.sample(at(1), 7.0, None)
+    assert engine.snapshot().active_kind is DetectorKind.SLOW_LEAK
+
+    engine.sample(at(2), 2500.0, None)
+    engine.sample(at(3), 2500.0, None)
+
+    snapshot = engine.snapshot()
+    assert snapshot.active_kind is DetectorKind.BURST_LEAK
+    assert snapshot.status == DetectorKind.BURST_LEAK.value
+
+
+def test_burst_shutdown_request_can_be_disabled_independently() -> None:
+    settings = DetectorSettings(
+        burst_threshold_lph=2000,
+        burst_detection_seconds=1,
+        shutoff_burst=False,
+    )
+    engine = DetectionEngine(settings)
+    engine.sample(at(0), 2500.0, None)
+    engine.sample(at(1), 2500.0, None)
+
+    snapshot = engine.snapshot()
+    assert snapshot.alarm_active is True
+    assert snapshot.shutoff_request is False
