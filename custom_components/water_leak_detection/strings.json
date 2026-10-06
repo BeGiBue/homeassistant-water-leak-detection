@@ -47,6 +47,14 @@
   "options": {
     "step": {
       "init": {
+        "title": "Options",
+        "menu_options": {
+          "expert": "Expert settings",
+          "add_recipient": "Add notification device",
+          "remove_recipient": "Remove notification device"
+        }
+      },
+      "expert": {
         "title": "Expert settings",
         "description": "Adjust detector thresholds, timing, bypass duration and which detector classes request a water shutoff.",
         "data": {
@@ -72,13 +80,36 @@
           "shutoff_high": "High Flow requests shutoff",
           "shutoff_burst": "Burst Leak requests shutoff"
         }
+      },
+      "add_recipient": {
+        "title": "Add notification device",
+        "description": "Configure one Companion App device. Global acknowledgement is always authorized in the backend using the assigned device tracker.",
+        "data": {
+          "name": "Display name",
+          "notify_service": "Companion notification service",
+          "tracker_entity": "Device tracker",
+          "critical_enabled": "Allow critical Burst Leak alerts",
+          "allow_global_ack": "Allow global acknowledgement when device is home",
+          "trusted_stationary": "Trusted stationary home device"
+        }
+      },
+      "remove_recipient": {
+        "title": "Remove notification device",
+        "data": {
+          "id": "Device"
+        }
       }
     },
     "error": {
       "invalid_threshold_order": "Thresholds must be ordered Slow Leak < Low Flow < High Flow < Burst Leak.",
       "invalid_low_quiet_threshold": "The Low Flow quiet threshold must be below the Low Flow start threshold.",
       "invalid_high_quiet_threshold": "The High Flow quiet threshold must be below the High Flow threshold.",
-      "invalid_burst_reset_threshold": "The Burst Leak reset threshold must be below the Burst Leak absolute threshold."
+      "invalid_burst_reset_threshold": "The Burst Leak reset threshold must be below the Burst Leak absolute threshold.",
+      "recipient_notify_service_exists": "This Companion notification service is already configured as a recipient."
+    },
+    "abort": {
+      "no_mobile_app_notify_services": "No mobile_app notification services were found. Set up the Home Assistant Companion App first.",
+      "no_recipients_configured": "No notification devices are configured yet."
     }
   }
 }
