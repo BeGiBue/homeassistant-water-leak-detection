@@ -588,12 +588,26 @@ class WaterLeakManager:
         if current == self._last_shutoff_request:
             return
         self._last_shutoff_request = current
+        snapshot = self.engine.snapshot(self.current_total_l)
+        runtime = (
+            self.engine.runtimes[snapshot.active_kind]
+            if snapshot.active_kind is not None
+            else None
+        )
         self.hass.bus.async_fire(
             EVENT_SHUTOFF_REQUESTED if current else EVENT_SHUTOFF_CLEARED,
             {
                 "config_entry_id": self.entry.entry_id,
-                "status": self.engine.snapshot(self.current_total_l).status,
+                "status": snapshot.status,
+                "type": (
+                    snapshot.active_kind.value
+                    if snapshot.active_kind is not None
+                    else None
+                ),
+                "event_id": snapshot.active_event_id,
                 "flow_lph": self.current_flow_lph,
+                "volume_l": round(snapshot.active_volume_l, 3),
+                "reason": runtime.reason if runtime is not None else None,
             },
         )
 
@@ -611,6 +625,7 @@ class WaterLeakManager:
             "detected_at": transition.detected_at.isoformat()
             if transition.detected_at
             else None,
+            "reason": self.engine.runtimes[transition.kind].reason,
         }
 
     def _serialize(self) -> dict[str, Any]:
