@@ -27,6 +27,12 @@ _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
+_LEGACY_DEFAULT_TITLES = {
+    "Home Assistant Water Leak Detection",
+    "Water leak detection",
+    "Wasserleck-Erkennung",
+}
+
 
 def _manager_for_call(hass: HomeAssistant, call: ServiceCall) -> WaterLeakManager:
     managers: dict[str, WaterLeakManager] = hass.data.get(DOMAIN, {})
@@ -96,7 +102,7 @@ async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up one configured water meter."""
-    if entry.title == NAME:
+    if entry.title == NAME or entry.title in _LEGACY_DEFAULT_TITLES:
         translations = await translation.async_get_translations(
             hass,
             hass.config.language,
