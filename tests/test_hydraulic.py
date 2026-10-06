@@ -1,7 +1,5 @@
 """Tests for the hydraulic plausibility model."""
 
-import pytest
-
 from custom_components.water_leak_detection.hydraulic import hydraulic_reference_flow_lph
 
 
