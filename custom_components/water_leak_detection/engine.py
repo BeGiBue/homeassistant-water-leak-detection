@@ -437,7 +437,7 @@ class DetectionEngine:
             return out
 
         if runtime.phase is DetectorPhase.IDLE:
-            if s.high_threshold_lph <= flow < s.burst_threshold_lph:
+            if flow >= high_threshold_lph:
                 self._append_transition(
                     out,
                     kind,
