@@ -159,3 +159,38 @@ def test_entity_platforms_do_not_hardcode_visible_names() -> None:
     ):
         source = (INTEGRATION / filename).read_text(encoding="utf-8")
         assert "_attr_name =" not in source
+
+
+
+def test_configure_translations_do_not_contain_literal_newline_escapes() -> None:
+    for language in ("de", "en"):
+        translation = _load_json(INTEGRATION / "translations" / f"{language}.json")
+        serialized = json.dumps(
+            {
+                "config": translation["config"],
+                "options": translation["options"],
+            },
+            ensure_ascii=False,
+        )
+        assert "\\\\n" not in serialized
+
+
+def test_configure_navigation_labels_are_translated() -> None:
+    german = _load_json(INTEGRATION / "translations" / "de.json")
+    english = _load_json(INTEGRATION / "translations" / "en.json")
+
+    assert (
+        german["options"]["step"]["notifications"]["menu_options"]["back_to_main"]
+        == "Zurück zur Konfiguration"
+    )
+    assert (
+        english["options"]["step"]["notifications"]["menu_options"]["back_to_main"]
+        == "Back to configuration"
+    )
+
+    assert german["options"]["step"]["sources"]["submit"] == "Speichern und zurück"
+    assert german["options"]["step"]["expert"]["submit"] == "Speichern und zurück"
+    assert (
+        german["options"]["step"]["add_recipient"]["submit"]
+        == "Hinzufügen und zurück"
+    )
