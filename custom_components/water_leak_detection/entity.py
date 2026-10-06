@@ -5,7 +5,7 @@ from __future__ import annotations
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 
-from .const import DOMAIN, NAME
+from .const import DOMAIN
 from .manager import WaterLeakManager
 
 
@@ -19,9 +19,9 @@ class WaterLeakEntity(Entity):
         self._attr_unique_id = f"{manager.entry.entry_id}_{key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, manager.entry.entry_id)},
-            name=NAME,
+            translation_key="water_leak_detection",
             manufacturer="BeGiBue",
-            model="Water Leak Detection Backend",
+            model="Water Leak Detection",
         )
 
     async def async_added_to_hass(self) -> None:
