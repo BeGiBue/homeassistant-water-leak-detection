@@ -8,6 +8,7 @@ import probatio
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import config_validation as cv
 
 from .const import (
     ATTR_CONFIG_ENTRY_ID,
@@ -20,6 +21,8 @@ from .const import (
 from .manager import WaterLeakManager
 
 _LOGGER = logging.getLogger(__name__)
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 def _manager_for_call(hass: HomeAssistant, call: ServiceCall) -> WaterLeakManager:
