@@ -89,6 +89,7 @@ from .const import (
     STORAGE_KEY_PREFIX,
     STORAGE_VERSION,
     TICK_SECONDS,
+    DetectorKind,
     DetectorPhase,
 )
 from .engine import DetectionEngine, DetectorSettings, DetectorTransition
@@ -270,7 +271,14 @@ class WaterLeakManager:
         self._handle_transitions(transitions)
         self._handle_shutoff_transition()
 
-        suspicious = self.engine.snapshot(total).alarm_active
+        snapshot = self.engine.snapshot(total)
+        suspicious = (
+            snapshot.alarm_active
+            or self.engine.runtimes[DetectorKind.HIGH_FLOW].phase
+            is not DetectorPhase.IDLE
+            or self.engine.runtimes[DetectorKind.BURST_LEAK].phase
+            is not DetectorPhase.IDLE
+        )
         learning_changed = self.learner.observe(
             now,
             flow,
