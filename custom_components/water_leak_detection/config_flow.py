@@ -325,155 +325,159 @@ class WaterLeakOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Edit expert settings."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            errors = self._validate_expert_options(user_input)
+            if not errors:
+                return self.async_create_entry(title="", data=user_input)
 
         options = self.config_entry.options
+        values = user_input if user_input is not None else options
         schema = probatio.Schema(
             {
                 probatio.Required(
                     CONF_SLOW_THRESHOLD_LPH,
-                    default=options.get(
+                    default=values.get(
                         CONF_SLOW_THRESHOLD_LPH,
                         DEFAULT_SLOW_THRESHOLD_LPH,
                     ),
                 ): _number(1, 500, 1, "L/h"),
                 probatio.Required(
                     CONF_SLOW_DETECTION_MIN,
-                    default=options.get(
+                    default=values.get(
                         CONF_SLOW_DETECTION_MIN,
                         DEFAULT_SLOW_DETECTION_MIN,
                     ),
                 ): _number(1, 1440, 1, "min"),
                 probatio.Required(
                     CONF_SLOW_RESET_MIN,
-                    default=options.get(
+                    default=values.get(
                         CONF_SLOW_RESET_MIN,
                         DEFAULT_SLOW_RESET_MIN,
                     ),
                 ): _number(1, 180, 1, "min"),
                 probatio.Required(
                     CONF_LOW_THRESHOLD_LPH,
-                    default=options.get(
+                    default=values.get(
                         CONF_LOW_THRESHOLD_LPH,
                         DEFAULT_LOW_THRESHOLD_LPH,
                     ),
                 ): _number(1, 5000, 1, "L/h"),
                 probatio.Required(
                     CONF_LOW_DETECTION_MIN,
-                    default=options.get(
+                    default=values.get(
                         CONF_LOW_DETECTION_MIN,
                         DEFAULT_LOW_DETECTION_MIN,
                     ),
                 ): _number(1, 1440, 1, "min"),
                 probatio.Required(
                     CONF_LOW_QUIET_LPH,
-                    default=options.get(
+                    default=values.get(
                         CONF_LOW_QUIET_LPH,
                         DEFAULT_LOW_QUIET_LPH,
                     ),
                 ): _number(0, 1000, 1, "L/h"),
                 probatio.Required(
                     CONF_LOW_RESET_MIN,
-                    default=options.get(
+                    default=values.get(
                         CONF_LOW_RESET_MIN,
                         DEFAULT_LOW_RESET_MIN,
                     ),
                 ): _number(1, 180, 1, "min"),
                 probatio.Required(
                     CONF_HIGH_THRESHOLD_LPH,
-                    default=options.get(
+                    default=values.get(
                         CONF_HIGH_THRESHOLD_LPH,
                         DEFAULT_HIGH_THRESHOLD_LPH,
                     ),
                 ): _number(1, 10000, 10, "L/h"),
                 probatio.Required(
                     CONF_HIGH_DETECTION_MIN,
-                    default=options.get(
+                    default=values.get(
                         CONF_HIGH_DETECTION_MIN,
                         DEFAULT_HIGH_DETECTION_MIN,
                     ),
                 ): _number(1, 1440, 1, "min"),
                 probatio.Required(
                     CONF_HIGH_VOLUME_L,
-                    default=options.get(
+                    default=values.get(
                         CONF_HIGH_VOLUME_L,
                         DEFAULT_HIGH_VOLUME_L,
                     ),
                 ): _number(1, 50000, 10, "L"),
                 probatio.Required(
                     CONF_HIGH_QUIET_LPH,
-                    default=options.get(
+                    default=values.get(
                         CONF_HIGH_QUIET_LPH,
                         DEFAULT_HIGH_QUIET_LPH,
                     ),
                 ): _number(0, 5000, 10, "L/h"),
                 probatio.Required(
                     CONF_HIGH_RESET_MIN,
-                    default=options.get(
+                    default=values.get(
                         CONF_HIGH_RESET_MIN,
                         DEFAULT_HIGH_RESET_MIN,
                     ),
                 ): _number(1, 180, 1, "min"),
                 probatio.Required(
                     CONF_BURST_THRESHOLD_LPH,
-                    default=options.get(
+                    default=values.get(
                         CONF_BURST_THRESHOLD_LPH,
                         DEFAULT_BURST_THRESHOLD_LPH,
                     ),
                 ): _number(100, 50000, 10, "L/h"),
                 probatio.Required(
                     CONF_BURST_DETECTION_SEC,
-                    default=options.get(
+                    default=values.get(
                         CONF_BURST_DETECTION_SEC,
                         DEFAULT_BURST_DETECTION_SEC,
                     ),
                 ): _number(1, 600, 1, "s"),
                 probatio.Required(
                     CONF_BURST_RESET_LPH,
-                    default=options.get(
+                    default=values.get(
                         CONF_BURST_RESET_LPH,
                         DEFAULT_BURST_RESET_LPH,
                     ),
                 ): _number(0, 10000, 10, "L/h"),
                 probatio.Required(
                     CONF_BURST_RESET_SEC,
-                    default=options.get(
+                    default=values.get(
                         CONF_BURST_RESET_SEC,
                         DEFAULT_BURST_RESET_SEC,
                     ),
                 ): _number(1, 1800, 1, "s"),
                 probatio.Required(
                     CONF_BYPASS_DEFAULT_MIN,
-                    default=options.get(
+                    default=values.get(
                         CONF_BYPASS_DEFAULT_MIN,
                         DEFAULT_BYPASS_DEFAULT_MIN,
                     ),
                 ): _number(1, 1440, 1, "min"),
                 probatio.Required(
                     CONF_SHUTOFF_SLOW,
-                    default=options.get(
+                    default=values.get(
                         CONF_SHUTOFF_SLOW,
                         DEFAULT_SHUTOFF_SLOW,
                     ),
                 ): BooleanSelector(),
                 probatio.Required(
                     CONF_SHUTOFF_LOW,
-                    default=options.get(
+                    default=values.get(
                         CONF_SHUTOFF_LOW,
                         DEFAULT_SHUTOFF_LOW,
                     ),
                 ): BooleanSelector(),
                 probatio.Required(
                     CONF_SHUTOFF_HIGH,
-                    default=options.get(
+                    default=values.get(
                         CONF_SHUTOFF_HIGH,
                         DEFAULT_SHUTOFF_HIGH,
                     ),
                 ): BooleanSelector(),
                 probatio.Required(
                     CONF_SHUTOFF_BURST,
-                    default=options.get(
+                    default=values.get(
                         CONF_SHUTOFF_BURST,
                         DEFAULT_SHUTOFF_BURST,
                     ),
@@ -483,4 +487,22 @@ class WaterLeakOptionsFlow(OptionsFlow):
         return self.async_show_form(
             step_id="init",
             data_schema=schema,
+            errors=errors,
         )
+
+    @staticmethod
+    def _validate_expert_options(values: dict[str, Any]) -> dict[str, str]:
+        """Validate relationships between expert thresholds."""
+        slow = float(values[CONF_SLOW_THRESHOLD_LPH])
+        low = float(values[CONF_LOW_THRESHOLD_LPH])
+        high = float(values[CONF_HIGH_THRESHOLD_LPH])
+        burst = float(values[CONF_BURST_THRESHOLD_LPH])
+        if not slow < low < high < burst:
+            return {"base": "invalid_threshold_order"}
+        if float(values[CONF_LOW_QUIET_LPH]) >= low:
+            return {"base": "invalid_low_quiet_threshold"}
+        if float(values[CONF_HIGH_QUIET_LPH]) >= high:
+            return {"base": "invalid_high_quiet_threshold"}
+        if float(values[CONF_BURST_RESET_LPH]) >= burst:
+            return {"base": "invalid_burst_reset_threshold"}
+        return {}
