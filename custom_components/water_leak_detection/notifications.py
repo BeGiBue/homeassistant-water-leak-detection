@@ -7,6 +7,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -90,6 +91,16 @@ class NotificationRecipient:
         )
 
 
+class DispatchState(StrEnum):
+    """HA service handoff only; none of these states imply phone receipt."""
+
+    NOT_DISPATCHED = "not_dispatched"
+    IN_FLIGHT = "in_flight"
+    ACCEPTED = "accepted"
+    FAILED = "failed"
+    INTERRUPTED = "interrupted"
+
+
 @dataclass(slots=True)
 class EventAcknowledgement:
     """Acknowledgement state belonging to one leak event ID."""
@@ -98,7 +109,13 @@ class EventAcknowledgement:
     globally_acknowledged_by: str | None = None
     globally_acknowledged_at: datetime | None = None
     muted_recipients: set[str] = field(default_factory=set)
-    delivered_recipients: dict[str, str] = field(default_factory=dict)
+    accepted_recipients: dict[str, str] = field(default_factory=dict)
+    dispatch_states: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def delivered_recipients(self) -> dict[str, str]:
+        """Legacy API alias: these entries mean HA accepted, NEVER phone receipt."""
+        return self.accepted_recipients
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize acknowledgement state."""
@@ -111,13 +128,15 @@ class EventAcknowledgement:
                 else None
             ),
             "muted_recipients": sorted(self.muted_recipients),
-            "delivered_recipients": dict(self.delivered_recipients),
+            "accepted_recipients": dict(self.accepted_recipients),
+            "dispatch_states": dict(self.dispatch_states),
         }
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> EventAcknowledgement:
         """Restore acknowledgement state."""
-        delivered = raw.get("delivered_recipients", {})
+        delivered = raw.get("accepted_recipients", raw.get("delivered_recipients", {}))
+        statuses = raw.get("dispatch_states", {})
         return cls(
             globally_acknowledged=raw.get("globally_acknowledged") is True,
             globally_acknowledged_by=(
@@ -127,10 +146,17 @@ class EventAcknowledgement:
             ),
             globally_acknowledged_at=parse_datetime(raw.get("globally_acknowledged_at")),
             muted_recipients=string_set(raw.get("muted_recipients")),
-            delivered_recipients={
+            accepted_recipients={
                 key: value for key, value in delivered.items()
                 if isinstance(key, str) and isinstance(value, str)
             } if isinstance(delivered, dict) else {},
+            dispatch_states={
+                key: (DispatchState.INTERRUPTED.value
+                      if value == DispatchState.IN_FLIGHT else value)
+                for key, value in statuses.items()
+                if isinstance(key, str) and isinstance(value, str)
+                and value in {s.value for s in DispatchState}
+            } if isinstance(statuses, dict) else {},
         )
 
 
@@ -153,7 +179,7 @@ class NotificationController:
         self._unsubs: list[Callable[[], None]] = []
         self._tracker_unsub: Callable[[], None] | None = None
         self._events: dict[str, dict[str, Any]] = {}
-        self._delivery_lock = asyncio.Lock()
+        self._dispatch_tasks: dict[tuple[str, str], asyncio.Task] = {}
         self._delivery_tasks: set[asyncio.Task] = set()
         self._closed = False
 
@@ -278,43 +304,63 @@ class NotificationController:
         )
 
     async def async_retry_pending(self) -> None:
-        """Retry until HA's notify service accepts a send; serialize duplicate triggers."""
-        if self._closed or self._delivery_lock.locked():
-            # Pending events stay in _events; the next tick retries them. Do not
-            # accumulate tick tasks behind slow recipients or overlapping starts.
+        """Schedule isolated handoffs; never timeout/restart an ongoing service call."""
+        if self._closed:
             return
-        task = asyncio.current_task()
-        self._delivery_tasks.add(task)
+        for event_id, payload in tuple(self._events.items()):
+            for recipient in tuple(self.recipients.values()):
+                identity = (event_id, recipient.id)
+                if identity in self._dispatch_tasks or not self._eligible(event_id, recipient):
+                    continue
+                state = self.acknowledgements[event_id]
+                if state.accepted_recipients.get(recipient.id) == self._delivery_key(recipient):
+                    continue
+                if state.dispatch_states.get(recipient.id) == DispatchState.INTERRUPTED:
+                    # A cancelled handoff may already have pushed. Do not blindly
+                    # resend after reload; retain its ambiguous status for diagnosis.
+                    continue
+                task = asyncio.create_task(self._dispatch(event_id, recipient, dict(payload)))
+                self._dispatch_tasks[identity] = task
+                self._delivery_tasks.add(task)
+        # Fast local services complete without making slower recipients a barrier.
+        await asyncio.sleep(0)
+
+    async def _dispatch(self, event_id, recipient, payload) -> None:
+        state = self.acknowledgements.get(event_id)
+        if state is None:
+            # The ended listener may have run after scheduling but before this
+            # worker's first turn. No state, no handoff, no orphaned task entry.
+            self._dispatch_tasks.pop((event_id, recipient.id), None)
+            self._delivery_tasks.discard(asyncio.current_task())
+            return
+        state.dispatch_states[recipient.id] = DispatchState.NOT_DISPATCHED.value
+
+        def handed_off():
+            state.dispatch_states[recipient.id] = DispatchState.IN_FLIGHT.value
+            self._persist_callback()
+
         try:
-            async with self._delivery_lock:
-                for event_id, payload in tuple(self._events.items()):
-                    for recipient in tuple(self.recipients.values()):
-                        if not self._eligible(event_id, recipient):
-                            continue
-                        state = self.acknowledgements[event_id]
-                        key = self._delivery_key(recipient)
-                        if state.delivered_recipients.get(recipient.id) == key:
-                            continue
-                        try:
-                            async with asyncio.timeout(5):
-                                sent = await self._async_send_event_notification(
-                                    recipient, event_id, str(payload.get("type", "unknown")),
-                                    {**payload, "flow_lph": self.manager.current_flow_lph},
-                                    returning_home=bool(payload.get("returning_home")),
-                                    authorize=lambda eid=event_id, r=recipient: (
-                                        self._eligible(eid, r)
-                                    ),
-                                )
-                        except Exception:
-                            _LOGGER.exception(
-                                "Notification to %s failed; will retry", recipient.name
-                            )
-                            continue
-                        if sent is not False and self._eligible(event_id, recipient):
-                            state.delivered_recipients[recipient.id] = key
-                            self._persist_callback()
+            sent = await self._async_send_event_notification(
+                recipient, event_id, str(payload.get("type", "unknown")),
+                {**payload, "flow_lph": self.manager.current_flow_lph},
+                returning_home=bool(payload.get("returning_home")),
+                authorize=lambda: self._eligible(event_id, recipient),
+                on_dispatch=handed_off,
+            )
+            if sent is not False:
+                state.accepted_recipients[recipient.id] = self._delivery_key(recipient)
+                state.dispatch_states[recipient.id] = DispatchState.ACCEPTED.value
+        except asyncio.CancelledError:
+            if state.dispatch_states.get(recipient.id) == DispatchState.IN_FLIGHT:
+                state.dispatch_states[recipient.id] = DispatchState.INTERRUPTED.value
+            raise
+        except Exception:
+            state.dispatch_states[recipient.id] = DispatchState.FAILED.value
+            _LOGGER.exception("HA notify dispatch to %s failed; will retry", recipient.name)
         finally:
-            self._delivery_tasks.discard(task)
+            self._dispatch_tasks.pop((event_id, recipient.id), None)
+            self._delivery_tasks.discard(asyncio.current_task())
+            self._persist_callback()
 
     async def _async_leak_ended(self, event: Event) -> None:
         if event.data.get("config_entry_id") != self.entry.entry_id:
@@ -429,7 +475,7 @@ class NotificationController:
             if recipient.tracker_entity != tracker_entity:
                 continue
             state.muted_recipients.discard(recipient.id)
-            state.delivered_recipients.pop(recipient.id, None)
+            state.accepted_recipients.pop(recipient.id, None)
             self._persist_callback()
             # Queue through the same guarded/retryable path as the first delivery.
             self._events[event_id] = {
@@ -451,6 +497,7 @@ class NotificationController:
         *,
         returning_home: bool,
         authorize: Callable[[], bool] | None = None,
+        on_dispatch: Callable[[], None] | None = None,
     ) -> bool:
         domain, service = recipient.notify_service.split(".", 1)
         if not self.hass.services.has_service(domain, service):
@@ -567,6 +614,8 @@ class NotificationController:
 
         if authorize is not None and not authorize():
             return False
+        if on_dispatch is not None:
+            on_dispatch()
         await self.hass.services.async_call(
             domain,
             service,

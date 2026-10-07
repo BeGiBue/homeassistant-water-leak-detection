@@ -19,7 +19,11 @@ from homeassistant.const import (
 )
 from homeassistant.core import Event, HomeAssistant, State, callback
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval
+from homeassistant.helpers.event import (
+    async_track_state_change_event,
+    async_track_state_report_event,
+    async_track_time_interval,
+)
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
@@ -56,6 +60,7 @@ from .const import (
     CONF_SLOW_ENABLED,
     CONF_SLOW_RESET_MIN,
     CONF_SLOW_THRESHOLD_LPH,
+    CONF_SOURCE_GAP_EXPLICIT,
     CONF_SOURCE_MAX_AGE_SEC,
     CONF_STATIC_PRESSURE_BAR,
     CONF_TOTAL_ENTITY,
@@ -104,11 +109,12 @@ from .const import (
     DetectorPhase,
 )
 from .engine import DetectionEngine, DetectorSettings, DetectorTransition
+from .evidence import SourceEvidence
 from .hydraulic import hydraulic_reference_flow_lph
 from .learning import AdaptiveFlowLearner, LearningConfidence, LearningSnapshot
 from .notifications import NotificationController
 from .units import UnsupportedUnitError, normalize_flow_lph, normalize_volume_l
-from .validation import parse_datetime
+from .validation import nonnegative_float, parse_datetime
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -155,8 +161,9 @@ class WaterLeakManager:
         self._closed = False
         self._save_handle: asyncio.TimerHandle | None = None
         self._save_task: asyncio.Task | None = None
-        self._flow_reported_at = None
-        self._flow_received_monotonic: float | None = None
+        self._flow_evidence = SourceEvidence()
+        self._bypass_deadline: float | None = None
+        self._restored_elapsed: dict[str, tuple[float, float]] = {}
         self._clock_origin = dt_util.utcnow()
         self._monotonic_origin = monotonic()
         self.notifications = NotificationController(
@@ -187,6 +194,18 @@ class WaterLeakManager:
                 parsed = parse_datetime(bypass_until)
                 if parsed is not None and parsed > dt_util.utcnow():
                     self.bypass_until = parsed
+                    self._bypass_deadline = monotonic() + (
+                        parsed - dt_util.utcnow()
+                    ).total_seconds()
+            self._restored_elapsed = {
+                event_id: (0.0, monotonic()) for event_id in self.engine.active_events()
+            }
+            elapsed = stored.get("event_elapsed_seconds", {})
+            if isinstance(elapsed, dict):
+                for event_id, value in elapsed.items():
+                    duration = nonnegative_float(value)
+                    if event_id in self.engine.active_events() and duration is not None:
+                        self._restored_elapsed[event_id] = (duration, monotonic())
 
         self._last_shutoff_request = False
         await self.notifications.async_setup()
@@ -194,9 +213,19 @@ class WaterLeakManager:
         entities = [self.flow_entity_id]
         if self.total_entity_id:
             entities.append(self.total_entity_id)
-        self._unsubs.append(
-            async_track_state_change_event(self.hass, entities, self._async_source_changed)
+        source_unsub = async_track_state_change_event(
+            self.hass, entities, self._async_source_changed
         )
+        report_unsub = async_track_state_report_event(
+            self.hass, [self.flow_entity_id], self._same_value_reported
+        )
+
+        @callback
+        def unsubscribe_sources():
+            source_unsub()
+            report_unsub()
+
+        self._unsubs.append(unsubscribe_sources)
         self._unsubs.append(
             async_track_time_interval(
                 self.hass, self._async_tick, timedelta(seconds=TICK_SECONDS)
@@ -246,19 +275,37 @@ class WaterLeakManager:
         for listener in tuple(self._listeners):
             listener()
 
+    @callback
+    def _same_value_reported(self, event: Event) -> None:
+        state = self.hass.states.get(self.flow_entity_id)
+        if (
+            not self._closed and state is event.data.get("new_state")
+            and state.last_reported == event.data.get("last_reported")
+        ):
+            self._flow_evidence.report(monotonic())
+            self.hass.async_create_task(self.async_refresh())
+
     async def _async_source_changed(self, event: Event) -> None:
         if self._closed:
             return
-        # Do not reinterpret queued events older than the state already processed.
+        entity_id = event.data.get("entity_id")
         new_state = event.data.get("new_state")
-        if event.data.get("entity_id") == self.flow_entity_id:
-            if (
-                new_state is not None and self._flow_reported_at is not None
-                and new_state.last_reported < self._flow_reported_at
-            ):
-                return
-            if new_state is None or not self._usable_state(new_state):
-                self._suspend_source()
+        # Object identity rejects superseded queued events, even after UTC rollback.
+        if new_state is not self.hass.states.get(entity_id):
+            return
+        if entity_id == self.flow_entity_id and not self._usable_state(new_state):
+            self._suspend_source()
+        elif entity_id == self.total_entity_id:
+            try:
+                if not self._usable_source_state(new_state):
+                    raise ValueError("Optional total source unavailable")
+                normalize_volume_l(
+                    float(new_state.state), new_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
+                )
+            except (TypeError, ValueError, UnsupportedUnitError):
+                # Remember an outage even if it occurs between two Flow reports.
+                self.engine.reset_total_reference()
+                self.current_total_l = None
         await self.async_refresh()
 
     async def _async_tick(self, _now) -> None:
@@ -271,9 +318,22 @@ class WaterLeakManager:
         if self._closed:
             return
         flow_state = self.hass.states.get(self.flow_entity_id)
-        if not self._fresh_flow_state(flow_state):
+        if not self._usable_source_state(flow_state):
             self._suspend_source()
             return
+        fresh, interrupted = self._flow_evidence.observe(
+            flow_state, monotonic(), self.source_max_age_seconds
+        )
+        if not fresh:
+            if self._flow_evidence.expired(monotonic(), self.source_max_age_seconds):
+                self._suspend_source()
+            elif not self._flow_evidence.intervals:
+                # No cadence has been confirmed yet; this read is not a new sample.
+                self.source_available = False
+            return
+        if interrupted:
+            self.engine.suspend_for_unavailable_source()
+            self.learner.suspend_current_episode()
 
         try:
             flow = normalize_flow_lph(
@@ -290,7 +350,7 @@ class WaterLeakManager:
         total: float | None = None
         if self.total_entity_id:
             total_state = self.hass.states.get(self.total_entity_id)
-            if self._usable_source_state(total_state) and self._fresh_state(total_state):
+            if self._usable_source_state(total_state):
                 try:
                     total = normalize_volume_l(
                         float(total_state.state),
@@ -308,7 +368,7 @@ class WaterLeakManager:
         self.current_total_l = total
         # UTC event labels advance with monotonic elapsed time during this run.
         # Wall-clock adjustments cannot mature/reset observation intervals.
-        now = self._clock_origin + timedelta(seconds=monotonic() - self._monotonic_origin)
+        now = self.timer_now
         thresholds = self.adaptive_thresholds(now)
         bypass_active = self.high_flow_bypass_active
         transitions = self.engine.sample(
@@ -349,9 +409,14 @@ class WaterLeakManager:
 
     @property
     def source_max_age_seconds(self) -> float:
-        return max(1.0, float(self.entry.options.get(
-            CONF_SOURCE_MAX_AGE_SEC, DEFAULT_SOURCE_MAX_AGE_SEC
-        )))
+        """Use automatic cadence for the previously persisted 30-second default."""
+        configured = max(
+            0.0,
+            float(self.entry.options.get(CONF_SOURCE_MAX_AGE_SEC, DEFAULT_SOURCE_MAX_AGE_SEC)),
+        )
+        if configured == 30 and not self.entry.options.get(CONF_SOURCE_GAP_EXPLICIT, False):
+            return 0.0
+        return configured
 
     def _usable_source_state(self, state: State | None) -> bool:
         if not self._usable_state(state):
@@ -359,30 +424,19 @@ class WaterLeakManager:
         registered = er.async_get(self.hass).async_get(state.entity_id)
         return registered is None or registered.platform != DOMAIN
 
-    def _fresh_state(self, state: State) -> bool:
-        age = (dt_util.utcnow() - state.last_reported).total_seconds()
-        return 0 <= age < self.source_max_age_seconds
+    @property
+    def timer_now(self):
+        """Engine's process-local time axis; never follows wall clock corrections."""
+        return self._clock_origin + timedelta(seconds=monotonic() - self._monotonic_origin)
 
-    def _fresh_flow_state(self, state: State | None) -> bool:
-        if not self._usable_source_state(state) or not self._fresh_state(state):
-            return False
-        reported = state.last_reported
-        now_monotonic = monotonic()
-        if self._flow_reported_at is not None and reported < self._flow_reported_at:
-            return False
-        if reported != self._flow_reported_at:
-            if (
-                self._flow_received_monotonic is not None
-                and now_monotonic - self._flow_received_monotonic >= self.source_max_age_seconds
-            ):
-                self.engine.suspend_for_unavailable_source()
-                self.learner.suspend_current_episode()
-            self._flow_reported_at = reported
-            self._flow_received_monotonic = now_monotonic
-        return (
-            self._flow_received_monotonic is not None
-            and now_monotonic - self._flow_received_monotonic < self.source_max_age_seconds
-        )
+    def event_elapsed_seconds(self, event_id: str | None) -> float:
+        if event_id in self._restored_elapsed:
+            duration, received = self._restored_elapsed[event_id]
+            return duration + max(0, monotonic() - received)
+        for runtime in self.engine.runtimes.values():
+            if runtime.event_id == event_id and runtime.started_at is not None:
+                return max(0, (self.timer_now - runtime.started_at).total_seconds())
+        return 0.0
 
     def _suspend_source(self) -> None:
         self.source_available = False
@@ -406,8 +460,13 @@ class WaterLeakManager:
         """Return whether the High Flow bypass is currently active."""
         if self.bypass_until is None:
             return False
-        if self.bypass_until <= dt_util.utcnow():
+        if self._bypass_deadline is None:
+            self._bypass_deadline = monotonic() + max(
+                0, (self.bypass_until - dt_util.utcnow()).total_seconds()
+            )
+        if self._bypass_deadline <= monotonic():
             self.bypass_until = None
+            self._bypass_deadline = None
             self._schedule_save()
             return False
         return True
@@ -417,7 +476,7 @@ class WaterLeakManager:
         """Return remaining bypass duration in seconds."""
         if not self.high_flow_bypass_active or self.bypass_until is None:
             return 0
-        return max(0, int((self.bypass_until - dt_util.utcnow()).total_seconds()))
+        return max(0, int(self._bypass_deadline - monotonic()))
 
     @property
     def bypass_default_minutes(self) -> float:
@@ -433,12 +492,14 @@ class WaterLeakManager:
         )
         minutes = max(1.0, min(float(minutes), 24.0 * 60.0))
         self.bypass_until = dt_util.utcnow() + timedelta(minutes=minutes)
+        self._bypass_deadline = monotonic() + minutes * 60
         await self.async_refresh()
         await self._store.async_save(self._serialize())
 
     async def async_cancel_bypass(self) -> None:
         """Cancel the High Flow bypass."""
         self.bypass_until = None
+        self._bypass_deadline = None
         await self.async_refresh()
         await self._store.async_save(self._serialize())
 
@@ -672,6 +733,12 @@ class WaterLeakManager:
 
     def _handle_transitions(self, transitions: list[DetectorTransition]) -> None:
         for transition in transitions:
+            runtime = self.engine.runtimes[transition.kind]
+            if transition.new_phase is DetectorPhase.MONITORING:
+                runtime.utc_started_at = dt_util.utcnow()
+            elif transition.new_phase is DetectorPhase.ACTIVE:
+                runtime.utc_started_at = runtime.utc_started_at or dt_util.utcnow()
+                runtime.utc_detected_at = dt_util.utcnow()
             if transition.new_phase is DetectorPhase.ACTIVE or (
                 transition.old_phase is DetectorPhase.ACTIVE
             ):
@@ -717,6 +784,12 @@ class WaterLeakManager:
         )
 
     def _event_payload(self, transition: DetectorTransition) -> dict[str, Any]:
+        runtime = self.engine.runtimes[transition.kind]
+        started = transition.started_at
+        detected = transition.detected_at
+        if runtime.event_id == transition.event_id:
+            started = runtime.utc_started_at or started
+            detected = runtime.utc_detected_at or detected
         return {
             "config_entry_id": self.entry.entry_id,
             "type": transition.kind.value,
@@ -724,11 +797,11 @@ class WaterLeakManager:
             "phase": transition.new_phase.value,
             "flow_lph": self.current_flow_lph,
             "volume_l": round(transition.volume_l, 3),
-            "started_at": transition.started_at.isoformat()
-            if transition.started_at
+            "started_at": started.isoformat()
+            if started
             else None,
-            "detected_at": transition.detected_at.isoformat()
-            if transition.detected_at
+            "detected_at": detected.isoformat()
+            if detected
             else None,
             "reason": transition.reason,
         }
@@ -737,9 +810,13 @@ class WaterLeakManager:
         return {
             "sources": self._source_identity(),
             "engine": self.engine.to_dict(),
-            "bypass_until": self.bypass_until.isoformat()
-            if self.bypass_until
-            else None,
+            "bypass_until": (
+                dt_util.utcnow() + timedelta(seconds=max(0, self._bypass_deadline - monotonic()))
+            ).isoformat() if self.high_flow_bypass_active else None,
+            "event_elapsed_seconds": {
+                event_id: self.event_elapsed_seconds(event_id)
+                for event_id in self.engine.active_events()
+            },
             "acknowledgements": self.notifications.to_dict(),
             "learning": self.learner.to_dict(),
         }

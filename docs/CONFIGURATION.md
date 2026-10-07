@@ -186,13 +186,14 @@ Change these values only with measured household data where possible.
 
 ## Measurement validity and navigation (unreleased)
 
-`source_max_age_seconds` defaults to 30 seconds (range 10–3600). It must exceed
-normal reporting intervals. HA `last_reported`, including identical reports, controls
-freshness. Negative and nonfinite samples are invalid, not zero. Low/High quiet
-and Burst reset flow limits must be strictly positive; legacy zero values are
-clamped to 1 L/h on load. Other detector thresholds and detection times are unchanged.
+`source_max_age_seconds` defaults to 0 (automatic report cadence), range 0–3600.
+A positive value is an explicit permitted gap, not permission to count ticks as
+new evidence. Automatic startup and outage handling are described in the README.
+Negative and nonfinite samples are invalid, not zero. Low/High quiet and Burst reset
+flow limits remain strictly positive; legacy zero values are clamped to 1 L/h.
+Other detector thresholds and detection times are unchanged.
 
 All source, expert and recipient forms provide **Back without saving**. Recipient
-changes apply live and preserve detection timers. Source changes deliberately rebase
-meter volume, reset unconfirmed windows and learning, and retain confirmed safety.
-See the README operational contract for total-meter validation and notify retry.
+changes apply live and preserve detection timers. Source changes rebase meter volume,
+reset unconfirmed windows and learning, and retain confirmed safety. See README for
+total-meter quantization, parallel HA dispatch and interruption semantics.

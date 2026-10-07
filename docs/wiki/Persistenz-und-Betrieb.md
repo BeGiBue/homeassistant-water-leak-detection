@@ -161,9 +161,30 @@ Ein Absturz zwischen Versand und Speicherung kann eine doppelte Meldung verursac
 
 Negative, nicht endliche und überalterte Messungen sind keine Ruhe-Evidenz.
 `last_reported` unterscheidet neue identische Meldungen von eingefrorenen Zuständen;
-standardmäßig beträgt das maximale Alter 30 s (konfigurierbar). Laufzeitintervalle
+der Standard ist jetzt automatische Meldekadenz (Option 0, Details im README). Laufzeitintervalle
 verwenden eine monotone Uhr; Neustarts setzen unbestätigte Intervalle zurück.
 Zählerreset, unplausibler Sprung und Quellenwechsel lösen den alten Volumenbezug.
 Aktive Leckage und Absperranforderung bleiben dabei erhalten. Eingefrorene oder fehlende
 Totalwerte werden durch Durchflussintegration ersetzt. Die fachlichen Findings
 F02/F04/F08 und die Rapid-Rise-Definition bleiben für eine separate Spezifikation offen.
+
+## Korrekturrunde 2 (unveröffentlicht)
+
+Interne Ticks bestätigen weder Detektions- noch Quiet-Intervalle. Neue Meldungen
+werden unabhängig von UTC-Rückstellungen nach State-Identität/Meldung erkannt.
+Einzelne eingefrorene Werte können deshalb keinen Timer allein bestätigen.
+Die automatische Kadenz benötigt Anlaufmeldungen; längere Ausfälle werden nicht
+als normale Kadenz gelernt. Die Engine-Zeitachse und laufende Bypass-Dauer sind monoton.
+Beim Speichern wird die UTC-Bypassfrist aus der verbleibenden Laufzeit neu projiziert.
+Persistierte aktive Laufzeit zählt Offline-Zeit nicht als bestätigte Laufzeit.
+
+Zählerfortschritt nutzt einen gemeinsamen Referenzzeitraum über mehrere Flow-Reports;
+keine feste 1-Liter-Auflösung wird angenommen. Noch nicht unterstützte positive
+Sprünge bleiben vorgemerkt; eingefrorene Totals blockieren Flow-Integration nicht.
+
+Notify-Aufgaben sind pro Event/Empfänger isoliert. Ein normaler Service-Return bedeutet
+HA-Annahme, keine bestätigte Telefonzustellung. Laufende Calls werden nicht nach
+5 Sekunden als fehlgeschlagen abgebrochen und erneut gesendet. Beim Unload unterbrochene
+bereits laufende Übergaben sind unklar und werden nicht automatisch wiederholt.
+Beschädigte Runtime-Felder löschen ein anhand verbleibender Bestätigungsdaten
+klar erkennbares aktives Ereignis nicht. Unbestätigtes Monitoring bleibt verwerfbar.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from math import isfinite
+from math import isclose, isfinite
 from typing import Any
 from uuid import uuid4
 
@@ -49,6 +49,8 @@ class DetectorRuntime:
     phase: DetectorPhase = DetectorPhase.IDLE
     started_at: datetime | None = None
     detected_at: datetime | None = None
+    utc_started_at: datetime | None = None
+    utc_detected_at: datetime | None = None
     quiet_since: datetime | None = None
     event_id: str | None = None
     start_total_l: float | None = None
@@ -61,6 +63,8 @@ class DetectorRuntime:
         self.phase = DetectorPhase.IDLE
         self.started_at = None
         self.detected_at = None
+        self.utc_started_at = None
+        self.utc_detected_at = None
         self.quiet_since = None
         self.event_id = None
         self.start_total_l = None
@@ -108,6 +112,7 @@ class DetectionEngine:
     last_sample_at: datetime | None = None
     last_flow_lph: float | None = None
     last_total_l: float | None = None
+    last_observed_total_l: float | None = None
     total_expected_l: float = 0.0
 
     def update_settings(self, settings: DetectorSettings) -> None:
@@ -127,8 +132,7 @@ class DetectionEngine:
                 runtime.reset()
         self.last_sample_at = None
         self.last_flow_lph = None
-        self.last_total_l = None
-        self.total_expected_l = 0.0
+        self.reset_total_reference()
 
     def sample(
         self,
@@ -170,22 +174,39 @@ class DetectionEngine:
         self.total_expected_l += max(flow_lph, self.last_flow_lph or 0) * (
             raw_delta_seconds / 3600.0
         )
-        rebase = self.last_total_l is None
-        if total_l is not None:
-            if self.last_total_l is not None:
-                increment = total_l - self.last_total_l
-                rebase = increment < 0 or increment > self.total_expected_l * 3 + 1
-                if increment != 0:
-                    self.total_expected_l = 0.0
-            for runtime in self.runtimes.values():
-                if runtime.phase is not DetectorPhase.IDLE and (
-                    rebase or runtime.start_total_l is None
-                ):
-                    runtime.start_total_l = total_l - runtime.estimated_volume_l
-            self.last_total_l = total_l
+        if total_l is None:
+            self.reset_total_reference()
         else:
-            self.last_total_l = None
-            self.total_expected_l = 0.0
+            raw_total = total_l
+            reset = (
+                self.last_observed_total_l is not None
+                and raw_total < self.last_observed_total_l
+            )
+            rebase = self.last_total_l is None or reset
+            self.last_observed_total_l = raw_total
+            if rebase:
+                self.last_total_l = raw_total
+                self.total_expected_l = 0.0
+                for runtime in self.runtimes.values():
+                    if runtime.phase is not DetectorPhase.IDLE:
+                        runtime.start_total_l = raw_total - runtime.estimated_volume_l
+            else:
+                increment = raw_total - self.last_total_l
+                # The reference spans ALL flow reports since accepted progress,
+                # not one interval. Oversized/quantized progress stays pending:
+                # no fixed litre resolution and no rebase on every rejected step.
+                upper = self.total_expected_l * 1.5
+                if increment > 0 and (
+                    increment <= upper or isclose(increment, upper, rel_tol=1e-9)
+                ):
+                    self.last_total_l = raw_total
+                    self.total_expected_l = 0.0
+                elif increment > 0:
+                    total_l = None  # Never expose unaccepted volume to detectors.
+            if total_l is not None:
+                for runtime in self.runtimes.values():
+                    if runtime.phase is not DetectorPhase.IDLE and runtime.start_total_l is None:
+                        runtime.start_total_l = raw_total - runtime.estimated_volume_l
 
         effective_high = (
             self.settings.high_threshold_lph
@@ -289,8 +310,8 @@ class DetectionEngine:
                 old_phase=old_phase,
                 new_phase=new_phase,
                 event_id=runtime.event_id,
-                started_at=runtime.started_at,
-                detected_at=runtime.detected_at,
+                started_at=runtime.utc_started_at or runtime.started_at,
+                detected_at=runtime.utc_detected_at or runtime.detected_at,
                 volume_l=self._event_volume(runtime, total_l),
                 reason=runtime.reason,
             )
@@ -302,8 +323,8 @@ class DetectionEngine:
             old_phase=old_phase,
             new_phase=new_phase,
             event_id=runtime.event_id,
-            started_at=runtime.started_at,
-            detected_at=runtime.detected_at,
+            started_at=runtime.utc_started_at or runtime.started_at,
+            detected_at=runtime.utc_detected_at or runtime.detected_at,
             volume_l=self._event_volume(runtime, total_l),
             reason=runtime.reason,
         )
@@ -336,13 +357,20 @@ class DetectionEngine:
             return 0.0
         return max(0.0, (now - start).total_seconds())
 
+    def reset_total_reference(self) -> None:
+        """Forget a disconnected/reset meter without clearing active safety."""
+        self.last_total_l = None
+        self.last_observed_total_l = None
+        self.total_expected_l = 0.0
+
     def _event_volume(self, runtime: DetectorRuntime, total_l: float | None) -> float:
-        if total_l is not None and runtime.start_total_l is not None:
+        if (
+            total_l is not None and total_l == self.last_total_l
+            and runtime.start_total_l is not None
+        ):
             delta = total_l - runtime.start_total_l
-            estimate = runtime.estimated_volume_l
-            # A frozen/coarse meter must not veto independently observed volume.
-            if max(0.0, estimate * 0.5) <= delta <= runtime.plausible_volume_l * 3 + 1:
-                return delta
+            if delta >= 0:
+                return max(delta, runtime.estimated_volume_l)
         return runtime.estimated_volume_l
 
     def rebind_sources(self) -> None:
@@ -634,8 +662,10 @@ class DetectionEngine:
             shutoff_request=self._shutoff_request(),
             active_kind=active_kind,
             active_event_id=runtime.event_id if runtime else None,
-            active_started_at=runtime.started_at if runtime else None,
-            active_detected_at=runtime.detected_at if runtime else None,
+            active_started_at=(runtime.utc_started_at or runtime.started_at) if runtime else None,
+            active_detected_at=(
+                runtime.utc_detected_at or runtime.detected_at
+            ) if runtime else None,
             active_volume_l=(
                 self._event_volume(runtime, total_l) if runtime is not None else 0.0
             ),
@@ -667,11 +697,11 @@ class DetectionEngine:
             "runtimes": {
                 kind.value: {
                     "phase": runtime.phase.value,
-                    "started_at": runtime.started_at.isoformat()
-                    if runtime.started_at
+                    "started_at": (runtime.utc_started_at or runtime.started_at).isoformat()
+                    if runtime.started_at or runtime.utc_started_at
                     else None,
-                    "detected_at": runtime.detected_at.isoformat()
-                    if runtime.detected_at
+                    "detected_at": (runtime.utc_detected_at or runtime.detected_at).isoformat()
+                    if runtime.detected_at or runtime.utc_detected_at
                     else None,
                     "quiet_since": runtime.quiet_since.isoformat()
                     if runtime.quiet_since
@@ -693,8 +723,7 @@ class DetectionEngine:
         # offline. Confirmed ACTIVE events are retained for safety.
         self.last_sample_at = None
         self.last_flow_lph = None
-        self.last_total_l = None
-        self.total_expected_l = 0.0
+        self.reset_total_reference()
         runtime_data = data.get("runtimes", {})
         if not isinstance(runtime_data, dict):
             return
@@ -703,23 +732,38 @@ class DetectionEngine:
             if not isinstance(raw, dict):
                 continue
 
+            invalid_phase = False
             try:
                 phase = DetectorPhase(raw.get("phase", DetectorPhase.IDLE.value))
             except (TypeError, ValueError):
                 phase = DetectorPhase.IDLE
+                invalid_phase = True
 
             runtime = self.runtimes[kind]
-            if phase is not DetectorPhase.ACTIVE:
+            event_id = raw.get("event_id")
+            valid_id = isinstance(event_id, str) and bool(event_id.strip())
+            detected = parse_datetime(raw.get("detected_at"))
+            started = parse_datetime(raw.get("started_at"))
+            confirmed = phase is DetectorPhase.ACTIVE or (
+                valid_id and detected is not None
+            ) or (
+                invalid_phase and detected is not None and started is not None
+                and isinstance(raw.get("reason"), str) and bool(raw.get("reason"))
+                and (nonnegative_float(raw.get("estimated_volume_l")) or 0) > 0
+            )
+            if not confirmed:
                 runtime.reset()
                 continue
 
             runtime.phase = DetectorPhase.ACTIVE
             runtime.started_at = parse_datetime(raw.get("started_at"))
             runtime.detected_at = parse_datetime(raw.get("detected_at"))
+            runtime.utc_started_at = runtime.started_at
+            runtime.utc_detected_at = runtime.detected_at
             runtime.quiet_since = None
             runtime.event_id = (
                 raw.get("event_id")
-                if isinstance(raw.get("event_id"), str) and raw.get("event_id")
+                if valid_id
                 else self._new_event_id(kind, datetime.now().astimezone())
             )
             runtime.start_total_l = nonnegative_float(raw.get("start_total_l"))
@@ -730,5 +774,5 @@ class DetectionEngine:
                 nonnegative_float(raw.get("plausible_volume_l")) or runtime.estimated_volume_l
             )
             runtime.reason = (
-                str(raw.get("reason")) if raw.get("reason") is not None else None
+                raw.get("reason") if isinstance(raw.get("reason"), str) else None
             )

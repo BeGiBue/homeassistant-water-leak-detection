@@ -40,11 +40,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "1.0.1" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            git fetch --no-tags origin "refs/tags/1.0.1:refs/tags/1.0.1"
-            test "$(git rev-parse '1.0.1^{commit}')" = "${GITHUB_SHA}"
-            echo "Release 1.0.1 already exists at the checked commit."
-            exit 0
-          fi
-
-          gh release create "1.0.1"             --repo "${GITHUB_REPOSITORY}"             --target "${GITHUB_SHA}"             --title "Water Leak Guard 1.0.1"             --notes-file "RELEASE_NOTES_1.0.1.md"
+          # Common logic checks tag SHA even when no Release exists yet.
+          bash .github/release_checked_commit.sh 1.0.1 --target "${GITHUB_SHA}"

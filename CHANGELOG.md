@@ -2,7 +2,7 @@
 
 All notable changes to Water Leak Guard are documented here.
 
-## Unreleased — correction round 1
+## Unreleased — correction rounds 1 and 2
 
 - Bounded state persistence; defensive recovery of stored runtime data.
 - Negative/stale/out-of-order measurements cannot provide reset evidence.
@@ -11,6 +11,11 @@ All notable changes to Water Leak Guard are documented here.
 - Live recipient updates, setup rollback and consistent Back without saving controls.
 - Release validation and publication target the same immutable commit.
 - Detector definitions for F02, F04, F08 and Rapid Rise remain pending specification.
+- Round 2: report-based evidence with automatic cadence and UTC-independent ordering.
+- Round 2: independent per-recipient HA handoffs without duplicate-producing timeout.
+- Round 2: common total-meter reference without fixed litre resolution.
+- Round 2: conservative confirmed-event repair and monotonic bypass/active duration.
+- Round 2: validate existing release tags before creating a Release.
 
 ## 1.0.2 — 2026-10-07
 

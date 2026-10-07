@@ -247,44 +247,75 @@ Water Leak Guard is licensed under the **GNU Affero General Public License v3.0 
 
 See [LICENSE](LICENSE) for the complete license text.
 
-## Unreleased correction round: operational contract
+## Unreleased correction rounds: operational contract
 
-The packaged version remains **1.0.2**; these working-tree changes have not been released.
-Measurement validity is separate from detection thresholds. Negative, nonfinite,
-unknown and unavailable values are invalid and never count as quiet flow.
-`source_max_age_seconds` (default 30 s, configurable 10–3600 s) is measured using
-Home Assistant `last_reported`, so newly reported identical values remain usable.
-Set it above the meter's reporting interval. Frozen values expire; expired samples
-clear unconfirmed observation/reset windows while retaining confirmed events.
-Detector elapsed time uses a monotonic clock. Restart/reload discards unconfirmed
-windows and preserves active events and acknowledgements.
+The packaged version remains **1.0.2**; these working-tree corrections have not been
+released. F02, F04 and F08 remain known findings awaiting separate detector
+specifications. The Rapid-Rise definition also remains unchanged.
 
-Optional total-meter increments must be nonnegative and compatible with measured
-flow (three times the integrated envelope plus one litre tolerance). Resets and
-implausible increments rebase active event origins. Frozen/absent totals fall back
-to flow integration. Total meters cannot import volume accumulated during an outage
-or from another source. Meter-resolution assumptions may need calibration for
-unusual installations; this is input validation, not a new leak class.
+Only actual flow reports supply detection/quiet evidence. Re-reading a cached HA
+state on an internal tick never matures a timer. Object identity and report
+notifications, including `last_reported` changes in either UTC direction, distinguish
+new reports from cached readings. Superseded queued state events are rejected by
+current-state identity, not UTC ordering. Runtime intervals and active durations
+use a process-local monotonic axis. Persisted active duration excludes offline time.
+
+`source_max_age_seconds` defaults to **0 (automatic cadence)**. After two observed
+intervals, the automatic gap limit is 1.5 times the longest of the last five
+accepted report intervals. Until then startup qualification uses a five-minute
+observation bound; repeated matching slower periods can establish longer cadence
+without crediting their earlier unknown time. The first
+interval longer than the internal tick establishes cadence without crediting unknown
+startup time. An outage beyond the gap limit clears unconfirmed observation/quiet
+windows, not confirmed safety states, and is not trained as a normal interval.
+Regular 5, 30, 60 and 120 second reports work without expert changes. A positive
+option explicitly overrides the permitted report gap (equality is allowed). Very irregular startup cadence can require an explicit bound. Round 1's persisted
+30-second default is treated as automatic unless explicitly re-saved in Round 2.
+Other positive legacy limits are preserved; an intentionally chosen 30-second limit
+can be re-saved and is then marked explicit. No algorithm can
+prove continuous physical flow between reports; these are endpoint observations.
+
+Optional total-meter progress is compared with ALL accumulated flow-envelope volume
+since the last accepted progress. No fixed litre-resolution offset is assumed.
+Positive increments above 1.5 times this common envelope remain pending without
+crediting detection volume; later flow evidence can support quantized progress.
+Counter regression/reset and return after unavailable rebase the reference. Frozen
+or absent totals do not veto independent flow integration. No volume from an unknown
+outage or another meter is imported. This plausibility check remains a measurement
+heuristic, not a guarantee of meter accuracy or a new leak threshold.
 
 Safety transitions request a write within 1 s; ordinary sample/learning updates
 within 10 s of the first pending update, without postponement by later samples.
 These bounds exclude event-loop stalls and storage failures. Final-write/unload
-flushes pending state. Corrupt fields are discarded independently where possible.
+flushes pending state. Corrupt active records retain safety when remaining confirmed
+event identity/detection evidence is strong; unconfirmed monitoring is discarded.
 
-Active events retain per-recipient delivery status across restart. Missing or failed
-notify services are retried on the periodic tick; a failing recipient does not block
-other recipients beyond its bounded timeout. A successful service call confirms
-service acceptance, not delivery to the phone. A crash before persisted confirmation
-may cause a duplicate notification. Acknowledgement is rechecked immediately before
-sending and never clears detection or a shutoff request. An already accepted service
-call cannot be recalled. Physical valve control remains in user HA automations.
+Notifications use isolated tasks per event/recipient. States distinguish not yet
+dispatched, in flight, locally failed, accepted by HA, and interrupted/ambiguous.
+Missing services and local exceptions leave dispatch open for later periodic retry.
+A slow/hanging service does not block other recipients. No 5-second cancellation
+and automatic duplicate retry applies to a running handoff. A second handoff for
+that event/recipient cannot start while the first is running. Acknowledgement is
+checked immediately before the HA call and never clears detection or shutoff.
+
+**The integration guarantees handoff to the configured Home Assistant Notify service,
+not physical delivery to the phone.** A normal service return records HA acceptance;
+mobile_app may internally handle remote push failures without reporting them here.
+Already handed-off calls cannot be recalled. Unload cancels local waiting tasks;
+an interrupted in-flight call is persisted as ambiguous and is not automatically
+resent after restore, because it may already have pushed. This can require manual
+operator follow-up. A crash before persisting acceptance can still cause a duplicate;
+exactly-once physical delivery is impossible without downstream confirmation.
+
+Bypass duration uses a monotonic deadline in the running process. On save its UTC
+expiry is projected from remaining monotonic time; restore uses that absolute expiry.
+Clock changes during the same process neither shorten nor extend the bypass. A
+clock correction during an unclean outage remains inherently ambiguous.
 
 Changing recipients does not reload detection. Changing sources retains active
 safety states but discards old meter baselines, unconfirmed timers and learning.
 Every form submenu offers **Back without saving**; enable it and submit to return
-without validating or saving unfinished fields. Existing required save validation
-still applies. Own derived Water Leak Guard sensors are rejected as sources.
+without validating or saving unfinished fields. Own derived Water Leak Guard sensors
+are rejected as sources. Physical valve control remains in user HA automations.
 
-F02, F04 and F08 remain known findings awaiting separate detector specifications;
-the Rapid-Rise definition also remains unchanged. This round does not establish
-that ordinary water use is free of false alarms.
+These technical rounds do not establish absence of false alarms during normal use.

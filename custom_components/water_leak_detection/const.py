@@ -19,7 +19,8 @@ PLATFORMS: tuple[Platform, ...] = (
 
 CONF_FLOW_ENTITY = "flow_entity"
 CONF_SOURCE_MAX_AGE_SEC = "source_max_age_seconds"
-DEFAULT_SOURCE_MAX_AGE_SEC = 30.0
+CONF_SOURCE_GAP_EXPLICIT = "source_gap_policy_explicit"
+DEFAULT_SOURCE_MAX_AGE_SEC = 0.0
 CONF_TOTAL_ENTITY = "total_entity"
 CONF_SOURCE_MODE = "source_mode"
 CONF_SOURCE_DEVICE = "source_device"

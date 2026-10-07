@@ -65,6 +65,7 @@ from .const import (
     CONF_SLOW_RESET_MIN,
     CONF_SLOW_THRESHOLD_LPH,
     CONF_SOURCE_DEVICE,
+    CONF_SOURCE_GAP_EXPLICIT,
     CONF_SOURCE_MAX_AGE_SEC,
     CONF_SOURCE_MODE,
     CONF_STATIC_PRESSURE_BAR,
@@ -787,6 +788,8 @@ class WaterLeakOptionsFlow(_NavigationForms, OptionsFlowWithReload):
             if not errors:
                 updated = dict(self.config_entry.options)
                 updated.update(user_input)
+                if CONF_SOURCE_MAX_AGE_SEC in user_input:
+                    updated[CONF_SOURCE_GAP_EXPLICIT] = True
                 self._persist_options(updated)
                 return await self.async_step_init()
 
@@ -796,8 +799,13 @@ class WaterLeakOptionsFlow(_NavigationForms, OptionsFlowWithReload):
             {
                 probatio.Optional(
                     CONF_SOURCE_MAX_AGE_SEC,
-                    default=values.get(CONF_SOURCE_MAX_AGE_SEC, DEFAULT_SOURCE_MAX_AGE_SEC),
-                ): _number(10, 3600, 1, "s"),
+                    default=(
+                        DEFAULT_SOURCE_MAX_AGE_SEC
+                        if user_input is None and values.get(CONF_SOURCE_MAX_AGE_SEC) == 30
+                        and not options.get(CONF_SOURCE_GAP_EXPLICIT)
+                        else values.get(CONF_SOURCE_MAX_AGE_SEC, DEFAULT_SOURCE_MAX_AGE_SEC)
+                    ),
+                ): _number(0, 3600, 1, "s"),
                 probatio.Required(
                     CONF_SLOW_THRESHOLD_LPH,
                     default=values.get(

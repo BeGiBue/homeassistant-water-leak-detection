@@ -50,3 +50,7 @@ HACS derives the remote version from the latest published GitHub Release.
 - Recipient descriptions render real line breaks instead of literal escape sequences.
 
 The current correction round is unreleased. Do not run publication workflows while reviewing it.
+
+The shared release script also checks a pre-existing tag when no GitHub Release exists
+yet. A mismatching tag aborts before creation; a matching annotated/lightweight tag
+can receive its Release. Remote tag lookup failures fail closed. No tag is moved.
