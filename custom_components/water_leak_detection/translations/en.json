@@ -14,14 +14,16 @@
         "description": "Select the flow sensor and, if available, the cumulative water consumption sensor.",
         "data": {
           "flow_entity": "Flow rate sensor",
-          "total_entity": "Total consumption sensor (optional)"
+          "total_entity": "Total consumption sensor (optional)",
+          "go_back": "Back without saving"
         }
       },
       "device": {
         "title": "Water meter device",
         "description": "Select the Home Assistant device that contains the water meter sensors.",
         "data": {
-          "source_device": "Device"
+          "source_device": "Device",
+          "go_back": "Back without saving"
         }
       },
       "device_entities": {
@@ -29,7 +31,8 @@
         "description": "Confirm the compatible sensors detected on the selected device.",
         "data": {
           "flow_entity": "Flow rate sensor",
-          "total_entity": "Total consumption sensor"
+          "total_entity": "Total consumption sensor",
+          "go_back": "Back without saving"
         }
       },
       "notifications": {
@@ -37,7 +40,8 @@
         "description": "**Already configured: {recipient_count}**\n\n{configured_recipients}\n\nAdd more Companion App devices or finish setup.",
         "menu_options": {
           "add_initial_recipient": "Add notification device",
-          "finish_setup": "Finish setup"
+          "finish_setup": "Finish setup",
+          "back_to_sources": "Back to sources"
         }
       },
       "add_initial_recipient": {
@@ -49,7 +53,8 @@
           "tracker_entity": "Device tracker",
           "critical_enabled": "Allow critical Burst Leak alerts",
           "allow_global_ack": "Allow global acknowledgement when device is home",
-          "trusted_stationary": "Trusted stationary home device"
+          "trusted_stationary": "Trusted stationary home device",
+          "go_back": "Back without saving"
         }
       },
       "reconfigure": {
@@ -57,7 +62,14 @@
         "description": "Change the flow sensor and optional total-consumption sensor. The integration will reload afterwards.",
         "data": {
           "flow_entity": "Flow rate sensor",
-          "total_entity": "Total consumption sensor (optional)"
+          "total_entity": "Total consumption sensor (optional)",
+          "go_back": "Back without saving"
+        }
+      },
+      "reconfigure_menu": {
+        "title": "Sources",
+        "menu_options": {
+          "reconfigure": "Edit sources"
         }
       }
     },
@@ -67,7 +79,9 @@
       "unsupported_volume_unit": "The total sensor uses an unsupported unit.",
       "same_source_entity": "Flow and total consumption must use different entities.",
       "recipient_notify_service_exists": "This Companion notification service is already selected as a recipient.",
-      "recipient_name_required": "Enter a name for the notification device."
+      "recipient_name_required": "Enter a name for the notification device.",
+      "required_fields_missing": "Please complete all required fields.",
+      "derived_source": "Water Leak Guard output sensors cannot be used as measurement sources."
     },
     "abort": {
       "already_configured": "This flow sensor is already configured.",
@@ -118,7 +132,9 @@
           "burst_learned_multiplier": "Burst Leak multiplier on learned maximum",
           "hydraulic_burst_fraction": "Hydraulic Burst plausibility fraction",
           "burst_rate_rise_lph_10s": "Burst rate-of-rise threshold per 10 seconds",
-          "burst_rate_confirm_seconds": "Rapid-rise Burst confirmation time"
+          "burst_rate_confirm_seconds": "Rapid-rise Burst confirmation time",
+          "go_back": "Back without saving",
+          "source_max_age_seconds": "Maximum measurement age (seconds)"
         },
         "submit": "Save and go back"
       },
@@ -131,14 +147,16 @@
           "tracker_entity": "Device tracker",
           "critical_enabled": "Allow critical Burst Leak alerts",
           "allow_global_ack": "Allow global acknowledgement when device is home",
-          "trusted_stationary": "Trusted stationary home device"
+          "trusted_stationary": "Trusted stationary home device",
+          "go_back": "Back without saving"
         },
         "submit": "Add and go back"
       },
       "remove_recipient": {
         "title": "Remove notification device",
         "data": {
-          "id": "Device"
+          "id": "Device",
+          "go_back": "Back without saving"
         },
         "description": "**Already configured: {recipient_count}**\n\n{configured_recipients}\n\nSelect the device that should no longer receive alerts.",
         "submit": "Remove and go back"
@@ -146,7 +164,8 @@
       "edit_recipient": {
         "title": "Select notification device",
         "data": {
-          "id": "Device"
+          "id": "Device",
+          "go_back": "Back without saving"
         },
         "description": "**Already configured: {recipient_count}**\n\n{configured_recipients}\n\nSelect the device you want to edit.",
         "submit": "Continue"
@@ -160,7 +179,8 @@
           "tracker_entity": "Device tracker",
           "critical_enabled": "Allow critical Burst Leak alerts",
           "allow_global_ack": "Allow global acknowledgement when device is home",
-          "trusted_stationary": "Trusted stationary home device"
+          "trusted_stationary": "Trusted stationary home device",
+          "go_back": "Back without saving"
         },
         "submit": "Save and go back"
       },
@@ -179,7 +199,8 @@
         "description": "Change the flow sensor and optional total-consumption sensor. The integration reloads automatically afterwards.",
         "data": {
           "flow_entity": "Flow rate sensor",
-          "total_entity": "Total consumption sensor (optional)"
+          "total_entity": "Total consumption sensor (optional)",
+          "go_back": "Back without saving"
         },
         "submit": "Save and go back"
       }
@@ -196,7 +217,9 @@
       "unsupported_flow_unit": "The flow sensor uses an unsupported unit.",
       "unsupported_volume_unit": "The total sensor uses an unsupported unit.",
       "same_source_entity": "Flow and total consumption must use different entities.",
-      "already_configured": "This flow sensor is already used by another entry."
+      "already_configured": "This flow sensor is already used by another entry.",
+      "required_fields_missing": "Please complete all required fields.",
+      "derived_source": "Water Leak Guard output sensors cannot be used as measurement sources."
     },
     "abort": {
       "no_mobile_app_notify_services": "No mobile_app notification services were found. Set up the Home Assistant Companion App first.",

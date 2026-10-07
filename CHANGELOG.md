@@ -2,6 +2,16 @@
 
 All notable changes to Water Leak Guard are documented here.
 
+## Unreleased — correction round 1
+
+- Bounded state persistence; defensive recovery of stored runtime data.
+- Negative/stale/out-of-order measurements cannot provide reset evidence.
+- Plausibility checks and rebasing for optional cumulative meters.
+- Persistent per-recipient notification delivery with retry and acknowledgement guards.
+- Live recipient updates, setup rollback and consistent Back without saving controls.
+- Release validation and publication target the same immutable commit.
+- Detector definitions for F02, F04, F08 and Rapid Rise remain pending specification.
+
 ## 1.0.2 — 2026-10-07
 
 ### Added

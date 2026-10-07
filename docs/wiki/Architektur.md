@@ -94,7 +94,7 @@ Intern:
 - Durchfluss: **L/h**
 - Volumen: **L**
 
-Negative Durchflusswerte werden für die Detektion auf 0 begrenzt.
+Negative und nicht endliche Durchflusswerte sind ungültige Messungen. Sie werden niemals als 0-Durchfluss oder Ruhe-Evidenz ausgewertet. Bestätigte Leckagen bleiben erhalten.
 
 ## 5. Verhalten bei Sensorausfall
 

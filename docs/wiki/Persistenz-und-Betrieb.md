@@ -149,3 +149,21 @@ Ein aktiver Burst darf nach Neustart nicht einfach verschwinden.
 Ein unvollständig beobachteter Messzeitraum darf nicht als vollständiger Leak- oder Lernbeweis gelten.
 
 Darum sind aktive Events langlebig, unbestätigte Zeitfenster bei fehlender Evidenz dagegen konservativ.
+
+## Korrekturrunde 1 (unveröffentlicht)
+
+Sicherheitsübergänge werden mit einer festen Frist von 1 s gespeichert; Mess-/Lernupdates
+mit 10 s ab dem ersten vorgemerkten Update. Weitere Samples verschieben die Frist nicht.
+Event-Loop-Blockaden und Speicherfehler können diese Fristen überschreiten.
+Pro Event und Empfänger wird die erfolgreiche Annahme durch den Notify-Service persistiert.
+Nicht verfügbare/fehlgeschlagene Dienste werden erneut versucht; Quittierungen bleiben wirksam.
+Ein Absturz zwischen Versand und Speicherung kann eine doppelte Meldung verursachen.
+
+Negative, nicht endliche und überalterte Messungen sind keine Ruhe-Evidenz.
+`last_reported` unterscheidet neue identische Meldungen von eingefrorenen Zuständen;
+standardmäßig beträgt das maximale Alter 30 s (konfigurierbar). Laufzeitintervalle
+verwenden eine monotone Uhr; Neustarts setzen unbestätigte Intervalle zurück.
+Zählerreset, unplausibler Sprung und Quellenwechsel lösen den alten Volumenbezug.
+Aktive Leckage und Absperranforderung bleiben dabei erhalten. Eingefrorene oder fehlende
+Totalwerte werden durch Durchflussintegration ersetzt. Die fachlichen Findings
+F02/F04/F08 und die Rapid-Rise-Definition bleiben für eine separate Spezifikation offen.

@@ -10,15 +10,15 @@ class UnsupportedUnitError(ValueError):
 
 
 def _clean(unit: str | None) -> str:
-    if unit is None:
+    if not isinstance(unit, str):
         raise UnsupportedUnitError("Source entity has no unit of measurement")
     return unit.strip().replace("³", "3").replace(" ", "").lower()
 
 
 def normalize_flow_lph(value: float, unit: str | None) -> float:
     """Convert a flow value to litres per hour."""
-    if not isfinite(value):
-        raise ValueError("Flow value must be finite")
+    if not isfinite(value) or value < 0:
+        raise ValueError("Flow value must be finite and nonnegative")
     u = _clean(unit)
     factors = {
         "l/h": 1.0,
@@ -36,15 +36,18 @@ def normalize_flow_lph(value: float, unit: str | None) -> float:
         "ft3/min": 1699.01079552,
     }
     try:
-        return value * factors[u]
+        result = value * factors[u]
+        if not isfinite(result):
+            raise ValueError("Normalized measurement must be finite")
+        return result
     except KeyError as err:
         raise UnsupportedUnitError(f"Unsupported flow unit: {unit}") from err
 
 
 def normalize_volume_l(value: float, unit: str | None) -> float:
     """Convert a cumulative volume value to litres."""
-    if not isfinite(value):
-        raise ValueError("Volume value must be finite")
+    if not isfinite(value) or value < 0:
+        raise ValueError("Volume value must be finite and nonnegative")
     u = _clean(unit)
     factors = {
         "l": 1.0,
@@ -56,7 +59,10 @@ def normalize_volume_l(value: float, unit: str | None) -> float:
         "ft3": 28.316846592,
     }
     try:
-        return value * factors[u]
+        result = value * factors[u]
+        if not isfinite(result):
+            raise ValueError("Normalized measurement must be finite")
+        return result
     except KeyError as err:
         raise UnsupportedUnitError(f"Unsupported volume unit: {unit}") from err
 

@@ -246,3 +246,45 @@ The release is validated against Home Assistant 2026.9.4 / Python 3.14.2 with co
 Water Leak Guard is licensed under the **GNU Affero General Public License v3.0 only (AGPL-3.0-only)**.
 
 See [LICENSE](LICENSE) for the complete license text.
+
+## Unreleased correction round: operational contract
+
+The packaged version remains **1.0.2**; these working-tree changes have not been released.
+Measurement validity is separate from detection thresholds. Negative, nonfinite,
+unknown and unavailable values are invalid and never count as quiet flow.
+`source_max_age_seconds` (default 30 s, configurable 10–3600 s) is measured using
+Home Assistant `last_reported`, so newly reported identical values remain usable.
+Set it above the meter's reporting interval. Frozen values expire; expired samples
+clear unconfirmed observation/reset windows while retaining confirmed events.
+Detector elapsed time uses a monotonic clock. Restart/reload discards unconfirmed
+windows and preserves active events and acknowledgements.
+
+Optional total-meter increments must be nonnegative and compatible with measured
+flow (three times the integrated envelope plus one litre tolerance). Resets and
+implausible increments rebase active event origins. Frozen/absent totals fall back
+to flow integration. Total meters cannot import volume accumulated during an outage
+or from another source. Meter-resolution assumptions may need calibration for
+unusual installations; this is input validation, not a new leak class.
+
+Safety transitions request a write within 1 s; ordinary sample/learning updates
+within 10 s of the first pending update, without postponement by later samples.
+These bounds exclude event-loop stalls and storage failures. Final-write/unload
+flushes pending state. Corrupt fields are discarded independently where possible.
+
+Active events retain per-recipient delivery status across restart. Missing or failed
+notify services are retried on the periodic tick; a failing recipient does not block
+other recipients beyond its bounded timeout. A successful service call confirms
+service acceptance, not delivery to the phone. A crash before persisted confirmation
+may cause a duplicate notification. Acknowledgement is rechecked immediately before
+sending and never clears detection or a shutoff request. An already accepted service
+call cannot be recalled. Physical valve control remains in user HA automations.
+
+Changing recipients does not reload detection. Changing sources retains active
+safety states but discards old meter baselines, unconfirmed timers and learning.
+Every form submenu offers **Back without saving**; enable it and submit to return
+without validating or saving unfinished fields. Existing required save validation
+still applies. Own derived Water Leak Guard sensors are rejected as sources.
+
+F02, F04 and F08 remain known findings awaiting separate detector specifications;
+the Rapid-Rise definition also remains unchanged. This round does not establish
+that ordinary water use is free of false alarms.

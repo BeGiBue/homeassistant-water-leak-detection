@@ -115,9 +115,38 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     manager = WaterLeakManager(hass, entry)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = manager
-    await manager.async_setup()
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    try:
+        await manager.async_setup()
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    except BaseException:
+        # Roll back manager-owned listeners/tasks even if HA aborts setup midway.
+        try:
+            await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+        except Exception:
+            _LOGGER.exception("Platform rollback failed for %s", entry.entry_id)
+        try:
+            await manager.async_unload(save=False)
+        except Exception:
+            _LOGGER.exception("Manager rollback failed for %s", entry.entry_id)
+        finally:
+            hass.data[DOMAIN].pop(entry.entry_id, None)
+        raise
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     return True
+
+
+async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Apply options live; source changes use the explicit reconfigure reload."""
+    manager = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if manager is None or manager._closed:
+        return
+    if manager.flow_entity_id != entry.data.get("flow_entity") or (
+        manager.total_entity_id != (entry.data.get("total_entity") or None)
+    ):
+        return
+    manager.apply_options()
+    await manager.async_refresh()
+    await manager.notifications.async_retry_pending()
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

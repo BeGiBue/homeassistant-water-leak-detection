@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
@@ -35,6 +36,7 @@ from .const import (
     RECIPIENT_TRUSTED_STATIONARY,
     DetectorKind,
 )
+from .validation import parse_datetime, string_set
 
 if TYPE_CHECKING:
     from .manager import WaterLeakManager
@@ -96,6 +98,7 @@ class EventAcknowledgement:
     globally_acknowledged_by: str | None = None
     globally_acknowledged_at: datetime | None = None
     muted_recipients: set[str] = field(default_factory=set)
+    delivered_recipients: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize acknowledgement state."""
@@ -108,29 +111,26 @@ class EventAcknowledgement:
                 else None
             ),
             "muted_recipients": sorted(self.muted_recipients),
+            "delivered_recipients": dict(self.delivered_recipients),
         }
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> EventAcknowledgement:
         """Restore acknowledgement state."""
-        acknowledged_at = raw.get("globally_acknowledged_at")
-        parsed_at = (
-            dt_util.parse_datetime(acknowledged_at)
-            if isinstance(acknowledged_at, str)
-            else None
-        )
-        muted = raw.get("muted_recipients", [])
+        delivered = raw.get("delivered_recipients", {})
         return cls(
-            globally_acknowledged=bool(raw.get("globally_acknowledged", False)),
+            globally_acknowledged=raw.get("globally_acknowledged") is True,
             globally_acknowledged_by=(
-                str(raw["globally_acknowledged_by"])
-                if raw.get("globally_acknowledged_by")
+                raw.get("globally_acknowledged_by")
+                if isinstance(raw.get("globally_acknowledged_by"), str)
                 else None
             ),
-            globally_acknowledged_at=parsed_at,
-            muted_recipients={
-                str(item) for item in muted if isinstance(item, (str, int))
-            },
+            globally_acknowledged_at=parse_datetime(raw.get("globally_acknowledged_at")),
+            muted_recipients=string_set(raw.get("muted_recipients")),
+            delivered_recipients={
+                key: value for key, value in delivered.items()
+                if isinstance(key, str) and isinstance(value, str)
+            } if isinstance(delivered, dict) else {},
         )
 
 
@@ -152,6 +152,10 @@ class NotificationController:
         self.acknowledgements: dict[str, EventAcknowledgement] = {}
         self._unsubs: list[Callable[[], None]] = []
         self._tracker_unsub: Callable[[], None] | None = None
+        self._events: dict[str, dict[str, Any]] = {}
+        self._delivery_lock = asyncio.Lock()
+        self._delivery_tasks: set[asyncio.Task] = set()
+        self._closed = False
 
     async def async_setup(self) -> None:
         """Register event and presence listeners."""
@@ -165,9 +169,27 @@ class NotificationController:
             self.hass.bus.async_listen(EVENT_LEAK_ENDED, self._async_leak_ended)
         )
         self.reload_recipients()
+        for event_id, kind in self.manager.engine.active_events().items():
+            runtime = self.manager.engine.runtimes[kind]
+            self._events[event_id] = {
+                "type": kind.value,
+                "flow_lph": self.manager.current_flow_lph,
+                "started_at": runtime.started_at.isoformat() if runtime.started_at else None,
+            }
+            self.acknowledgements.setdefault(event_id, EventAcknowledgement())
+        self.acknowledgements = {
+            event_id: state for event_id, state in self.acknowledgements.items()
+            if event_id in self._events
+        }
 
     async def async_unload(self) -> None:
-        """Remove listeners."""
+        """Remove listeners and cancel in-flight deliveries before saving."""
+        self._closed = True
+        tasks = tuple(self._delivery_tasks)
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
         if self._tracker_unsub is not None:
             self._tracker_unsub()
             self._tracker_unsub = None
@@ -231,28 +253,75 @@ class NotificationController:
         if not isinstance(event_id, str) or not event_id:
             return
 
-        state = self.acknowledgements.setdefault(event_id, EventAcknowledgement())
+        self._events[event_id] = dict(event.data)
+        self.acknowledgements.setdefault(event_id, EventAcknowledgement())
         self._persist_callback()
-        if state.globally_acknowledged:
-            return
+        await self.async_retry_pending()
 
-        detector_type = str(event.data.get("type", "unknown"))
-        for recipient in self.recipients.values():
-            if recipient.id in state.muted_recipients:
-                continue
-            await self._async_send_event_notification(
-                recipient,
-                event_id,
-                detector_type,
-                event.data,
-                returning_home=False,
-            )
+    @staticmethod
+    def _delivery_key(recipient: NotificationRecipient) -> str:
+        """An edited delivery route/settings require a fresh accepted send."""
+        return repr(sorted(asdict(recipient).items()))
+
+    def _eligible(self, event_id: str, recipient: NotificationRecipient) -> bool:
+        active_events = getattr(self.manager.engine, "active_events", None)
+        if active_events is not None and event_id not in active_events():
+            return False
+        state = self.acknowledgements.get(event_id)
+        return (
+            not self._closed
+            and event_id in self._events
+            and self.recipients.get(recipient.id) == recipient
+            and state is not None
+            and not state.globally_acknowledged
+            and recipient.id not in state.muted_recipients
+        )
+
+    async def async_retry_pending(self) -> None:
+        """Retry until HA's notify service accepts a send; serialize duplicate triggers."""
+        if self._closed or self._delivery_lock.locked():
+            # Pending events stay in _events; the next tick retries them. Do not
+            # accumulate tick tasks behind slow recipients or overlapping starts.
+            return
+        task = asyncio.current_task()
+        self._delivery_tasks.add(task)
+        try:
+            async with self._delivery_lock:
+                for event_id, payload in tuple(self._events.items()):
+                    for recipient in tuple(self.recipients.values()):
+                        if not self._eligible(event_id, recipient):
+                            continue
+                        state = self.acknowledgements[event_id]
+                        key = self._delivery_key(recipient)
+                        if state.delivered_recipients.get(recipient.id) == key:
+                            continue
+                        try:
+                            async with asyncio.timeout(5):
+                                sent = await self._async_send_event_notification(
+                                    recipient, event_id, str(payload.get("type", "unknown")),
+                                    {**payload, "flow_lph": self.manager.current_flow_lph},
+                                    returning_home=bool(payload.get("returning_home")),
+                                    authorize=lambda eid=event_id, r=recipient: (
+                                        self._eligible(eid, r)
+                                    ),
+                                )
+                        except Exception:
+                            _LOGGER.exception(
+                                "Notification to %s failed; will retry", recipient.name
+                            )
+                            continue
+                        if sent is not False and self._eligible(event_id, recipient):
+                            state.delivered_recipients[recipient.id] = key
+                            self._persist_callback()
+        finally:
+            self._delivery_tasks.discard(task)
 
     async def _async_leak_ended(self, event: Event) -> None:
         if event.data.get("config_entry_id") != self.entry.entry_id:
             return
         event_id = event.data.get("event_id")
         if isinstance(event_id, str):
+            self._events.pop(event_id, None)
             self.acknowledgements.pop(event_id, None)
             self._persist_callback()
 
@@ -274,7 +343,11 @@ class NotificationController:
             return
 
         snapshot = self.manager.engine.snapshot(self.manager.current_total_l)
-        if snapshot.active_event_id != event_id:
+        active_ids = {
+            runtime.event_id for runtime in getattr(self.manager.engine, "runtimes", {}).values()
+            if runtime.phase.value == "active"
+        }
+        if snapshot.active_event_id != event_id and event_id not in active_ids:
             self._fire_rejected(event_id, recipient_id, "event_not_active")
             return
 
@@ -352,30 +425,22 @@ class NotificationController:
         if state is None or state.globally_acknowledged:
             return
 
-        for recipient in self.recipients.values():
+        for recipient in tuple(self.recipients.values()):
             if recipient.tracker_entity != tracker_entity:
                 continue
-
-            # Returning Home is a fresh safety context. Re-notify every configured
-            # recipient on that device while the event remains globally unacknowledged.
-            # A previous personal mute is cleared at the same time.
             state.muted_recipients.discard(recipient.id)
+            state.delivered_recipients.pop(recipient.id, None)
             self._persist_callback()
-            await self._async_send_event_notification(
-                recipient,
-                event_id,
-                snapshot.active_kind.value,
-                {
-                    "flow_lph": self.manager.current_flow_lph,
-                    "volume_l": snapshot.active_volume_l,
-                    "started_at": (
-                        snapshot.active_started_at.isoformat()
-                        if snapshot.active_started_at
-                        else None
-                    ),
-                },
-                returning_home=True,
-            )
+            # Queue through the same guarded/retryable path as the first delivery.
+            self._events[event_id] = {
+                "type": snapshot.active_kind.value,
+                "flow_lph": self.manager.current_flow_lph,
+                "volume_l": snapshot.active_volume_l,
+                "started_at": snapshot.active_started_at.isoformat()
+                if snapshot.active_started_at else None,
+                "returning_home": True,
+            }
+        await self.async_retry_pending()
 
     async def _async_send_event_notification(
         self,
@@ -385,7 +450,8 @@ class NotificationController:
         payload: dict[str, Any],
         *,
         returning_home: bool,
-    ) -> None:
+        authorize: Callable[[], bool] | None = None,
+    ) -> bool:
         domain, service = recipient.notify_service.split(".", 1)
         if not self.hass.services.has_service(domain, service):
             _LOGGER.warning(
@@ -393,7 +459,7 @@ class NotificationController:
                 recipient.notify_service,
                 recipient.name,
             )
-            return
+            return False
 
         strings = await self._async_common_translations()
         is_burst = detector_type == DetectorKind.BURST_LEAK.value
@@ -499,6 +565,8 @@ class NotificationController:
                 }
             )
 
+        if authorize is not None and not authorize():
+            return False
         await self.hass.services.async_call(
             domain,
             service,
@@ -507,8 +575,9 @@ class NotificationController:
                 "message": " ".join(message_parts),
                 "data": notification_data,
             },
-            blocking=False,
+            blocking=True,
         )
+        return True
 
     async def _async_send_feedback(
         self,

@@ -28,6 +28,10 @@ Use the manual **Publish 1.0.2** workflow. It verifies:
 - presence of `RELEASE_NOTES_1.0.2.md`,
 - repository licensing remains **AGPL-3.0-only**.
 
+The workflow first runs the reusable validation workflow. Checkout and release target
+both use the triggering immutable `github.sha` / `GITHUB_SHA`, never a moving branch.
+A failed validation prevents publication. Run external hassfest/HACS checks as well.
+
 It then creates GitHub Release `1.0.2` using those release notes.
 
 ## HACS versioning
@@ -44,3 +48,5 @@ HACS derives the remote version from the latest published GitHub Release.
 - Configure remains open after saving a subsection.
 - Notification recipients can navigate back to the main Configure menu.
 - Recipient descriptions render real line breaks instead of literal escape sequences.
+
+The current correction round is unreleased. Do not run publication workflows while reviewing it.

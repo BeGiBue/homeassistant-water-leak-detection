@@ -14,14 +14,16 @@
         "description": "Wähle den Durchflusssensor und optional den kumulierten Verbrauchssensor.",
         "data": {
           "flow_entity": "Durchflusssensor",
-          "total_entity": "Gesamtverbrauchssensor (optional)"
+          "total_entity": "Gesamtverbrauchssensor (optional)",
+          "go_back": "Zurück ohne Speichern"
         }
       },
       "device": {
         "title": "Wasserzähler-Gerät",
         "description": "Wähle das Home-Assistant-Gerät mit den Wasserzähler-Sensoren.",
         "data": {
-          "source_device": "Gerät"
+          "source_device": "Gerät",
+          "go_back": "Zurück ohne Speichern"
         }
       },
       "device_entities": {
@@ -29,7 +31,8 @@
         "description": "Bestätige die kompatiblen Sensoren des ausgewählten Geräts.",
         "data": {
           "flow_entity": "Durchflusssensor",
-          "total_entity": "Gesamtverbrauchssensor"
+          "total_entity": "Gesamtverbrauchssensor",
+          "go_back": "Zurück ohne Speichern"
         }
       },
       "notifications": {
@@ -37,7 +40,8 @@
         "description": "**Bereits eingerichtet: {recipient_count}**\n\n{configured_recipients}\n\nFüge weitere Companion-App-Geräte hinzu oder schließe die Einrichtung ab.",
         "menu_options": {
           "add_initial_recipient": "Benachrichtigungsgerät hinzufügen",
-          "finish_setup": "Einrichtung abschließen"
+          "finish_setup": "Einrichtung abschließen",
+          "back_to_sources": "Zurück zu den Messquellen"
         }
       },
       "add_initial_recipient": {
@@ -49,7 +53,8 @@
           "tracker_entity": "Device Tracker",
           "critical_enabled": "Kritische Burst-Leak-Alarme erlauben",
           "allow_global_ack": "Globales Quittieren erlauben, wenn Gerät zuhause",
-          "trusted_stationary": "Stationäres vertrauenswürdiges Home-Gerät"
+          "trusted_stationary": "Stationäres vertrauenswürdiges Home-Gerät",
+          "go_back": "Zurück ohne Speichern"
         }
       },
       "reconfigure": {
@@ -57,7 +62,14 @@
         "description": "Ändere den Durchflusssensor und optional den Gesamtverbrauchssensor. Die Integration wird anschließend neu geladen.",
         "data": {
           "flow_entity": "Durchflusssensor",
-          "total_entity": "Gesamtverbrauchssensor (optional)"
+          "total_entity": "Gesamtverbrauchssensor (optional)",
+          "go_back": "Zurück ohne Speichern"
+        }
+      },
+      "reconfigure_menu": {
+        "title": "Messquellen",
+        "menu_options": {
+          "reconfigure": "Messquellen bearbeiten"
         }
       }
     },
@@ -67,7 +79,9 @@
       "unsupported_volume_unit": "Der Verbrauchssensor verwendet eine nicht unterstützte Einheit.",
       "same_source_entity": "Durchfluss und Gesamtverbrauch müssen unterschiedliche Entitäten sein.",
       "recipient_notify_service_exists": "Dieser Companion-Benachrichtigungsdienst ist bereits als Empfänger ausgewählt.",
-      "recipient_name_required": "Bitte gib einen Namen für das Benachrichtigungsgerät ein."
+      "recipient_name_required": "Bitte gib einen Namen für das Benachrichtigungsgerät ein.",
+      "required_fields_missing": "Bitte fülle alle erforderlichen Felder aus.",
+      "derived_source": "Abgeleitete Sensoren von Wasserwächter dürfen nicht als Messquelle verwendet werden."
     },
     "abort": {
       "already_configured": "Dieser Durchflusssensor ist bereits konfiguriert.",
@@ -118,7 +132,9 @@
           "burst_learned_multiplier": "Burst-Leak-Faktor auf gelerntes Maximum",
           "hydraulic_burst_fraction": "Hydraulischer Burst-Plausibilitätsfaktor",
           "burst_rate_rise_lph_10s": "Burst-Anstiegsgrenze pro 10 Sekunden",
-          "burst_rate_confirm_seconds": "Bestätigungszeit für schnellen Burst-Anstieg"
+          "burst_rate_confirm_seconds": "Bestätigungszeit für schnellen Burst-Anstieg",
+          "go_back": "Zurück ohne Speichern",
+          "source_max_age_seconds": "Maximales Alter der Messwerte (Sekunden)"
         },
         "submit": "Speichern und zurück"
       },
@@ -131,14 +147,16 @@
           "tracker_entity": "Device Tracker",
           "critical_enabled": "Kritische Burst-Leak-Alarme erlauben",
           "allow_global_ack": "Globales Quittieren erlauben, wenn Gerät zuhause",
-          "trusted_stationary": "Stationäres vertrauenswürdiges Home-Gerät"
+          "trusted_stationary": "Stationäres vertrauenswürdiges Home-Gerät",
+          "go_back": "Zurück ohne Speichern"
         },
         "submit": "Hinzufügen und zurück"
       },
       "remove_recipient": {
         "title": "Benachrichtigungsgerät entfernen",
         "data": {
-          "id": "Gerät"
+          "id": "Gerät",
+          "go_back": "Zurück ohne Speichern"
         },
         "description": "**Bereits eingerichtet: {recipient_count}**\n\n{configured_recipients}\n\nWähle das Gerät aus, das nicht mehr benachrichtigt werden soll.",
         "submit": "Entfernen und zurück"
@@ -146,7 +164,8 @@
       "edit_recipient": {
         "title": "Benachrichtigungsgerät auswählen",
         "data": {
-          "id": "Gerät"
+          "id": "Gerät",
+          "go_back": "Zurück ohne Speichern"
         },
         "description": "**Bereits eingerichtet: {recipient_count}**\n\n{configured_recipients}\n\nWähle das Gerät aus, das du bearbeiten möchtest.",
         "submit": "Weiter"
@@ -160,7 +179,8 @@
           "tracker_entity": "Device Tracker",
           "critical_enabled": "Kritische Burst-Leak-Alarme erlauben",
           "allow_global_ack": "Globales Quittieren erlauben, wenn Gerät zuhause",
-          "trusted_stationary": "Stationäres vertrauenswürdiges Home-Gerät"
+          "trusted_stationary": "Stationäres vertrauenswürdiges Home-Gerät",
+          "go_back": "Zurück ohne Speichern"
         },
         "submit": "Speichern und zurück"
       },
@@ -179,7 +199,8 @@
         "description": "Ändere den Durchflusssensor und optional den Gesamtverbrauchssensor. Die Integration wird anschließend automatisch neu geladen.",
         "data": {
           "flow_entity": "Durchflusssensor",
-          "total_entity": "Gesamtverbrauchssensor (optional)"
+          "total_entity": "Gesamtverbrauchssensor (optional)",
+          "go_back": "Zurück ohne Speichern"
         },
         "submit": "Speichern und zurück"
       }
@@ -196,7 +217,9 @@
       "unsupported_flow_unit": "Der Durchflusssensor verwendet eine nicht unterstützte Einheit.",
       "unsupported_volume_unit": "Der Verbrauchssensor verwendet eine nicht unterstützte Einheit.",
       "same_source_entity": "Durchfluss und Gesamtverbrauch müssen unterschiedliche Entitäten sein.",
-      "already_configured": "Dieser Durchflusssensor wird bereits von einem anderen Eintrag verwendet."
+      "already_configured": "Dieser Durchflusssensor wird bereits von einem anderen Eintrag verwendet.",
+      "required_fields_missing": "Bitte fülle alle erforderlichen Felder aus.",
+      "derived_source": "Abgeleitete Sensoren von Wasserwächter dürfen nicht als Messquelle verwendet werden."
     },
     "abort": {
       "no_mobile_app_notify_services": "Es wurden keine mobile_app-Benachrichtigungsdienste gefunden. Richte zuerst die Home Assistant Companion App ein.",

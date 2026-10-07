@@ -164,3 +164,12 @@ Version 1.0.2 behebt die Navigation im Home-Assistant-Konfigurator. Speichern be
 Das Projekt steht unter der **GNU Affero General Public License v3.0 only (AGPL-3.0-only)**.
 
 Die vollständigen Lizenzbedingungen stehen in der Datei `LICENSE` im Repository. Änderungen und Weitergabe bleiben unter den Bedingungen der AGPLv3; bei einer modifizierten netzwerkbasierten Bereitstellung muss der entsprechende Quellcode den Nutzern zugänglich gemacht werden.
+
+## Unveröffentlichte Korrekturrunde 1
+
+Die Paketversion bleibt 1.0.2; Korrekturen stehen unter `Unreleased` im Changelog.
+Release-Workflows validieren denselben unveränderlichen Commit, den sie als Release-Ziel
+verwenden. Vorhandene Tags müssen ebenfalls auf diesen Commit zeigen.
+Eine Freigabe/Veröffentlichung gehört nicht zu dieser Korrekturrunde. Das öffentliche Wiki
+bleibt bis zu einer gesondert autorisierten Synchronisation auf seinem bisherigen Stand.
+Aktuelle Testanzahl und lokale Validierungsergebnisse stehen im Abschlussbericht.

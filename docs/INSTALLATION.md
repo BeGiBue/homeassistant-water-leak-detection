@@ -79,3 +79,9 @@ Home Assistant's separate **Reconfigure** action for measurement sources remains
 Saving a Configure subsection returns to the appropriate menu instead of closing the full dialog. Under **Notification recipients**, use **Back to configuration** to return to the main menu. The X in the header closes the complete options flow.
 
 Notification recipients do not have to be configured only during initial installation; they can be added, edited, or removed later.
+
+### Back without saving (unreleased correction round)
+
+Each source, expert and recipient form now has a **Back without saving** switch.
+Enable it and submit to return to the preceding menu without saving or validating
+unfinished fields. Changing only recipients preserves running detection timers.

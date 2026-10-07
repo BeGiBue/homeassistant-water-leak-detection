@@ -183,3 +183,16 @@ Physical valve control is intentionally external/opt-in so users can decide whic
 The integration options expose detector thresholds, durations, reset limits, bypass duration, hydraulic context, learning parameters, and detector-to-shutoff mapping.
 
 Change these values only with measured household data where possible.
+
+## Measurement validity and navigation (unreleased)
+
+`source_max_age_seconds` defaults to 30 seconds (range 10–3600). It must exceed
+normal reporting intervals. HA `last_reported`, including identical reports, controls
+freshness. Negative and nonfinite samples are invalid, not zero. Low/High quiet
+and Burst reset flow limits must be strictly positive; legacy zero values are
+clamped to 1 L/h on load. Other detector thresholds and detection times are unchanged.
+
+All source, expert and recipient forms provide **Back without saving**. Recipient
+changes apply live and preserve detection timers. Source changes deliberately rebase
+meter volume, reset unconfirmed windows and learning, and retain confirmed safety.
+See the README operational contract for total-meter validation and notify retry.

@@ -8,7 +8,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "water_leak_detection"
 NAME = "Water Leak Guard"
-VERSION = "0.3.0"
+VERSION = "1.0.2"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -18,6 +18,8 @@ PLATFORMS: tuple[Platform, ...] = (
 )
 
 CONF_FLOW_ENTITY = "flow_entity"
+CONF_SOURCE_MAX_AGE_SEC = "source_max_age_seconds"
+DEFAULT_SOURCE_MAX_AGE_SEC = 30.0
 CONF_TOTAL_ENTITY = "total_entity"
 CONF_SOURCE_MODE = "source_mode"
 CONF_SOURCE_DEVICE = "source_device"

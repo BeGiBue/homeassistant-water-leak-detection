@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from math import isfinite
 from typing import Any
 from uuid import uuid4
 
 from .const import DETECTOR_PRIORITY, DetectorKind, DetectorPhase
+from .validation import nonnegative_float, parse_datetime
 
 
 @dataclass(slots=True)
@@ -51,6 +53,7 @@ class DetectorRuntime:
     event_id: str | None = None
     start_total_l: float | None = None
     estimated_volume_l: float = 0.0
+    plausible_volume_l: float = 0.0
     reason: str | None = None
 
     def reset(self) -> None:
@@ -62,6 +65,7 @@ class DetectorRuntime:
         self.event_id = None
         self.start_total_l = None
         self.estimated_volume_l = 0.0
+        self.plausible_volume_l = 0.0
         self.reason = None
 
 
@@ -76,6 +80,7 @@ class DetectorTransition:
     started_at: datetime | None
     detected_at: datetime | None
     volume_l: float
+    reason: str | None = None
 
 
 @dataclass(slots=True)
@@ -102,6 +107,8 @@ class DetectionEngine:
     )
     last_sample_at: datetime | None = None
     last_flow_lph: float | None = None
+    last_total_l: float | None = None
+    total_expected_l: float = 0.0
 
     def update_settings(self, settings: DetectorSettings) -> None:
         """Apply updated thresholds without discarding current state."""
@@ -120,6 +127,8 @@ class DetectionEngine:
                 runtime.reset()
         self.last_sample_at = None
         self.last_flow_lph = None
+        self.last_total_l = None
+        self.total_expected_l = 0.0
 
     def sample(
         self,
@@ -132,12 +141,21 @@ class DetectionEngine:
         effective_burst_threshold_lph: float | None = None,
     ) -> list[DetectorTransition]:
         """Evaluate one measurement sample."""
-        if flow_lph < 0:
-            flow_lph = 0.0
+        if not isfinite(flow_lph) or flow_lph < 0:
+            self.suspend_for_unavailable_source()
+            return []
+        if now.tzinfo is None:
+            raise ValueError("Measurement time must be timezone-aware")
+        if self.last_sample_at is not None and now < self.last_sample_at:
+            return []
+        if total_l is not None and (not isfinite(total_l) or total_l < 0):
+            total_l = None
 
+        raw_delta_seconds = 0.0
         delta_seconds = 0.0
         if self.last_sample_at is not None:
-            delta_seconds = max(0.0, (now - self.last_sample_at).total_seconds())
+            raw_delta_seconds = max(0.0, (now - self.last_sample_at).total_seconds())
+            delta_seconds = raw_delta_seconds
             # Avoid integrating an arbitrarily large gap after HA was offline.
             delta_seconds = min(delta_seconds, 300.0)
 
@@ -145,6 +163,29 @@ class DetectionEngine:
             for runtime in self.runtimes.values():
                 if runtime.phase is not DetectorPhase.IDLE:
                     runtime.estimated_volume_l += flow_lph * delta_seconds / 3600.0
+                    runtime.plausible_volume_l += (
+                        max(flow_lph, self.last_flow_lph or 0) * raw_delta_seconds / 3600.0
+                    )
+
+        self.total_expected_l += max(flow_lph, self.last_flow_lph or 0) * (
+            raw_delta_seconds / 3600.0
+        )
+        rebase = self.last_total_l is None
+        if total_l is not None:
+            if self.last_total_l is not None:
+                increment = total_l - self.last_total_l
+                rebase = increment < 0 or increment > self.total_expected_l * 3 + 1
+                if increment != 0:
+                    self.total_expected_l = 0.0
+            for runtime in self.runtimes.values():
+                if runtime.phase is not DetectorPhase.IDLE and (
+                    rebase or runtime.start_total_l is None
+                ):
+                    runtime.start_total_l = total_l - runtime.estimated_volume_l
+            self.last_total_l = total_l
+        else:
+            self.last_total_l = None
+            self.total_expected_l = 0.0
 
         effective_high = (
             self.settings.high_threshold_lph
@@ -236,6 +277,7 @@ class DetectionEngine:
             runtime.event_id = None
             runtime.start_total_l = total_l
             runtime.estimated_volume_l = 0.0
+            runtime.plausible_volume_l = 0.0
         elif new_phase is DetectorPhase.ACTIVE:
             runtime.phase = new_phase
             runtime.detected_at = now
@@ -250,6 +292,7 @@ class DetectionEngine:
                 started_at=runtime.started_at,
                 detected_at=runtime.detected_at,
                 volume_l=self._event_volume(runtime, total_l),
+                reason=runtime.reason,
             )
             runtime.reset()
             return transition
@@ -262,6 +305,7 @@ class DetectionEngine:
             started_at=runtime.started_at,
             detected_at=runtime.detected_at,
             volume_l=self._event_volume(runtime, total_l),
+            reason=runtime.reason,
         )
 
     def _append_transition(
@@ -295,9 +339,25 @@ class DetectionEngine:
     def _event_volume(self, runtime: DetectorRuntime, total_l: float | None) -> float:
         if total_l is not None and runtime.start_total_l is not None:
             delta = total_l - runtime.start_total_l
-            if delta >= 0:
+            estimate = runtime.estimated_volume_l
+            # A frozen/coarse meter must not veto independently observed volume.
+            if max(0.0, estimate * 0.5) <= delta <= runtime.plausible_volume_l * 3 + 1:
                 return delta
         return runtime.estimated_volume_l
+
+    def rebind_sources(self) -> None:
+        """Keep confirmed safety states but discard evidence from another meter."""
+        self.suspend_for_unavailable_source()
+        for runtime in self.runtimes.values():
+            runtime.start_total_l = None
+
+    def active_events(self) -> dict[str, DetectorKind]:
+        """Return every confirmed event, independently of display priority."""
+        return {
+            runtime.event_id: kind
+            for kind, runtime in self.runtimes.items()
+            if runtime.phase is DetectorPhase.ACTIVE and runtime.event_id
+        }
 
     def _sample_slow(
         self, now: datetime, flow: float, total_l: float | None
@@ -619,6 +679,7 @@ class DetectionEngine:
                     "event_id": runtime.event_id,
                     "start_total_l": runtime.start_total_l,
                     "estimated_volume_l": runtime.estimated_volume_l,
+                    "plausible_volume_l": runtime.plausible_volume_l,
                     "reason": runtime.reason,
                 }
                 for kind, runtime in self.runtimes.items()
@@ -632,6 +693,8 @@ class DetectionEngine:
         # offline. Confirmed ACTIVE events are retained for safety.
         self.last_sample_at = None
         self.last_flow_lph = None
+        self.last_total_l = None
+        self.total_expected_l = 0.0
         runtime_data = data.get("runtimes", {})
         if not isinstance(runtime_data, dict):
             return
@@ -642,7 +705,7 @@ class DetectionEngine:
 
             try:
                 phase = DetectorPhase(raw.get("phase", DetectorPhase.IDLE.value))
-            except ValueError:
+            except (TypeError, ValueError):
                 phase = DetectorPhase.IDLE
 
             runtime = self.runtimes[kind]
@@ -651,32 +714,21 @@ class DetectionEngine:
                 continue
 
             runtime.phase = DetectorPhase.ACTIVE
-            runtime.started_at = _parse_datetime(raw.get("started_at"))
-            runtime.detected_at = _parse_datetime(raw.get("detected_at"))
+            runtime.started_at = parse_datetime(raw.get("started_at"))
+            runtime.detected_at = parse_datetime(raw.get("detected_at"))
             runtime.quiet_since = None
             runtime.event_id = (
-                raw.get("event_id") if isinstance(raw.get("event_id"), str) else None
+                raw.get("event_id")
+                if isinstance(raw.get("event_id"), str) and raw.get("event_id")
+                else self._new_event_id(kind, datetime.now().astimezone())
             )
-            runtime.start_total_l = _as_float_or_none(raw.get("start_total_l"))
+            runtime.start_total_l = nonnegative_float(raw.get("start_total_l"))
             runtime.estimated_volume_l = (
-                _as_float_or_none(raw.get("estimated_volume_l")) or 0.0
+                nonnegative_float(raw.get("estimated_volume_l")) or 0.0
+            )
+            runtime.plausible_volume_l = (
+                nonnegative_float(raw.get("plausible_volume_l")) or runtime.estimated_volume_l
             )
             runtime.reason = (
                 str(raw.get("reason")) if raw.get("reason") is not None else None
             )
-
-
-def _parse_datetime(value: Any) -> datetime | None:
-    if not isinstance(value, str):
-        return None
-    try:
-        return datetime.fromisoformat(value)
-    except ValueError:
-        return None
-
-
-def _as_float_or_none(value: Any) -> float | None:
-    try:
-        return float(value) if value is not None else None
-    except (TypeError, ValueError):
-        return None

@@ -65,6 +65,7 @@ from .const import (
     CONF_SLOW_RESET_MIN,
     CONF_SLOW_THRESHOLD_LPH,
     CONF_SOURCE_DEVICE,
+    CONF_SOURCE_MAX_AGE_SEC,
     CONF_SOURCE_MODE,
     CONF_STATIC_PRESSURE_BAR,
     CONF_TOTAL_ENTITY,
@@ -97,6 +98,7 @@ from .const import (
     DEFAULT_SLOW_DETECTION_MIN,
     DEFAULT_SLOW_RESET_MIN,
     DEFAULT_SLOW_THRESHOLD_LPH,
+    DEFAULT_SOURCE_MAX_AGE_SEC,
     DEFAULT_STATIC_PRESSURE_BAR,
     DOMAIN,
     NAME,
@@ -150,9 +152,86 @@ def _recipient_description_placeholders(
     }
 
 
-class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
+def _validate_source_entities(hass, flow_entity, total_entity):
+    """Reject own outputs, including outputs of another instance."""
+    errors = {}
+    registry = er.async_get(hass)
+    for entity_id, field, supported, error in (
+        (flow_entity, CONF_FLOW_ENTITY, is_supported_flow_unit, "unsupported_flow_unit"),
+        (total_entity, CONF_TOTAL_ENTITY, is_supported_volume_unit, "unsupported_volume_unit"),
+    ):
+        if not entity_id:
+            continue
+        registered = registry.async_get(entity_id)
+        state = hass.states.get(entity_id)
+        if registered is not None and registered.platform == DOMAIN:
+            errors[field] = "derived_source"
+        elif state is None:
+            errors[field] = "entity_not_available"
+        elif not supported(state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)):
+            errors[field] = error
+    if total_entity and total_entity == flow_entity:
+        errors[CONF_TOTAL_ENTITY] = "same_source_entity"
+    return errors
+
+
+class _NavigationSchema(probatio.Schema):
+    """Back navigation also accepts unfinished or invalid form contents."""
+
+    def __call__(self, data):
+        if isinstance(data, dict) and data.get("go_back") is True:
+            return {"go_back": True}
+        return super().__call__(data)
+
+
+class _NavigationForms:
+    """Allow leaving a form without validating/saving unfinished required fields."""
+
+    _form_parents: dict[str, str] = {}
+
+    def async_show_form(self, *, step_id, data_schema=None, **kwargs):
+        if not hasattr(self, "_navigation_forms"):
+            self._navigation_forms = {}
+        required = set()
+        if step_id in self._form_parents and data_schema is not None:
+            fields = {}
+            for marker, validator in data_schema.schema.items():
+                if isinstance(marker, probatio.Required):
+                    required.add(marker.schema)
+                    marker = probatio.Optional(
+                        marker.schema, default=marker.default, description=marker.description
+                    )
+                if (
+                    isinstance(marker, probatio.Optional)
+                    and marker.default is not probatio.UNDEFINED
+                    and marker.default() is None
+                ):
+                    # Empty optional entity selectors must stay omitted on save.
+                    marker = probatio.Optional(marker.schema, description=marker.description)
+                fields[marker] = validator
+            fields[probatio.Optional("go_back", default=False)] = BooleanSelector()
+            data_schema = _NavigationSchema(fields)
+        result = super().async_show_form(step_id=step_id, data_schema=data_schema, **kwargs)
+        self._navigation_forms[step_id] = (required, result)
+        return result
+
+    def _navigation_error(self, step_id, user_input):
+        if user_input is None or user_input.get("go_back"):
+            return None
+        required, form = self._navigation_forms.get(step_id, (set(), None))
+        if required - user_input.keys():
+            return {**form, "errors": {"base": "required_fields_missing"}}
+        user_input.pop("go_back", None)
+        return None
+
+
+class WaterLeakConfigFlow(_NavigationForms, ConfigFlow, domain=DOMAIN):
     """Handle configuration."""
 
+    _form_parents = {
+        "entities": "user", "device": "user", "device_entities": "device",
+        "add_initial_recipient": "notifications", "reconfigure": "reconfigure_menu",
+    }
     VERSION = 1
 
     def __init__(self) -> None:
@@ -190,6 +269,10 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Select source entities directly."""
+        if user_input is not None and user_input.get("go_back"):
+            return await self.async_step_user()
+        if error := self._navigation_error("entities", user_input):
+            return error
         errors: dict[str, str] = {}
         if user_input is not None:
             flow_entity = user_input[CONF_FLOW_ENTITY]
@@ -219,6 +302,10 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Select a HA device and discover compatible source entities on it."""
+        if user_input is not None and user_input.get("go_back"):
+            return await self.async_step_user()
+        if error := self._navigation_error("device", user_input):
+            return error
         if user_input is not None:
             self._source_device = user_input[CONF_SOURCE_DEVICE]
             return await self.async_step_device_entities()
@@ -238,6 +325,10 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Confirm compatible sensors discovered on the selected device."""
+        if user_input is not None and user_input.get("go_back"):
+            return await self.async_step_device()
+        if error := self._navigation_error("device_entities", user_input):
+            return error
         if self._source_device is None:
             return await self.async_step_device()
 
@@ -321,26 +412,7 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
     def _validate_sources(
         self, flow_entity: str, total_entity: str | None
     ) -> dict[str, str]:
-        errors: dict[str, str] = {}
-        flow_state = self.hass.states.get(flow_entity)
-        if flow_state is None:
-            errors[CONF_FLOW_ENTITY] = "entity_not_available"
-        elif not is_supported_flow_unit(
-            flow_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
-        ):
-            errors[CONF_FLOW_ENTITY] = "unsupported_flow_unit"
-
-        if total_entity:
-            total_state = self.hass.states.get(total_entity)
-            if total_state is None:
-                errors[CONF_TOTAL_ENTITY] = "entity_not_available"
-            elif not is_supported_volume_unit(
-                total_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
-            ):
-                errors[CONF_TOTAL_ENTITY] = "unsupported_volume_unit"
-            elif total_entity == flow_entity:
-                errors[CONF_TOTAL_ENTITY] = "same_source_entity"
-        return errors
+        return _validate_source_entities(self.hass, flow_entity, total_entity)
 
     async def _prepare_source_entry(
         self,
@@ -364,7 +436,7 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Allow notification recipients to be configured during setup."""
-        menu_options = ["finish_setup"]
+        menu_options = ["finish_setup", "back_to_sources"]
         if self._mobile_notify_services():
             menu_options.insert(0, "add_initial_recipient")
         return self.async_show_menu(
@@ -375,10 +447,22 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
             ),
         )
 
+    async def async_step_back_to_sources(self, user_input=None):
+        """Return to source choice without discarding recipients."""
+        return await self.async_step_user()
+
+    async def async_step_reconfigure_menu(self, user_input=None):
+        """Keep reconfiguration open when the source form is left."""
+        return self.async_show_menu(step_id="reconfigure_menu", menu_options=["reconfigure"])
+
     async def async_step_add_initial_recipient(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Add one Companion recipient during initial setup."""
+        if user_input is not None and user_input.get("go_back"):
+            return await self.async_step_notifications()
+        if error := self._navigation_error("add_initial_recipient", user_input):
+            return error
         notify_services = self._mobile_notify_services()
         if not notify_services:
             return await self.async_step_notifications()
@@ -448,6 +532,10 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Allow source sensors to be changed after setup."""
+        if user_input is not None and user_input.get("go_back"):
+            return await self.async_step_reconfigure_menu()
+        if error := self._navigation_error("reconfigure", user_input):
+            return error
         entry = self._get_reconfigure_entry()
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -572,8 +660,14 @@ class WaterLeakConfigFlow(ConfigFlow, domain=DOMAIN):
         return WaterLeakOptionsFlow()
 
 
-class WaterLeakOptionsFlow(OptionsFlowWithReload):
+class WaterLeakOptionsFlow(_NavigationForms, OptionsFlowWithReload):
     """Options for detector settings and Companion recipients."""
+
+    _form_parents = {
+        "sources": "init", "expert": "init", "add_recipient": "notifications",
+        "edit_recipient": "notifications", "edit_recipient_details": "edit_recipient",
+        "remove_recipient": "notifications",
+    }
 
     def __init__(self) -> None:
         """Initialize options flow state."""
@@ -593,6 +687,10 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Edit measurement sources from the normal Configure dialog."""
+        if user_input is not None and user_input.get("go_back"):
+            return await self.async_step_init()
+        if error := self._navigation_error("sources", user_input):
+            return error
         errors: dict[str, str] = {}
         entry = self.config_entry
 
@@ -650,26 +748,7 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         total_entity: str | None,
     ) -> dict[str, str]:
         """Validate measurement sources in the options flow."""
-        errors: dict[str, str] = {}
-        flow_state = self.hass.states.get(flow_entity)
-        if flow_state is None:
-            errors[CONF_FLOW_ENTITY] = "entity_not_available"
-        elif not is_supported_flow_unit(
-            flow_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
-        ):
-            errors[CONF_FLOW_ENTITY] = "unsupported_flow_unit"
-
-        if total_entity:
-            total_state = self.hass.states.get(total_entity)
-            if total_state is None:
-                errors[CONF_TOTAL_ENTITY] = "entity_not_available"
-            elif not is_supported_volume_unit(
-                total_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
-            ):
-                errors[CONF_TOTAL_ENTITY] = "unsupported_volume_unit"
-            elif total_entity == flow_entity:
-                errors[CONF_TOTAL_ENTITY] = "same_source_entity"
-        return errors
+        return _validate_source_entities(self.hass, flow_entity, total_entity)
 
     async def async_step_notifications(
         self, user_input: dict[str, Any] | None = None
@@ -698,6 +777,10 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Edit expert detector settings."""
+        if user_input is not None and user_input.get("go_back"):
+            return await self.async_step_init()
+        if error := self._navigation_error("expert", user_input):
+            return error
         errors: dict[str, str] = {}
         if user_input is not None:
             errors = self._validate_expert_options(user_input)
@@ -711,6 +794,10 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         values = user_input if user_input is not None else options
         schema = probatio.Schema(
             {
+                probatio.Optional(
+                    CONF_SOURCE_MAX_AGE_SEC,
+                    default=values.get(CONF_SOURCE_MAX_AGE_SEC, DEFAULT_SOURCE_MAX_AGE_SEC),
+                ): _number(10, 3600, 1, "s"),
                 probatio.Required(
                     CONF_SLOW_THRESHOLD_LPH,
                     default=values.get(
@@ -752,7 +839,7 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
                         CONF_LOW_QUIET_LPH,
                         DEFAULT_LOW_QUIET_LPH,
                     ),
-                ): _number(0, 1000, 1, "L/h"),
+                ): _number(1, 1000, 1, "L/h"),
                 probatio.Required(
                     CONF_LOW_RESET_MIN,
                     default=values.get(
@@ -787,7 +874,7 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
                         CONF_HIGH_QUIET_LPH,
                         DEFAULT_HIGH_QUIET_LPH,
                     ),
-                ): _number(0, 5000, 10, "L/h"),
+                ): _number(1, 5000, 1, "L/h"),
                 probatio.Required(
                     CONF_HIGH_RESET_MIN,
                     default=values.get(
@@ -815,7 +902,7 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
                         CONF_BURST_RESET_LPH,
                         DEFAULT_BURST_RESET_LPH,
                     ),
-                ): _number(0, 10000, 10, "L/h"),
+                ): _number(1, 10000, 1, "L/h"),
                 probatio.Required(
                     CONF_BURST_RESET_SEC,
                     default=values.get(
@@ -934,6 +1021,10 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Add one Companion notification recipient."""
+        if user_input is not None and user_input.get("go_back"):
+            return await self.async_step_notifications()
+        if error := self._navigation_error("add_recipient", user_input):
+            return error
         notify_services = self._mobile_notify_services()
         if not notify_services:
             return self.async_abort(reason="no_mobile_app_notify_services")
@@ -988,6 +1079,10 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Choose a configured notification recipient to edit."""
+        if user_input is not None and user_input.get("go_back"):
+            return await self.async_step_notifications()
+        if error := self._navigation_error("edit_recipient", user_input):
+            return error
         recipients = self._raw_recipients()
         if not recipients:
             return self.async_abort(reason="no_recipients_configured")
@@ -1023,6 +1118,10 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Edit one Companion notification recipient."""
+        if user_input is not None and user_input.get("go_back"):
+            return await self.async_step_edit_recipient()
+        if error := self._navigation_error("edit_recipient_details", user_input):
+            return error
         recipient_id = self._editing_recipient_id
         recipients = self._raw_recipients()
         current = next(
@@ -1101,6 +1200,10 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Remove one configured notification recipient."""
+        if user_input is not None and user_input.get("go_back"):
+            return await self.async_step_notifications()
+        if error := self._navigation_error("remove_recipient", user_input):
+            return error
         recipients = self._raw_recipients()
         if not recipients:
             return self.async_abort(reason="no_recipients_configured")
@@ -1141,13 +1244,7 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
 
     def _persist_options(self, updated: dict[str, Any]) -> None:
         """Save options immediately while keeping the Configure flow open."""
-        if self.hass.config_entries.async_update_entry(
-            self.config_entry,
-            options=updated,
-        ):
-            self.hass.config_entries.async_schedule_reload(
-                self.config_entry.entry_id
-            )
+        self.hass.config_entries.async_update_entry(self.config_entry, options=updated)
 
     def _raw_recipients(self) -> list[dict[str, Any]]:
         """Return valid raw recipient option dictionaries."""
@@ -1174,11 +1271,11 @@ class WaterLeakOptionsFlow(OptionsFlowWithReload):
         burst = float(values[CONF_BURST_THRESHOLD_LPH])
         if not slow < low < high < burst:
             return {"base": "invalid_threshold_order"}
-        if float(values[CONF_LOW_QUIET_LPH]) >= low:
+        if not 0 < float(values[CONF_LOW_QUIET_LPH]) < low:
             return {"base": "invalid_low_quiet_threshold"}
-        if float(values[CONF_HIGH_QUIET_LPH]) >= high:
+        if not 0 < float(values[CONF_HIGH_QUIET_LPH]) < high:
             return {"base": "invalid_high_quiet_threshold"}
-        if float(values[CONF_BURST_RESET_LPH]) >= burst:
+        if not 0 < float(values[CONF_BURST_RESET_LPH]) < burst:
             return {"base": "invalid_burst_reset_threshold"}
         high_multiplier = float(values[CONF_HIGH_LEARNED_MULTIPLIER])
         burst_multiplier = float(values[CONF_BURST_LEARNED_MULTIPLIER])

@@ -7,13 +7,18 @@ permissions:
   contents: write
 
 jobs:
+  validate:
+    uses: ./.github/workflows/validate.yml
+    permissions:
+      contents: read
   release:
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - name: Check out release commit
         uses: actions/checkout@v7
         with:
-          ref: main
+          ref: ${{ github.sha }}
 
       - name: Verify release metadata
         run: |
@@ -43,12 +48,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "1.0.2" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            echo "Release 1.0.2 already exists."
+            git fetch --no-tags origin "refs/tags/1.0.2:refs/tags/1.0.2"
+            test "$(git rev-parse '1.0.2^{commit}')" = "${GITHUB_SHA}"
+            echo "Release 1.0.2 already exists at the checked commit."
             exit 0
           fi
 
           gh release create "1.0.2" \
             --repo "${GITHUB_REPOSITORY}" \
-            --target "main" \
+            --target "${GITHUB_SHA}" \
             --title "Water Leak Guard 1.0.2" \
             --notes-file "RELEASE_NOTES_1.0.2.md"

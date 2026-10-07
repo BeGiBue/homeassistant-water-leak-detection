@@ -1,3 +1,12 @@
+> **Statushinweis zur unveröffentlichten Korrekturrunde 1:** Dieses Dokument enthält
+> fachliche Anforderungen und historische Roadmap-Abschnitte, keine vollständige
+> Zusicherung des implementierten Ist-Verhaltens. Der aktuelle Betriebskontrakt
+> steht in README und docs/CONFIGURATION.md. Messwertvalidierung, Persistenz,
+> Quittierung und Notify-Retry wurden technisch abgesichert. F02, F04 und F08
+> sowie die fachliche Rapid-Rise-Definition sind weiterhin offen und werden separat
+> spezifiziert. Repository-Wiki-Quellen sind maßgeblich für diese Arbeitskopie;
+> das veröffentlichte GitHub-Wiki wurde in dieser Runde nicht synchronisiert.
+
 # Water Leak Guard
 
 ## 1. Purpose

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
+from math import isfinite
 from typing import Any
 
 
@@ -219,7 +220,7 @@ class AdaptiveFlowLearner:
                 peak = float(peak_raw)
             except (TypeError, ValueError):
                 continue
-            if peak > 0:
+            if timestamp.tzinfo is not None and timestamp <= now and isfinite(peak) and peak > 0:
                 restored.append(LearningSample(timestamp=timestamp, peak_lph=peak))
         self.samples = restored
         self._episode = None
