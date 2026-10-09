@@ -135,18 +135,6 @@ class DetectionEngine:
         self.last_flow_lph = None
         self.reset_total_reference()
 
-    def pause_measurements(self) -> None:
-        """Break source continuity without erasing already confirmed monitoring time.
-
-        Keep the last valid sample time: the first returning report has zero
-        evidence and sample() shifts started_at by the entire paused duration.
-        Quiet and rate evidence cannot cross the interrupted measurement chain.
-        """
-        for runtime in self.runtimes.values():
-            runtime.quiet_since = None
-        self.last_flow_lph = None
-        self.reset_total_reference()
-
     def sample(
         self,
         now: datetime,

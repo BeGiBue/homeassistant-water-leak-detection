@@ -186,15 +186,16 @@ Change these values only with measured household data where possible.
 
 ## Measurement validity and navigation (unreleased)
 
-`source_max_age_seconds` defaults to 0 (no artificial report-gap limit), range 0–3600.
-Only consecutive fresh valid reports contribute their completed interval; internal
-ticks contribute zero. No automatic cadence classification or inferred gap limit
-exists. A positive expert limit excludes intervals strictly greater than the limit
-without erasing earlier confirmed monitoring progress; equality counts. Explicit
-invalid/unavailable/unknown source states break the measurement chain. The first
-valid report after that interruption contributes zero time. Without an explicit
-limit, silent outages cannot be distinguished from legitimate slow reporting.
-See the README for the full measurement-evidence contract.
+`source_max_age_seconds` defaults to 0 (no artificial gap limit), range 0–3600.
+This is the **Maximum credited gap between measurement reports** expert setting.
+Only fresh valid flow reports confirm completed intervals; ticks contribute zero.
+A positive limit includes equality (60 s counts at a 60 s limit); larger intervals
+add zero without removing previously accumulated confirmed monitoring evidence.
+Normal subsequent reports count immediately. Automatic mode never learns cadence.
+Observed invalid/unavailable/unknown flow breaks the chain; recovery's first report
+adds zero, and existing detector failure/reset rules apply. Confirmed leaks survive.
+Without a positive limit, legitimate slow reports and silent communication failures
+between valid endpoints cannot be distinguished. See the README for this boundary.
 Negative and nonfinite samples are invalid, not zero. Low/High quiet and Burst reset
 flow limits remain strictly positive; legacy zero values are clamped to 1 L/h.
 Other detector thresholds and detection times are unchanged.

@@ -1,4 +1,4 @@
-"""F05: bounded report support, arbitrary cadence lengths and no outlier credit."""
+"""F05: completed report intervals without cadence qualification (round 6 contract)."""
 
 import random
 from datetime import timedelta
@@ -22,7 +22,7 @@ from custom_components.water_leak_detection.evidence import SourceEvidence
     )]
     + [((120,) * 8, (120, 901)), ((600,) * 8, (600, 120))],
 )
-async def test_f05_all_regular_modes_mature_without_any_tick_evidence(
+async def test_f05_all_regular_intervals_count_without_any_tick_evidence(
     runtime_hass, runtime_entry, measurement_clock, warmup, periods
 ):
     manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 800)
@@ -51,7 +51,7 @@ def report(evidence, second):
     return evidence.observe(State("sensor.flow", "800"), second)
 
 
-def test_f05_slowly_drifting_cadence_retains_recent_support():
+def test_f05_slowly_drifting_intervals_all_count():
     evidence = SourceEvidence()
     second = 0
     report(evidence, second)
@@ -61,26 +61,22 @@ def test_f05_slowly_drifting_cadence_retains_recent_support():
         report(evidence, second)
         if index >= 3:
             assert evidence.credited_seconds == period
-    assert evidence.received_at == second
+    assert not hasattr(evidence, "candidates")
+    assert not hasattr(evidence, "intervals")
 
 
-def test_f05_tolerance_cannot_chain_unsupported_interval_growth():
+def test_f05_interval_growth_needs_no_statistical_support():
     evidence = SourceEvidence()
     second = 0
     report(evidence, second)
-    for _ in range(8):
-        second += 60
+    for period in (60,) * 8 + (80, 100):
+        second += period
         report(evidence, second)
-    second += 80
-    report(evidence, second)
-    assert evidence.credited_seconds == 80
-    second += 100
-    report(evidence, second)
-    assert evidence.credited_seconds == 100
+        assert evidence.credited_seconds == period
 
 
 @pytest.mark.parametrize("period", [86400, 604800])
-def test_f05_learning_has_no_elapsed_time_cutoff(period):
+def test_f05_completed_intervals_have_no_automatic_elapsed_time_cutoff(period):
     evidence = SourceEvidence()
     report(evidence, 0)
     for index in range(1, 5):
@@ -89,22 +85,17 @@ def test_f05_learning_has_no_elapsed_time_cutoff(period):
 
 
 @pytest.mark.parametrize("outliers", [[600], [600, 600], [600, 650]])
-def test_f05_sparse_outliers_never_obtain_support(outliers):
-    automatic = SourceEvidence()
-    expert = SourceEvidence()
+def test_f05_sparse_intervals_count_without_support(outliers):
+    evidence = SourceEvidence()
     second = 0
-    report(automatic, second)
-    expert.observe(State("sensor.flow", "800"), second, configured=120)
+    report(evidence, second)
     for outlier in outliers:
         for _ in range(17):
             second += 120
-            report(automatic, second)
-            expert.observe(State("sensor.flow", "800"), second, configured=120)
+            report(evidence, second)
         second += outlier
-        report(automatic, second)
-        expert.observe(State("sensor.flow", "800"), second, configured=120)
-        assert automatic.credited_seconds == outlier
-        assert expert.credited_seconds == 0
+        report(evidence, second)
+        assert evidence.credited_seconds == outlier
 
 
 def run_sequence(periods, *, detection_seconds=3600):
@@ -132,33 +123,28 @@ def run_sequence(periods, *, detection_seconds=3600):
     return alarm_at, credits
 
 
-def test_f05_exact_review_sequence_650_cannot_accelerate_alarm():
+def test_f05_exact_review_sequence_has_no_history_dependent_credit():
     periods = [120] * 8 + [600] + [120] * 3 + [600] + [120] * 17 + [650]
     alarm, credits = run_sequence(periods, detection_seconds=2400)
     assert credits == periods
-    assert alarm == 2520
-    baseline_alarm, _ = run_sequence([120] * 70, detection_seconds=2400)
-    amended_alarm, _ = run_sequence(periods + [120] * 70, detection_seconds=2400)
-    assert amended_alarm >= baseline_alarm
+    assert alarm == next(t for t in __import__("itertools").accumulate(periods) if t >= 2400)
 
 
 @pytest.mark.parametrize("seed", range(12))
-def test_f05_invariant_inserting_unqualified_gaps_never_advances_alarm(seed):
+def test_f05_invariant_subdividing_intervals_preserves_evidence(seed):
     rng = random.Random(seed)
     baseline = [120] * 100
-    baseline_alarm, baseline_credits = run_sequence(baseline, detection_seconds=3500)
     amended = []
     for period in baseline:
         split = rng.randrange(1, period)
         amended.extend((split, period - split))
-    amended_alarm, credits = run_sequence(amended, detection_seconds=3500)
-    assert sum(credits) == sum(baseline_credits) == sum(baseline)
-    assert all(credit > 0 for credit in credits)
-    # More observations can reveal a crossing sooner, but never before real threshold time.
-    assert 3500 <= amended_alarm <= baseline_alarm
+    baseline_alarm, baseline_credits = run_sequence(baseline)
+    amended_alarm, amended_credits = run_sequence(amended)
+    assert sum(amended_credits) == sum(baseline_credits)
+    assert baseline_alarm == amended_alarm == 3600
 
 
-async def test_f05_unknown_unavailable_and_return_keep_profile_but_not_unknown_time(
+async def test_f05_unknown_unavailable_and_return_exclude_interruption_time(
     runtime_hass, runtime_entry, measurement_clock
 ):
     manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 800)
@@ -172,7 +158,6 @@ async def test_f05_unknown_unavailable_and_return_keep_profile_but_not_unknown_t
         measurement_clock.advance(7200)
         await fresh(runtime_hass, manager, measurement_clock, 800)
         assert manager._flow_evidence.credited_seconds == 0
-        assert manager._flow_evidence.received_at == measurement_clock.seconds
         measurement_clock.advance(120)
         await fresh(runtime_hass, manager, measurement_clock, 800)
         assert manager._flow_evidence.credited_seconds == 120
@@ -191,7 +176,7 @@ async def test_f05_frozen_states_and_ticks_cannot_supply_evidence(
         assert not manager.engine.snapshot().alarm_active
 
 
-def test_f05_explicit_expert_limit_is_independent_of_automatic_support():
+def test_f05_explicit_expert_limit_is_independent_of_report_history():
     evidence = SourceEvidence()
     evidence.observe(State("sensor.flow", "800"), 0, configured=1800)
     evidence.observe(State("sensor.flow", "800"), 901, configured=1800)
@@ -201,7 +186,7 @@ def test_f05_explicit_expert_limit_is_independent_of_automatic_support():
 
 
 @pytest.mark.parametrize("period", [5, 10])
-def test_f05_even_fast_startup_requires_prior_qualification_before_credit(period):
+def test_f05_even_fast_startup_counts_the_first_completed_interval(period):
     evidence = SourceEvidence()
     second = 0
     report(evidence, second)

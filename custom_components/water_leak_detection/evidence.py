@@ -1,13 +1,13 @@
-"""Fresh valid report chains and deterministic, completed measurement intervals."""
+"""Deterministic evidence from consecutive fresh, valid flow reports."""
 
 from homeassistant.core import State
 
 
 class SourceEvidence:
-    """Credit completed intervals only when both endpoints are fresh valid reports.
+    """Credit completed report intervals without learning a sensor cadence.
 
-    No cadence is inferred. A positive expert limit excludes only that interval;
-    explicit invalid source observations break the chain until a new valid report.
+    The caller validates each report and breaks the chain on invalid observations.
+    A positive expert limit rejects only the current interval, preserving progress.
     """
 
     def __init__(self) -> None:
@@ -20,14 +20,14 @@ class SourceEvidence:
     def report(self, received_at: float) -> None:
         self.pending_at = received_at
 
-    def invalidate(self) -> None:
-        """An observed invalid source interrupts the measurement chain."""
+    def interrupt(self) -> None:
+        """Break the measurement chain; recovery starts with zero interval credit."""
         self.received_at = None
         self.pending_at = None
         self.credited_seconds = 0.0
 
     def expired(self, now: float, configured: float = 0) -> bool:
-        """Only an explicitly configured expert limit can mark silent expiry."""
+        """Only an explicit expert limit can identify a silent report gap."""
         return (
             configured > 0 and self.received_at is not None
             and now - self.received_at > configured
@@ -37,16 +37,15 @@ class SourceEvidence:
         signature = (id(state), state.last_reported)
         if signature == self.signature and self.pending_at is None:
             return False, False
+        self.credited_seconds = 0.0
         received = self.pending_at if self.pending_at is not None else now
         self.pending_at = None
-        self.credited_seconds = 0.0
-        excluded = False
         if self.received_at is not None:
             gap = max(0.0, received - self.received_at)
-            excluded = configured > 0 and gap > configured
-            if not excluded:
+            if configured <= 0 or gap <= configured:
                 self.credited_seconds = gap
         self.received_at = received
         self.signature = signature
         self.last_state = state
-        return True, excluded
+        # An excluded interval adds zero; it never resets confirmed progress.
+        return True, False

@@ -261,32 +261,34 @@ current-state identity, not UTC ordering. Runtime intervals and active durations
 use a process-local monotonic axis. Persisted active duration excludes offline time.
 
 `source_max_age_seconds` defaults to **0 (no artificial report-gap limit)**.
-The integration evaluates fresh measurement reports; it does not statistically
-classify or guess sensor reporting cadence. Two consecutive fresh valid reports
-contribute their completed monotonic interval only when the second report arrives.
-Internal ticks contribute zero evidence and cannot activate or reset a leak from a
-cached high or zero value. Confirmed monitoring time accumulates independently of
-report spacing; existing detector thresholds and reset rules remain unchanged.
+The integration evaluates fresh measurement reports; automatic operation does not
+statistically guess the sensor's reporting cadence. Two consecutive fresh valid
+flow reports confirm their completed interval. No interval is credited while
+waiting for the second report: internal ticks supply **zero seconds** of evidence.
+The first report starts the measurement chain with zero credit.
 
-Observed unknown, unavailable, negative, nonfinite or otherwise invalid source
-values break the measurement chain. The first valid report after that interruption
-contributes zero time. Confirmed monitoring progress and active leaks are retained;
-quiet and rate evidence cannot cross the interruption.
+The expert option **Maximum credited gap between measurement reports** accepts a
+positive limit in seconds. An interval equal to the limit counts; a larger interval
+adds zero seconds without deleting previously accumulated confirmed monitoring
+progress. Subsequent normal intervals count again, without any qualification phase.
+The existing detector thresholds and flow-based reset rules remain unchanged.
+The engine represents accumulated confirmed monitoring time by shifting the timer
+origin over excluded intervals; report history never reclassifies earlier credit.
 
-A positive expert option sets the **maximum creditable interval between reports**.
-Equality is allowed: with a 60-second limit, 60 seconds count and 61 seconds add
-zero. An excluded gap never erases earlier confirmed monitoring progress. Later
-normal reports can add evidence again. No limit is inferred from report history.
-Round 1's persisted 30-second default is treated as automatic unless explicitly
-re-saved. Other positive legacy limits are preserved.
+Observed `unknown`, `unavailable`, negative, nonfinite or otherwise invalid flow
+breaks the measurement chain and supplies neither leak nor quiet evidence. Existing
+source-failure reset rules clear unconfirmed monitoring and quiet windows while
+confirmed leaks stay active. The first valid report after recovery starts a new
+chain with zero credit; time across the interruption is excluded. A frozen state
+without new reports cannot activate or reset a leak.
 
-Without an explicit maximum gap, the integration cannot distinguish a legitimate
-slow reporting cadence from a silent communication failure between fresh reports.
-Endpoint observations cannot prove continuous physical flow between them. Users
-whose sensors may silently freeze should configure a suitable positive limit.
-An additional genuine report can reveal an already reached detection threshold
-sooner; it does not create extra elapsed time or change evidence at the original
-report endpoints.
+Without an explicit maximum gap, a legitimate slow reporting cadence and a silent
+communication failure between valid endpoints are indistinguishable. A later valid
+report can therefore confirm a long interval, but cannot prove continuous physical
+flow between reports. Users of normally frequent sensors can set an expert limit
+when long silence could indicate a frozen source. There is no automatic derivation
+of that limit. Round 1's persisted 30-second default remains unlimited unless
+explicitly re-saved; other positive legacy limits are preserved.
 
 Optional total-meter progress is compared with accumulated confirmed flow volume,
 without a fixed litre-resolution offset or a 1.5 volume multiplier. Unused flow

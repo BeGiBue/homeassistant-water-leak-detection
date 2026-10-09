@@ -1,4 +1,4 @@
-"""F05: independently maturing report modes without retrospective evidence."""
+"""F05: completed alternating report intervals (round 6 contract)."""
 
 import pytest
 from homeassistant.core import State
@@ -18,7 +18,7 @@ from custom_components.water_leak_detection.evidence import SourceEvidence
         (0, (60, 120)), (0, (120, 60)),
     ],
 )
-async def test_f05_alternating_modes_mature_for_six_hours_with_no_tick_credit(
+async def test_f05_alternating_intervals_count_for_six_hours_with_no_tick_credit(
     runtime_hass, runtime_entry, measurement_clock, warmup, periods
 ):
     manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 800)
@@ -41,6 +41,7 @@ async def test_f05_alternating_modes_mature_for_six_hours_with_no_tick_credit(
             assert manager.engine.last_sample_at == before
         await fresh(runtime_hass, manager, measurement_clock, 800)
         credit = manager._flow_evidence.credited_seconds
+        assert credit in (0, period)
         assert credit == period
         credited += credit
     assert credited >= 4 * 3600
@@ -51,40 +52,28 @@ def observe(evidence, second):
     return evidence.observe(State("sensor.flow", "800"), second)
 
 
-def test_f05_single_long_outlier_retains_short_mode_without_qualifying_long_mode():
+def test_f05_single_long_interval_counts_without_classification():
     evidence = SourceEvidence()
-    second = 0
-    observe(evidence, second)
-    for gap in [120] * 8 + [600] + [120] * 8 + [600]:
-        second += gap
+    observe(evidence, 0)
+    for second, credit in ((120, 120), (720, 600), (840, 120), (1440, 600)):
         assert observe(evidence, second) == (True, False)
-        assert evidence.credited_seconds == gap
-    assert evidence.received_at == second
+        assert evidence.credited_seconds == credit
 
 
-def test_f05_qualification_only_credits_future_intervals_and_outages_keep_profile():
+def test_f05_all_completed_intervals_count_without_qualification():
     evidence = SourceEvidence()
     second = 0
     observe(evidence, second)
-    for gap in [120] * 8 + [600, 120] * 8:
-        second += gap
-        observe(evidence, second)
-        assert evidence.credited_seconds == gap
-    # An explicitly observed source interruption breaks the chain, not a learned mode.
-    evidence.invalidate()
-    second += 7200
-    assert observe(evidence, second) == (True, False)
-    assert evidence.credited_seconds == 0
-    for _ in range(3):
-        second += 120
-        observe(evidence, second)
-        assert evidence.credited_seconds == 120
+    for period in (120,) * 8 + (600, 120) * 8 + (7200, 120):
+        second += period
+        assert observe(evidence, second) == (True, False)
+        assert evidence.credited_seconds == period
 
 
-def test_f05_explicit_gap_keeps_existing_outage_boundary():
+def test_f05_explicit_gap_excludes_only_current_interval():
     evidence = SourceEvidence()
     evidence.observe(State("sensor.flow", "800"), 0, configured=120)
-    assert evidence.observe(State("sensor.flow", "800"), 600, configured=120) == (True, True)
+    assert evidence.observe(State("sensor.flow", "800"), 600, configured=120) == (True, False)
     assert evidence.credited_seconds == 0
     evidence.observe(State("sensor.flow", "800"), 720, configured=120)
     assert evidence.credited_seconds == 120

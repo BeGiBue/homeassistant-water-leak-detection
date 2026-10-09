@@ -173,8 +173,8 @@ F02/F04/F08 und die Rapid-Rise-Definition bleiben für eine separate Spezifikati
 Interne Ticks bestätigen weder Detektions- noch Quiet-Intervalle. Neue Meldungen
 werden unabhängig von UTC-Rückstellungen nach State-Identität/Meldung erkannt.
 Einzelne eingefrorene Werte können deshalb keinen Timer allein bestätigen.
-Die automatische Kadenz benötigt Anlaufmeldungen; längere Ausfälle werden nicht
-als normale Kadenz gelernt. Die Engine-Zeitachse und laufende Bypass-Dauer sind monoton.
+Der historische Kadenz-Anlauf aus Runde 2 wurde in Runde 6 entfernt;
+der aktuelle Mess-Evidenz-Vertrag steht unten. Die Engine-Zeitachse und laufende Bypass-Dauer sind monoton.
 Beim Speichern wird die UTC-Bypassfrist aus der verbleibenden Laufzeit neu projiziert.
 Persistierte aktive Laufzeit zählt Offline-Zeit nicht als bestätigte Laufzeit.
 
@@ -192,10 +192,8 @@ klar erkennbares aktives Ereignis nicht. Unbestätigtes Monitoring bleibt verwer
 
 ## Korrekturrunde 3 (unveröffentlicht)
 
-Kadenzlernen legitimiert niemals rückwirkend unbekannte Messzeit. Ein erst neu
-qualifiziertes Intervall darf erst für zukünftige Reports Evidenz liefern. Bekannte
-wechselnde Kadenzen werden gemeinsam gelernt, statt sich gegenseitig dauerhaft
-zu verwerfen. Interne Ticks zählen weiterhin weder Leak- noch Ruhezeit.
+Die historische Kadenzqualifikation aus Runde 3 wurde in Runde 6 entfernt.
+Interne Ticks zählen weiterhin weder Leak- noch Ruhezeit.
 
 Steuerungsänderungen werden vor der Frischeprüfung angewendet. Deaktivieren von
 Slow/Low und Einschalten des High-Flow-Bypass greifen sofort nach den bestehenden
@@ -220,3 +218,26 @@ kann daraus kein bestätigtes Ereignis erfunden werden.
 Lern-Episoden messen Laufzeit monoton. Persistierte Lern-Samples erhalten dagegen
 die echte UTC des Abschlusses; das Rolling Window arbeitet ebenfalls mit realer UTC.
 Wiki-Dateien dieser Runde werden nur lokal gepflegt, nicht veröffentlicht.
+
+
+## Korrekturrunde 6: deterministische Mess-Evidenz (unveröffentlicht)
+
+Die Integration bewertet frische gültige Messmeldungen. Sie versucht im
+Automatikbetrieb nicht mehr, die Meldekadenz statistisch zu erraten. Erst der
+zweite Report bestätigt das abgeschlossene Intervall; während des Wartens erzeugen
+Ticks immer null Sekunden Evidenz. Bestätigte Monitoring-Zeit wird akkumuliert.
+
+„Maximal anrechenbarer Abstand zwischen zwei Messwertmeldungen“ ist optional:
+0 bedeutet keine künstliche Grenze. Bei einer positiven Grenze zählt Gleichheit;
+eine größere Lücke fügt null Sekunden hinzu und löscht keinen bisherigen Fortschritt.
+Weitere normale Intervalle zählen sofort wieder. Fachliche Resetregeln bleiben erhalten.
+
+Beobachtetes unknown/unavailable oder ein ungültiger Flow unterbricht die Messkette
+und erzeugt weder Leak- noch Ruhe-Evidenz. Unbestätigte Monitoring-/Quiet-Fenster
+werden nach den bestehenden Ausfallregeln verworfen; aktive Leaks bleiben aktiv.
+Der erste gültige Report danach startet mit null Evidenz eine neue Messkette.
+
+Ohne explizite Max-Gap-Einstellung lassen sich eine legitime langsame Meldekadenz
+und ein stiller Kommunikationsausfall zwischen zwei gültigen Reports nicht
+unterscheiden. Ein späterer gültiger Report kann daher ein langes Intervall bestätigen.
+Die Grenze wird niemals automatisch aus Reportmustern abgeleitet.

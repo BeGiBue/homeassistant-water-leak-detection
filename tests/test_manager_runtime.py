@@ -85,7 +85,10 @@ async def test_f01_final_write_flushes_pending_state(
 async def test_f05_identical_reports_are_fresh_but_frozen_value_is_not(
     runtime_hass, runtime_entry, measurement_clock
 ):
-    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 2500)
+    # The old automatic expiry is now an explicit expert policy.
+    manager = await start_manager(
+        runtime_hass, runtime_entry, measurement_clock, 2500, configured_gap=10
+    )
     initial = runtime_hass.states.get("sensor.flow").last_updated
     for _ in range(5):
         measurement_clock.advance(10)
@@ -99,25 +102,25 @@ async def test_f05_identical_reports_are_fresh_but_frozen_value_is_not(
     await manager.async_refresh()
     measurement_clock.advance(61)
     await manager.async_refresh()
-    assert manager.source_available
+    assert not manager.source_available
     assert manager.engine.runtimes[DetectorKind.BURST_LEAK].event_id == event_id
-    assert (
-        manager.engine.runtimes[DetectorKind.BURST_LEAK].quiet_since
-        == manager.engine.last_sample_at
-    )
+    assert manager.engine.runtimes[DetectorKind.BURST_LEAK].quiet_since is None
 
 
 async def test_f05_single_high_report_cannot_mature_after_expiry(
     runtime_hass, runtime_entry, measurement_clock
 ):
-    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 2500)
+    # The old automatic expiry is now an explicit expert policy.
+    manager = await start_manager(
+        runtime_hass, runtime_entry, measurement_clock, 2500, configured_gap=10
+    )
     measurement_clock.advance(30)
     await manager.async_refresh()
     assert not manager.engine.snapshot().alarm_active
-    assert manager.source_available
+    assert not manager.source_available
     report(runtime_hass, measurement_clock, 2500)
     await manager.async_refresh()
-    assert manager.engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.ACTIVE
+    assert manager.engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.MONITORING
 
 
 @pytest.mark.parametrize("invalid", [-1, "unknown", "unavailable", "None", "nan", "bad"])

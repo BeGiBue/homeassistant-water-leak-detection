@@ -134,7 +134,7 @@
           "burst_rate_rise_lph_10s": "Burst-Anstiegsgrenze pro 10 Sekunden",
           "burst_rate_confirm_seconds": "Bestätigungszeit für schnellen Burst-Anstieg",
           "go_back": "Zurück ohne Speichern",
-          "source_max_age_seconds": "Maximal anrechenbarer Abstand zwischen Messwertmeldungen (0 = ohne Grenze)"
+          "source_max_age_seconds": "Maximal anrechenbarer Abstand zwischen zwei Messwertmeldungen (0 = ohne Grenze)"
         },
         "submit": "Speichern und zurück"
       },

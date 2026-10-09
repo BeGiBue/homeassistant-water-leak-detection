@@ -45,53 +45,41 @@ async def test_f05_constant_and_alternating_reports_reach_detection_without_tick
     assert measurement_clock.seconds >= 3600
 
 
-async def test_f05_five_second_cadence_cannot_retroactively_credit_240_second_gap(
+async def test_f05_long_interval_counts_only_when_report_arrives(
     runtime_hass, runtime_entry, measurement_clock
 ):
-    manager = await start_manager(
-        runtime_hass, runtime_entry, measurement_clock, 800, configured_gap=5
-    )
+    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 800)
     manager.engine.update_settings(
         DetectorSettings(high_detection_seconds=200, high_volume_l=99999)
     )
     for _ in range(3):
         measurement_clock.advance(5)
         await fresh(runtime_hass, manager, measurement_clock, 800)
-    for _ in range(2):
-        measurement_clock.advance(240)
-        await fresh(runtime_hass, manager, measurement_clock, 800)
-        assert manager._flow_evidence.credited_seconds == 0
-        assert not manager.engine.snapshot().alarm_active
-    measurement_clock.advance(5)
-    await fresh(runtime_hass, manager, measurement_clock, 800)
+    measurement_clock.advance(240)
+    await manager._async_tick(measurement_clock.utcnow())
+    assert manager._flow_evidence.credited_seconds == 0
     assert not manager.engine.snapshot().alarm_active
-    assert manager.engine.runtimes[DetectorKind.HIGH_FLOW].estimated_volume_l == pytest.approx(
-        800 * 20 / 3600
-    )
+    await fresh(runtime_hass, manager, measurement_clock, 800)
+    assert manager._flow_evidence.credited_seconds == 240
+    assert manager.engine.snapshot().alarm_active
 
 
 @pytest.mark.parametrize("gap", [120, 7200])
-async def test_f05_missing_reports_delay_detection_without_crediting_unknown_time(
+async def test_f05_silent_intervals_are_evaluated_at_the_next_report(
     runtime_hass, runtime_entry, measurement_clock, gap
 ):
-    manager = await start_manager(
-        runtime_hass, runtime_entry, measurement_clock, 800, configured_gap=60
-    )
+    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 800)
     manager.engine.update_settings(
-        DetectorSettings(high_detection_seconds=360, high_volume_l=99999)
+        DetectorSettings(high_detection_seconds=240, high_volume_l=99999)
     )
     for _ in range(3):
         measurement_clock.advance(60)
         await fresh(runtime_hass, manager, measurement_clock, 800)
     measurement_clock.advance(gap)
-    await fresh(runtime_hass, manager, measurement_clock, 800)
-    assert manager._flow_evidence.credited_seconds == 0
-    runtime = manager.engine.runtimes[DetectorKind.HIGH_FLOW]
-    assert (manager.timer_now - runtime.started_at).total_seconds() == 180
+    await manager._async_tick(measurement_clock.utcnow())
     assert not manager.engine.snapshot().alarm_active
-    for _ in range(6):
-        measurement_clock.advance(60)
-        await fresh(runtime_hass, manager, measurement_clock, 800)
+    await fresh(runtime_hass, manager, measurement_clock, 800)
+    assert manager._flow_evidence.credited_seconds == gap
     assert manager.engine.snapshot().alarm_active
 
 
@@ -288,49 +276,38 @@ def test_f07_later_quantum_still_needs_new_total_confirmation():
     assert not engine.snapshot().alarm_active
 
 
-async def test_f05_alternating_modes_do_not_credit_an_unseen_180_second_gap(
+async def test_f05_unseen_interval_counts_without_history_qualification(
     runtime_hass, runtime_entry, measurement_clock
 ):
-    manager = await start_manager(
-        runtime_hass, runtime_entry, measurement_clock, 800, configured_gap=120
-    )
+    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 800)
     for period in (60, 120) * 4:
         measurement_clock.advance(period)
         await fresh(runtime_hass, manager, measurement_clock, 800)
-    previous_volume = manager.engine.runtimes[DetectorKind.HIGH_FLOW].estimated_volume_l
-    measurement_clock.advance(180)  # A missing short report is not a new cadence.
+    measurement_clock.advance(180)
     await fresh(runtime_hass, manager, measurement_clock, 800)
-    assert manager._flow_evidence.credited_seconds == 0
-    assert manager.engine.runtimes[DetectorKind.HIGH_FLOW].estimated_volume_l == previous_volume
+    assert manager._flow_evidence.credited_seconds == 180
 
 
-async def test_f05_missing_five_second_report_is_not_bootstrap_fast_evidence(
+async def test_f05_ten_second_report_counts_without_bootstrap_model(
     runtime_hass, runtime_entry, measurement_clock
 ):
-    manager = await start_manager(
-        runtime_hass, runtime_entry, measurement_clock, 800, configured_gap=5
-    )
+    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 800)
     for _ in range(3):
         measurement_clock.advance(5)
         await fresh(runtime_hass, manager, measurement_clock, 800)
-    previous_volume = manager.engine.runtimes[DetectorKind.HIGH_FLOW].estimated_volume_l
     measurement_clock.advance(10)
     await fresh(runtime_hass, manager, measurement_clock, 800)
-    assert manager._flow_evidence.credited_seconds == 0
-    assert manager.engine.runtimes[DetectorKind.HIGH_FLOW].estimated_volume_l == previous_volume
+    assert manager._flow_evidence.credited_seconds == 10
 
 
-async def test_f05_rare_gaps_separated_by_regular_reports_do_not_qualify_a_mode(
+async def test_f05_rare_completed_intervals_need_no_mode(
     runtime_hass, runtime_entry, measurement_clock
 ):
-    manager = await start_manager(
-        runtime_hass, runtime_entry, measurement_clock, 800, configured_gap=5
-    )
+    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 800)
     for _ in range(2):
         for _ in range(10):
             measurement_clock.advance(5)
             await fresh(runtime_hass, manager, measurement_clock, 800)
         measurement_clock.advance(240)
         await fresh(runtime_hass, manager, measurement_clock, 800)
-        assert manager._flow_evidence.credited_seconds == 0
-    assert manager._flow_evidence.received_at == measurement_clock.seconds
+        assert manager._flow_evidence.credited_seconds == 240

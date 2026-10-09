@@ -317,11 +317,12 @@ class WaterLeakManager:
 
     async def _async_tick(self, _now) -> None:
         if not self._closed:
-            await self.async_refresh()
+            self._flow_evidence.credited_seconds = 0.0
+            await self.async_refresh(allow_measurement=False)
             await self.notifications.async_retry_pending()
 
-    async def async_refresh(self) -> None:
-        """Read source states and evaluate detectors."""
+    async def async_refresh(self, *, allow_measurement: bool = True) -> None:
+        """Evaluate fresh reports; ticks only apply controls and source status."""
         if self._closed:
             return
         self._apply_controls()
@@ -329,9 +330,11 @@ class WaterLeakManager:
         if not self._usable_source_state(flow_state):
             self._suspend_source()
             return
-        fresh, interrupted = self._flow_evidence.observe(
-            flow_state, monotonic(), self.source_max_age_seconds
-        )
+        fresh = False
+        if allow_measurement:
+            fresh, _ = self._flow_evidence.observe(
+                flow_state, monotonic(), self.source_max_age_seconds
+            )
         if not fresh:
             if self._flow_evidence.expired(monotonic(), self.source_max_age_seconds):
                 self.source_available = False
@@ -340,8 +343,6 @@ class WaterLeakManager:
                 self.learner.suspend_current_episode()
                 self._notify_listeners()
             return
-        if interrupted:
-            self.learner.suspend_current_episode()
 
         try:
             flow = normalize_flow_lph(
@@ -435,7 +436,7 @@ class WaterLeakManager:
 
     @property
     def source_max_age_seconds(self) -> float:
-        """Use automatic cadence for the previously persisted 30-second default."""
+        """Use unlimited report gaps for the previously persisted 30-second default."""
         configured = max(
             0.0,
             float(self.entry.options.get(CONF_SOURCE_MAX_AGE_SEC, DEFAULT_SOURCE_MAX_AGE_SEC)),
@@ -465,11 +466,11 @@ class WaterLeakManager:
         return 0.0
 
     def _suspend_source(self) -> None:
-        self._flow_evidence.invalidate()
+        self._flow_evidence.interrupt()
         self.source_available = False
         self.current_flow_lph = None
         self.current_total_l = None
-        self.engine.pause_measurements()
+        self.engine.suspend_for_unavailable_source()
         self.learner.suspend_current_episode()
         self._schedule_save()
         self._notify_listeners()
