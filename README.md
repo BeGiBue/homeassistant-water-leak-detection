@@ -260,42 +260,53 @@ new reports from cached readings. Superseded queued state events are rejected by
 current-state identity, not UTC ordering. Runtime intervals and active durations
 use a process-local monotonic axis. Persisted active duration excludes offline time.
 
-`source_max_age_seconds` defaults to **0 (automatic cadence)**. After two observed
-intervals, the automatic gap limit is 1.5 times the longest of the last five
-accepted report intervals. Until then startup qualification uses a five-minute
-observation bound; repeated matching slower periods can establish longer cadence
-without crediting their earlier unknown time. The first
-interval longer than the internal tick establishes cadence without crediting unknown
-startup time. An outage beyond the gap limit clears unconfirmed observation/quiet
-windows, not confirmed safety states, and is not trained as a normal interval.
-Regular 5, 30, 60 and 120 second reports work without expert changes. A positive
-option explicitly overrides the permitted report gap (equality is allowed). Very irregular startup cadence can require an explicit bound. Round 1's persisted
-30-second default is treated as automatic unless explicitly re-saved in Round 2.
-Other positive legacy limits are preserved; an intentionally chosen 30-second limit
-can be re-saved and is then marked explicit. No algorithm can
+`source_max_age_seconds` defaults to **0 (automatic cadence)**. Cadence learning
+and credited measurement time are separate. A newly learned slower interval only
+permits future reports; it never legitimizes the unknown interval that taught it.
+Two comparable slower intervals within four reports qualify a new cadence. Recent qualified intervals
+retain alternating modes (for example 60/120 or 600/120 seconds). Automatic gap
+availability limits use 1.5 times the longest of the last twenty qualified intervals.
+Time credit requires a previously qualified mode (25% cadence tolerance), or a
+shorter fresh interval, not merely being within that availability limit. Before any
+mode is known, intervals within the internal ten-second tick can qualify directly. Before
+qualification, startup observations use a five-minute availability bound, but that
+bound does not itself credit detection time. Unknown gaps clear unconfirmed
+monitoring/quiet evidence, retaining active safety events. Long outages also clear
+cadence qualifications. Internal ticks credit no time, including after cadence
+learning. Constant 5, 30, 60, 120 and 600 second sources work without expert changes.
+A positive option explicitly overrides the permitted report gap (equality is
+allowed). Round 1's persisted 30-second default is treated as automatic unless
+explicitly re-saved. Other positive legacy limits are preserved. No algorithm can
 prove continuous physical flow between reports; these are endpoint observations.
 
-Optional total-meter progress is compared with ALL accumulated flow-envelope volume
-since the last accepted progress. No fixed litre-resolution offset is assumed.
-Positive increments above 1.5 times this common envelope remain pending without
-crediting detection volume; later flow evidence can support quantized progress.
-Counter regression/reset and return after unavailable rebase the reference. Frozen
-or absent totals do not veto independent flow integration. No volume from an unknown
-outage or another meter is imported. This plausibility check remains a measurement
-heuristic, not a guarantee of meter accuracy or a new leak threshold.
+Optional total-meter progress is compared with accumulated confirmed flow volume,
+without a fixed litre-resolution offset or a 1.5 volume multiplier. Unused flow
+credit is retained across accepted quantized increments. A rejected cached total
+cannot become accepted merely because flow catches up: another actual total report
+or value change is required. A fresh identical report may confirm it only after
+sufficient independent flow evidence exists. Frozen or absent totals never veto
+flow integration. Counter regression/reset and return after unavailable rebase the
+reference without importing unknown volume or clearing active events. Very long
+single flow-integration intervals retain their existing volume cap; total
+plausibility uses only the confirmed interval, not an unknown communication gap.
+This is a consistency check, not a guarantee of meter accuracy or a new leak threshold.
 
 Safety transitions request a write within 1 s; ordinary sample/learning updates
 within 10 s of the first pending update, without postponement by later samples.
 These bounds exclude event-loop stalls and storage failures. Final-write/unload
 flushes pending state. Corrupt active records retain safety when remaining confirmed
 event identity/detection evidence is strong; unconfirmed monitoring is discarded.
+Future records redundantly persist `confirmed_active`. Legacy reconstruction uses
+class-independent confirmation fields; Burst's optional `reason` is never required.
+Restored event IDs must contain 1–128 ASCII letters, digits, underscores or hyphens.
+Invalid IDs are replaced without transferring old acknowledgements.
 
-Notifications use isolated tasks per event/recipient. States distinguish not yet
+Notifications use isolated tasks per event/recipient/notify-service route. States distinguish not yet
 dispatched, in flight, locally failed, accepted by HA, and interrupted/ambiguous.
 Missing services and local exceptions leave dispatch open for later periodic retry.
 A slow/hanging service does not block other recipients. No 5-second cancellation
 and automatic duplicate retry applies to a running handoff. A second handoff for
-that event/recipient cannot start while the first is running. Acknowledgement is
+that event/route cannot start while the first is running. Acknowledgement is
 checked immediately before the HA call and never clears detection or shutoff.
 
 **The integration guarantees handoff to the configured Home Assistant Notify service,
@@ -303,7 +314,15 @@ not physical delivery to the phone.** A normal service return records HA accepta
 mobile_app may internally handle remote push failures without reporting them here.
 Already handed-off calls cannot be recalled. Unload cancels local waiting tasks;
 an interrupted in-flight call is persisted as ambiguous and is not automatically
-resent after restore, because it may already have pushed. This can require manual
+resent on the same route after restore, because it may already have pushed.
+A changed notify service is a new route and remains eligible unless acknowledged.
+Accepted and interrupted states are persisted per route. Round 2 interrupted
+records did not contain service provenance: migration retains that unknown route
+explicitly instead of attaching it to a potentially new configured service. An
+eligible current route may dispatch; if it was also the unrecorded old route, this
+upgrade ambiguity can produce a duplicate. Historical service identity cannot be
+reconstructed from missing metadata. Event end cancels and
+awaits its local dispatch workers without affecting another event. This can require manual
 operator follow-up. A crash before persisting acceptance can still cause a duplicate;
 exactly-once physical delivery is impossible without downstream confirmation.
 
@@ -312,7 +331,11 @@ expiry is projected from remaining monotonic time; restore uses that absolute ex
 Clock changes during the same process neither shorten nor extend the bypass. A
 clock correction during an unclean outage remains inherently ambiguous.
 
-Changing recipients does not reload detection. Changing sources retains active
+Controls are applied even without a new report: disabling Slow/Low and activating
+High-Flow-Bypass immediately apply their existing reset rules. Cancelling bypass
+does not reuse stale measurements to create a new event. Changing recipients does
+not reload detection. Learning episode intervals use process timing, while admitted
+learning-history timestamps and rolling windows use actual UTC. Changing sources retains active
 safety states but discards old meter baselines, unconfirmed timers and learning.
 Every form submenu offers **Back without saving**; enable it and submit to return
 without validating or saving unfinished fields. Own derived Water Leak Guard sensors

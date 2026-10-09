@@ -81,6 +81,7 @@ class AdaptiveFlowLearner:
         now: datetime,
         flow_lph: float,
         *,
+        runtime_now: datetime | None = None,
         suspicious: bool,
         high_flow_bypassed: bool,
     ) -> bool:
@@ -88,13 +89,14 @@ class AdaptiveFlowLearner:
 
         Returns True when the learned sample set changed.
         """
+        timing = now if runtime_now is None else runtime_now
         flow = max(0.0, float(flow_lph))
         changed = self._prune(now)
 
         if self._episode is None:
             if flow >= self.quiet_flow_lph:
                 self._episode = _Episode(
-                    started_at=now,
+                    started_at=timing,
                     peak_lph=flow,
                     excluded=suspicious or high_flow_bypassed,
                 )
@@ -106,8 +108,8 @@ class AdaptiveFlowLearner:
             episode.excluded = True
 
         if flow < self.quiet_flow_lph:
-            episode.quiet_since = episode.quiet_since or now
-            quiet_elapsed = (now - episode.quiet_since).total_seconds()
+            episode.quiet_since = episode.quiet_since or timing
+            quiet_elapsed = (timing - episode.quiet_since).total_seconds()
             if quiet_elapsed >= self.quiet_seconds:
                 if not episode.excluded and episode.peak_lph > 0:
                     self.samples.append(

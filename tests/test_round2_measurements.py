@@ -191,6 +191,9 @@ def test_f07_pending_quantum_keeps_common_reference_until_flow_supports_it():
     assert engine.last_total_l == 1000
     for second in range(10, 451, 5):
         engine.sample(origin + timedelta(seconds=second), 800, 1100)
+    # F07 Round 3: cached pending progress needs a new actual total report.
+    assert engine.last_total_l == 1000
+    engine.sample(origin + timedelta(seconds=455), 800, 1100, total_fresh=True)
     assert engine.last_total_l == 1100
     assert not engine.snapshot(1100).alarm_active
 

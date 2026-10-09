@@ -89,15 +89,25 @@ def test_f20_actual_script_checks_tag_even_without_release(
 import json,os,sys
 with open(os.environ['TEST_LOG'],'a') as f: f.write(json.dumps(['git']+sys.argv[1:])+'\\n')
 if sys.argv[1]=='ls-remote':
- sys.exit({'none':2,'lookup_error':128}.get(os.environ['TEST_TAG'],0))
+ tag=os.environ['TEST_TAG']
+ if tag=='none' and os.path.exists(os.environ['TEST_LOG']+'.tag'): tag='right'
+ sys.exit({'none':2,'lookup_error':128}.get(tag,0))
 if sys.argv[1]=='rev-parse':
- print(os.environ['GITHUB_SHA'] if os.environ['TEST_TAG']=='right' else 'b'*40)
+ print(os.environ['GITHUB_SHA'] if os.environ['TEST_TAG'] in ('right','none') else 'b'*40)
 ''')
     gh = executable / "gh"
     gh.write_text('''#!/usr/bin/env python3
 import json,os,sys
 with open(os.environ['TEST_LOG'],'a') as f: f.write(json.dumps(['gh']+sys.argv[1:])+'\\n')
-if sys.argv[2]=='view': sys.exit(0 if os.environ['TEST_RELEASE']=='1' else 1)
+if sys.argv[1]=='api':
+ open(os.environ['TEST_LOG']+'.tag','w').close()
+ sys.exit(0)
+if sys.argv[2]=='create': open(os.environ['TEST_LOG']+'.release','w').close()
+if sys.argv[2]=='view':
+ if os.environ['TEST_RELEASE']!='1' and not os.path.exists(os.environ['TEST_LOG']+'.release'):
+  print('release not found',file=sys.stderr)
+  sys.exit(1)
+ if '--json' in sys.argv: print(sys.argv[3])
 ''')
     git.chmod(0o755)
     gh.chmod(0o755)

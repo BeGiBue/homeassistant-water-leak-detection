@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import ast
 import asyncio
+import json
 import logging
 from collections.abc import Callable
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
@@ -111,6 +113,7 @@ class EventAcknowledgement:
     muted_recipients: set[str] = field(default_factory=set)
     accepted_recipients: dict[str, str] = field(default_factory=dict)
     dispatch_states: dict[str, str] = field(default_factory=dict)
+    route_states: dict[str, str] = field(default_factory=dict)
 
     @property
     def delivered_recipients(self) -> dict[str, str]:
@@ -130,6 +133,7 @@ class EventAcknowledgement:
             "muted_recipients": sorted(self.muted_recipients),
             "accepted_recipients": dict(self.accepted_recipients),
             "dispatch_states": dict(self.dispatch_states),
+            "route_states": dict(self.route_states),
         }
 
     @classmethod
@@ -137,6 +141,7 @@ class EventAcknowledgement:
         """Restore acknowledgement state."""
         delivered = raw.get("accepted_recipients", raw.get("delivered_recipients", {}))
         statuses = raw.get("dispatch_states", {})
+        routes = raw.get("route_states", {})
         return cls(
             globally_acknowledged=raw.get("globally_acknowledged") is True,
             globally_acknowledged_by=(
@@ -157,6 +162,13 @@ class EventAcknowledgement:
                 if isinstance(key, str) and isinstance(value, str)
                 and value in {s.value for s in DispatchState}
             } if isinstance(statuses, dict) else {},
+            route_states={
+                key: (DispatchState.INTERRUPTED.value
+                      if value == DispatchState.IN_FLIGHT else value)
+                for key, value in routes.items()
+                if isinstance(key, str) and isinstance(value, str)
+                and value in {status.value for status in DispatchState}
+            } if isinstance(routes, dict) else {},
         )
 
 
@@ -195,6 +207,7 @@ class NotificationController:
             self.hass.bus.async_listen(EVENT_LEAK_ENDED, self._async_leak_ended)
         )
         self.reload_recipients()
+        self._migrate_routes()
         for event_id, kind in self.manager.engine.active_events().items():
             runtime = self.manager.engine.runtimes[kind]
             self._events[event_id] = {
@@ -216,6 +229,8 @@ class NotificationController:
             task.cancel()
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
+        self._dispatch_tasks.clear()
+        self._delivery_tasks.clear()
         if self._tracker_unsub is not None:
             self._tracker_unsub()
             self._tracker_unsub = None
@@ -286,8 +301,30 @@ class NotificationController:
 
     @staticmethod
     def _delivery_key(recipient: NotificationRecipient) -> str:
-        """An edited delivery route/settings require a fresh accepted send."""
-        return repr(sorted(asdict(recipient).items()))
+        """Stable route identity: recipient identity and actual notify service."""
+        return json.dumps([recipient.id, recipient.notify_service], separators=(",", ":"))
+
+    def _migrate_routes(self) -> None:
+        """Migrate known routes; never invent a service for legacy ambiguity."""
+        for state in self.acknowledgements.values():
+            if state.route_states:
+                continue
+            for recipient_id, accepted in tuple(state.accepted_recipients.items()):
+                try:
+                    # Round 1/2 stored repr(sorted(asdict(recipient).items())).
+                    old = dict(ast.literal_eval(accepted))
+                    key = json.dumps([recipient_id, old["notify_service"]], separators=(",", ":"))
+                except (ValueError, SyntaxError, TypeError, KeyError):
+                    key = accepted
+                state.accepted_recipients[recipient_id] = key
+                state.route_states[key] = DispatchState.ACCEPTED.value
+            for recipient_id, status in state.dispatch_states.items():
+                if status == DispatchState.INTERRUPTED:
+                    # Round 2 did not persist the service of an interrupted call.
+                    # Keep that missing provenance explicit, not bound to a new
+                    # configured service that may never have been called.
+                    unknown_route = json.dumps([recipient_id, None], separators=(",", ":"))
+                    state.route_states.setdefault(unknown_route, status)
 
     def _eligible(self, event_id: str, recipient: NotificationRecipient) -> bool:
         active_events = getattr(self.manager.engine, "active_events", None)
@@ -309,13 +346,16 @@ class NotificationController:
             return
         for event_id, payload in tuple(self._events.items()):
             for recipient in tuple(self.recipients.values()):
-                identity = (event_id, recipient.id)
+                route = self._delivery_key(recipient)
+                identity = (event_id, route)
                 if identity in self._dispatch_tasks or not self._eligible(event_id, recipient):
                     continue
                 state = self.acknowledgements[event_id]
-                if state.accepted_recipients.get(recipient.id) == self._delivery_key(recipient):
+                if state.route_states.get(route) == DispatchState.ACCEPTED or (
+                    state.accepted_recipients.get(recipient.id) == route
+                ):
                     continue
-                if state.dispatch_states.get(recipient.id) == DispatchState.INTERRUPTED:
+                if state.route_states.get(route) == DispatchState.INTERRUPTED:
                     # A cancelled handoff may already have pushed. Do not blindly
                     # resend after reload; retain its ambiguous status for diagnosis.
                     continue
@@ -326,17 +366,25 @@ class NotificationController:
         await asyncio.sleep(0)
 
     async def _dispatch(self, event_id, recipient, payload) -> None:
+        route = self._delivery_key(recipient)
+        identity = (event_id, route)
         state = self.acknowledgements.get(event_id)
         if state is None:
             # The ended listener may have run after scheduling but before this
             # worker's first turn. No state, no handoff, no orphaned task entry.
-            self._dispatch_tasks.pop((event_id, recipient.id), None)
+            self._dispatch_tasks.pop(identity, None)
             self._delivery_tasks.discard(asyncio.current_task())
             return
-        state.dispatch_states[recipient.id] = DispatchState.NOT_DISPATCHED.value
+
+        def set_status(status: DispatchState) -> None:
+            state.route_states[route] = status.value
+            if self.recipients.get(recipient.id) == recipient:
+                state.dispatch_states[recipient.id] = status.value
+
+        set_status(DispatchState.NOT_DISPATCHED)
 
         def handed_off():
-            state.dispatch_states[recipient.id] = DispatchState.IN_FLIGHT.value
+            set_status(DispatchState.IN_FLIGHT)
             self._persist_callback()
 
         try:
@@ -347,18 +395,18 @@ class NotificationController:
                 authorize=lambda: self._eligible(event_id, recipient),
                 on_dispatch=handed_off,
             )
-            if sent is not False:
-                state.accepted_recipients[recipient.id] = self._delivery_key(recipient)
-                state.dispatch_states[recipient.id] = DispatchState.ACCEPTED.value
+            if sent is not False and self.acknowledgements.get(event_id) is state:
+                state.accepted_recipients[recipient.id] = route
+                set_status(DispatchState.ACCEPTED)
         except asyncio.CancelledError:
-            if state.dispatch_states.get(recipient.id) == DispatchState.IN_FLIGHT:
-                state.dispatch_states[recipient.id] = DispatchState.INTERRUPTED.value
+            if state.route_states.get(route) == DispatchState.IN_FLIGHT:
+                set_status(DispatchState.INTERRUPTED)
             raise
         except Exception:
-            state.dispatch_states[recipient.id] = DispatchState.FAILED.value
+            set_status(DispatchState.FAILED)
             _LOGGER.exception("HA notify dispatch to %s failed; will retry", recipient.name)
         finally:
-            self._dispatch_tasks.pop((event_id, recipient.id), None)
+            self._dispatch_tasks.pop(identity, None)
             self._delivery_tasks.discard(asyncio.current_task())
             self._persist_callback()
 
@@ -369,6 +417,16 @@ class NotificationController:
         if isinstance(event_id, str):
             self._events.pop(event_id, None)
             self.acknowledgements.pop(event_id, None)
+            tasks = [task for (pending_event, _route), task in self._dispatch_tasks.items()
+                     if pending_event == event_id]
+            for task in tasks:
+                task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            # A worker cancelled before its first turn cannot execute finally.
+            for identity in tuple(self._dispatch_tasks):
+                if identity[0] == event_id:
+                    self._delivery_tasks.discard(self._dispatch_tasks.pop(identity))
             self._persist_callback()
 
     async def _async_mobile_action(self, event: Event) -> None:
@@ -475,7 +533,10 @@ class NotificationController:
             if recipient.tracker_entity != tracker_entity:
                 continue
             state.muted_recipients.discard(recipient.id)
+            route = self._delivery_key(recipient)
             state.accepted_recipients.pop(recipient.id, None)
+            if state.route_states.get(route) == DispatchState.ACCEPTED:
+                state.route_states.pop(route, None)
             self._persist_callback()
             # Queue through the same guarded/retryable path as the first delivery.
             self._events[event_id] = {

@@ -6,6 +6,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-tag-1.0.1
+  cancel-in-progress: false
+
 jobs:
   validate:
     uses: ./.github/workflows/validate.yml

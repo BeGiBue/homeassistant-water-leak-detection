@@ -1,4 +1,4 @@
-"""Measurement identity and monotonic report cadence, independent of UTC ordering."""
+"""Fresh report identity and conservative, non-retroactive interval evidence."""
 
 from collections import deque
 from math import isclose
@@ -9,21 +9,23 @@ from .const import TICK_SECONDS
 
 
 class SourceEvidence:
-    """Only new reports supply evidence; ticks never advance detector intervals.
+    """Learn cadence separately from already credited measurement time.
 
-    The first slow interval establishes cadence without counting unknown startup
-    time. Two intervals establish cadence; gaps over 1.5 observed periods restart
-    qualification. Outages are not trained immediately as normal. Very slow
-    startup periods require repeated matching reports, not a fixed short expiry.
+    A new cadence requires repeated comparable intervals. Its discovery only
+    permits FUTURE intervals: the interval doing the learning is never credited.
+    Alternating cadences retain both modes instead of repeatedly resetting them.
     """
 
     def __init__(self) -> None:
         self.signature = None
         self.last_state: State | None = None
         self.received_at: float | None = None
-        self.intervals: deque[float] = deque(maxlen=5)
+        self.intervals: deque[float] = deque(maxlen=20)
+        self.candidates: deque[tuple[int, float]] = deque(maxlen=20)
+        self.report_index = 0
         self.pending_at: float | None = None
-        self.candidate_gap: float | None = None
+        self.credited_seconds = 0.0
+        self.long_outage = False
 
     def report(self, received_at: float) -> None:
         self.pending_at = received_at
@@ -31,7 +33,7 @@ class SourceEvidence:
     def limit(self, configured: float = 0) -> float:
         if configured > 0:
             return configured
-        return 1.5 * max(self.intervals) if len(self.intervals) >= 2 else 300.0
+        return 1.5 * max(self.intervals) if self.intervals else 300.0
 
     def expired(self, now: float, configured: float = 0) -> bool:
         return self.received_at is not None and now - self.received_at > self.limit(configured)
@@ -40,30 +42,36 @@ class SourceEvidence:
         signature = (id(state), state.last_reported)
         if signature == self.signature and self.pending_at is None:
             return False, False
+        self.report_index += 1
         received = self.pending_at if self.pending_at is not None else now
         self.pending_at = None
+        self.credited_seconds = 0.0
+        self.long_outage = False
         interrupted = False
         if self.received_at is not None:
             gap = max(0.0, received - self.received_at)
-            interrupted = gap > self.limit(configured) or (
-                not self.intervals and gap > TICK_SECONDS
+            # Decide credit from knowledge available BEFORE this report.
+            trusted = gap <= configured if configured > 0 else (
+                gap <= min(self.intervals, default=TICK_SECONDS)
+                or any(isclose(gap, known, rel_tol=0.25) for known in self.intervals)
             )
-            if gap > self.limit(configured):
-                if (
-                    configured <= 0 and not self.intervals and self.candidate_gap is not None
-                    and isclose(gap, self.candidate_gap, rel_tol=0.25)
+            interrupted = not trusted
+            self.long_outage = gap > max(300.0, self.limit(configured) * 3)
+            if self.long_outage:
+                self.intervals.clear()
+                self.candidates.clear()
+            elif not interrupted:
+                self.credited_seconds = gap
+                if gap > 0:
+                    self.intervals.append(gap)
+            elif configured <= 0 and gap > 0:
+                if any(
+                    self.report_index - index <= 4 and isclose(gap, old, rel_tol=0.25)
+                    for index, old in self.candidates
                 ):
-                    # Repeated slow startup periods can establish cadence, but
-                    # their formerly unknown time is still not detector evidence.
-                    self.intervals.extend((self.candidate_gap, gap))
-                    self.candidate_gap = None
-                else:
-                    self.intervals.clear()
-                    self.candidate_gap = gap if configured <= 0 else None
-            elif gap > 0:
-                self.intervals.append(gap)
-                self.candidate_gap = None
+                    self.intervals.append(gap)
+                self.candidates.append((self.report_index, gap))
         self.received_at = received
         self.signature = signature
-        self.last_state = state  # Retain identity; Python cannot recycle this ID.
+        self.last_state = state
         return True, interrupted

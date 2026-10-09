@@ -162,6 +162,9 @@ class WaterLeakManager:
         self._save_handle: asyncio.TimerHandle | None = None
         self._save_task: asyncio.Task | None = None
         self._flow_evidence = SourceEvidence()
+        self._total_signature = None
+        self._total_state: State | None = None
+        self._total_report_pending = False
         self._bypass_deadline: float | None = None
         self._restored_elapsed: dict[str, tuple[float, float]] = {}
         self._clock_origin = dt_util.utcnow()
@@ -217,7 +220,7 @@ class WaterLeakManager:
             self.hass, entities, self._async_source_changed
         )
         report_unsub = async_track_state_report_event(
-            self.hass, [self.flow_entity_id], self._same_value_reported
+            self.hass, entities, self._same_value_reported
         )
 
         @callback
@@ -277,12 +280,16 @@ class WaterLeakManager:
 
     @callback
     def _same_value_reported(self, event: Event) -> None:
-        state = self.hass.states.get(self.flow_entity_id)
+        entity_id = event.data.get("entity_id")
+        state = self.hass.states.get(entity_id)
         if (
-            not self._closed and state is event.data.get("new_state")
+            not self._closed and state is not None and state is event.data.get("new_state")
             and state.last_reported == event.data.get("last_reported")
         ):
-            self._flow_evidence.report(monotonic())
+            if entity_id == self.flow_entity_id:
+                self._flow_evidence.report(monotonic())
+            elif entity_id == self.total_entity_id:
+                self._total_report_pending = True
             self.hass.async_create_task(self.async_refresh())
 
     async def _async_source_changed(self, event: Event) -> None:
@@ -317,6 +324,7 @@ class WaterLeakManager:
         """Read source states and evaluate detectors."""
         if self._closed:
             return
+        self._apply_controls()
         flow_state = self.hass.states.get(self.flow_entity_id)
         if not self._usable_source_state(flow_state):
             self._suspend_source()
@@ -326,7 +334,11 @@ class WaterLeakManager:
         )
         if not fresh:
             if self._flow_evidence.expired(monotonic(), self.source_max_age_seconds):
-                self._suspend_source()
+                self.source_available = False
+                for runtime in self.engine.runtimes.values():
+                    runtime.quiet_since = None
+                self.learner.suspend_current_episode()
+                self._notify_listeners()
             elif not self._flow_evidence.intervals:
                 # No cadence has been confirmed yet; this read is not a new sample.
                 self.source_available = False
@@ -348,8 +360,14 @@ class WaterLeakManager:
             return
 
         total: float | None = None
+        total_fresh = False
         if self.total_entity_id:
             total_state = self.hass.states.get(self.total_entity_id)
+            signature = (id(total_state), total_state.last_reported) if total_state else None
+            total_fresh = signature != self._total_signature or self._total_report_pending
+            self._total_signature = signature
+            self._total_state = total_state
+            self._total_report_pending = False
             if self._usable_source_state(total_state):
                 try:
                     total = normalize_volume_l(
@@ -366,16 +384,18 @@ class WaterLeakManager:
         self.source_available = True
         self.current_flow_lph = flow
         self.current_total_l = total
-        # UTC event labels advance with monotonic elapsed time during this run.
-        # Wall-clock adjustments cannot mature/reset observation intervals.
+        # Detector intervals use process timing; event labels and historical
+        # learning timestamps independently use actual UTC.
         now = self.timer_now
-        thresholds = self.adaptive_thresholds(now)
+        thresholds = self.adaptive_thresholds(dt_util.utcnow())
         bypass_active = self.high_flow_bypass_active
         transitions = self.engine.sample(
             now,
             flow,
             total,
             high_flow_bypassed=bypass_active,
+            evidence_seconds=self._flow_evidence.credited_seconds,
+            total_fresh=total_fresh,
             effective_high_threshold_lph=thresholds.effective_high_lph,
             effective_burst_threshold_lph=thresholds.effective_burst_lph,
         )
@@ -391,8 +411,9 @@ class WaterLeakManager:
             is not DetectorPhase.IDLE
         )
         learning_changed = self.learner.observe(
-            now,
+            dt_util.utcnow(),
             flow,
+            runtime_now=now,
             suspicious=suspicious,
             high_flow_bypassed=bypass_active,
         )
@@ -400,9 +421,18 @@ class WaterLeakManager:
         if learning_changed:
             _LOGGER.debug(
                 "Adaptive learning updated: %s",
-                self.learner.snapshot(now),
+                self.learner.snapshot(dt_util.utcnow()),
             )
         self._notify_listeners()
+
+    def _apply_controls(self) -> None:
+        transitions = self.engine.apply_controls(
+            self.timer_now, high_flow_bypassed=self.high_flow_bypass_active
+        )
+        self._handle_transitions(transitions)
+        self._handle_shutoff_transition()
+        if transitions:
+            self._notify_listeners()
 
     def _source_identity(self) -> dict[str, str | None]:
         return {"flow": self.flow_entity_id, "total": self.total_entity_id}
@@ -540,7 +570,9 @@ class WaterLeakManager:
             dt_util.utcnow(),
         )
         self.notifications.reload_recipients()
-        self._handle_shutoff_transition()
+        self._apply_controls()
+        if not self._closed:
+            self.hass.async_create_task(self.notifications.async_retry_pending())
         self._schedule_save()
         self._notify_listeners()
 

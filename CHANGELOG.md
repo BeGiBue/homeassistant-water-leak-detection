@@ -2,7 +2,7 @@
 
 All notable changes to Water Leak Guard are documented here.
 
-## Unreleased — correction rounds 1 and 2
+## Unreleased — correction rounds 1, 2 and 3
 
 - Bounded state persistence; defensive recovery of stored runtime data.
 - Negative/stale/out-of-order measurements cannot provide reset evidence.
@@ -16,6 +16,15 @@ All notable changes to Water Leak Guard are documented here.
 - Round 2: common total-meter reference without fixed litre resolution.
 - Round 2: conservative confirmed-event repair and monotonic bypass/active duration.
 - Round 2: validate existing release tags before creating a Release.
+
+- Round 3: non-retroactive cadence evidence, including alternating slow report periods.
+- Round 3: immediate control changes independent of fresh flow reports.
+- Round 3: per-route notification status and cleanup of ended-event dispatch workers.
+- Round 3: total revalidation requires a fresh total report and sufficient flow volume.
+- Round 3: actual UTC learning history with process-local episode timing.
+- Round 3: class-independent redundant active confirmation and action-safe event IDs.
+- Round 3: atomic release tag refs, repeated SHA checks and per-tag concurrency;
+  complete immutability requires GitHub Rulesets / Tag Protection.
 
 ## 1.0.2 — 2026-10-07
 

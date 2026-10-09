@@ -188,3 +188,35 @@ HA-Annahme, keine bestätigte Telefonzustellung. Laufende Calls werden nicht nac
 bereits laufende Übergaben sind unklar und werden nicht automatisch wiederholt.
 Beschädigte Runtime-Felder löschen ein anhand verbleibender Bestätigungsdaten
 klar erkennbares aktives Ereignis nicht. Unbestätigtes Monitoring bleibt verwerfbar.
+
+
+## Korrekturrunde 3 (unveröffentlicht)
+
+Kadenzlernen legitimiert niemals rückwirkend unbekannte Messzeit. Ein erst neu
+qualifiziertes Intervall darf erst für zukünftige Reports Evidenz liefern. Bekannte
+wechselnde Kadenzen werden gemeinsam gelernt, statt sich gegenseitig dauerhaft
+zu verwerfen. Interne Ticks zählen weiterhin weder Leak- noch Ruhezeit.
+
+Steuerungsänderungen werden vor der Frischeprüfung angewendet. Deaktivieren von
+Slow/Low und Einschalten des High-Flow-Bypass greifen sofort nach den bestehenden
+Regeln; Burst bleibt unabhängig. Bypass-Ende erzeugt aus einem alten State kein Event.
+
+Ein verworfener Totalwert braucht für erneute Akzeptanz einen neuen Totalreport
+oder echten Wertfortschritt. Bloßes Flow-Aufholen bestätigt einen eingefrorenen
+Zählersprung nicht. Quantisierte Fortschritte behalten ungenutzte Flow-Evidenz.
+Der Mengenvergleich enthält keinen pauschalen Faktor 1,5 mehr.
+
+Notify-Status und laufende Aufgaben beziehen sich auf Event, Empfänger-ID und den
+konkret verwendeten Notify-Service. Ein unterbrochener alter Service sperrt keinen
+neu konfigurierten Versandweg. Event-Ende cancelt und erwartet nur dessen lokale
+Aufgaben. Bereits an HA übergebene Calls können weiterhin nicht zurückgerufen werden.
+
+Alle vier Klassen restaurieren bestätigte Sicherheitsereignisse nach derselben
+Regel. `reason` ist optional. Neue Stores enthalten redundant `confirmed_active`;
+Altdaten bleiben lesbar. Aktionsunsichere Event-IDs werden ersetzt, ohne eine alte
+Quittierung zu übernehmen. Fehlen in Altdaten sämtliche Bestätigungsinformationen,
+kann daraus kein bestätigtes Ereignis erfunden werden.
+
+Lern-Episoden messen Laufzeit monoton. Persistierte Lern-Samples erhalten dagegen
+die echte UTC des Abschlusses; das Rolling Window arbeitet ebenfalls mit realer UTC.
+Wiki-Dateien dieser Runde werden nur lokal gepflegt, nicht veröffentlicht.

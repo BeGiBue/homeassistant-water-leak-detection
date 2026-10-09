@@ -51,6 +51,18 @@ HACS derives the remote version from the latest published GitHub Release.
 
 The current correction round is unreleased. Do not run publication workflows while reviewing it.
 
-The shared release script also checks a pre-existing tag when no GitHub Release exists
-yet. A mismatching tag aborts before creation; a matching annotated/lightweight tag
-can receive its Release. Remote tag lookup failures fail closed. No tag is moved.
+The shared script for 1.0.1 and 1.0.2 atomically creates a missing GitHub tag ref
+on `GITHUB_SHA` through the GitHub Git References API. It never force-updates a ref.
+A failed creation may mean another run won; the ref is reread and must still resolve
+to precisely that SHA. Annotated tags are fully peeled to commits. Tags are verified
+again immediately before release creation and after verifying the release's tag name.
+A racing release creator is accepted only after the same checks. Remote errors fail
+closed. Workflow concurrency serializes publication for the same release tag.
+
+**For the complete SHA guarantee, release tags must be protected against moving
+with GitHub Rulesets / Tag Protection.** A client script cannot prevent an authorized
+external user from force-moving a tag after a successful check. Checks detect moves
+during the observed operations and fail hard; they cannot undo a concurrent external
+mutation or guarantee that it will never happen later. Configure tag protection
+before running publication workflows. This correction round does not publish a tag
+or release and does not modify GitHub Rulesets itself.

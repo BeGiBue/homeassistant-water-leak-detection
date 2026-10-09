@@ -198,6 +198,9 @@ def test_high_flow_detects_by_total_volume_before_duration() -> None:
     engine = DetectionEngine(settings)
     engine.sample(at(0), 800.0, 1000.0)
     engine.sample(at(300), 800.0, 1100.0)
+    # F07: 66.7 L of flow evidence cannot validate a 100 L total jump.
+    assert engine.runtimes[DetectorKind.HIGH_FLOW].phase is DetectorPhase.MONITORING
+    engine.sample(at(450), 800.0, 1100.0, total_fresh=True)
     assert engine.runtimes[DetectorKind.HIGH_FLOW].phase is DetectorPhase.ACTIVE
 
 

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from math import isclose, isfinite
 from typing import Any
 from uuid import uuid4
@@ -141,10 +142,12 @@ class DetectionEngine:
         total_l: float | None,
         *,
         high_flow_bypassed: bool = False,
+        evidence_seconds: float | None = None,
+        total_fresh: bool = False,
         effective_high_threshold_lph: float | None = None,
         effective_burst_threshold_lph: float | None = None,
     ) -> list[DetectorTransition]:
-        """Evaluate one measurement sample."""
+        """Evaluate flow evidence; identical totals require explicit new-report proof."""
         if not isfinite(flow_lph) or flow_lph < 0:
             self.suspend_for_unavailable_source()
             return []
@@ -159,6 +162,17 @@ class DetectionEngine:
         delta_seconds = 0.0
         if self.last_sample_at is not None:
             raw_delta_seconds = max(0.0, (now - self.last_sample_at).total_seconds())
+            if evidence_seconds is not None:
+                credit = max(0.0, min(raw_delta_seconds, evidence_seconds))
+                paused = raw_delta_seconds - credit
+                for runtime in self.runtimes.values():
+                    if runtime.phase is DetectorPhase.MONITORING and runtime.started_at:
+                        runtime.started_at += timedelta(seconds=paused)
+                    if paused > 0:
+                        runtime.quiet_since = None
+                if paused > 0:
+                    self.last_flow_lph = None  # No rapid-rise evidence across an unknown gap.
+                raw_delta_seconds = credit
             delta_seconds = raw_delta_seconds
             # Avoid integrating an arbitrarily large gap after HA was offline.
             delta_seconds = min(delta_seconds, 300.0)
@@ -171,9 +185,8 @@ class DetectionEngine:
                         max(flow_lph, self.last_flow_lph or 0) * raw_delta_seconds / 3600.0
                     )
 
-        self.total_expected_l += max(flow_lph, self.last_flow_lph or 0) * (
-            raw_delta_seconds / 3600.0
-        )
+        # Only the confirmed interval contributes; never the previous-flow maximum.
+        self.total_expected_l += flow_lph * raw_delta_seconds / 3600.0
         if total_l is None:
             self.reset_total_reference()
         else:
@@ -183,6 +196,7 @@ class DetectionEngine:
                 and raw_total < self.last_observed_total_l
             )
             rebase = self.last_total_l is None or reset
+            total_fresh = total_fresh or raw_total != self.last_observed_total_l
             self.last_observed_total_l = raw_total
             if rebase:
                 self.last_total_l = raw_total
@@ -195,12 +209,12 @@ class DetectionEngine:
                 # The reference spans ALL flow reports since accepted progress,
                 # not one interval. Oversized/quantized progress stays pending:
                 # no fixed litre resolution and no rebase on every rejected step.
-                upper = self.total_expected_l * 1.5
-                if increment > 0 and (
+                upper = self.total_expected_l
+                if total_fresh and increment > 0 and (
                     increment <= upper or isclose(increment, upper, rel_tol=1e-9)
                 ):
                     self.last_total_l = raw_total
-                    self.total_expected_l = 0.0
+                    self.total_expected_l = max(0.0, self.total_expected_l - increment)
                 elif increment > 0:
                     total_l = None  # Never expose unaccepted volume to detectors.
             if total_l is not None:
@@ -356,6 +370,23 @@ class DetectionEngine:
         if start is None:
             return 0.0
         return max(0.0, (now - start).total_seconds())
+
+    def apply_controls(
+        self, now: datetime, *, high_flow_bypassed: bool
+    ) -> list[DetectorTransition]:
+        """Apply non-measurement controls without reusing a cached flow sample."""
+        transitions: list[DetectorTransition] = []
+        disabled = {
+            DetectorKind.SLOW_LEAK: not self.settings.slow_enabled,
+            DetectorKind.LOW_FLOW: not self.settings.low_enabled,
+            DetectorKind.HIGH_FLOW: high_flow_bypassed,
+        }
+        for kind, reset in disabled.items():
+            if reset:
+                self._append_transition(
+                    transitions, kind, DetectorPhase.IDLE, now=now, total_l=None
+                )
+        return transitions
 
     def reset_total_reference(self) -> None:
         """Forget a disconnected/reset meter without clearing active safety."""
@@ -697,6 +728,7 @@ class DetectionEngine:
             "runtimes": {
                 kind.value: {
                     "phase": runtime.phase.value,
+                    "confirmed_active": runtime.phase is DetectorPhase.ACTIVE,
                     "started_at": (runtime.utc_started_at or runtime.started_at).isoformat()
                     if runtime.started_at or runtime.utc_started_at
                     else None,
@@ -741,15 +773,17 @@ class DetectionEngine:
 
             runtime = self.runtimes[kind]
             event_id = raw.get("event_id")
-            valid_id = isinstance(event_id, str) and bool(event_id.strip())
+            valid_id = (
+                isinstance(event_id, str)
+                and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", event_id) is not None
+            )
             detected = parse_datetime(raw.get("detected_at"))
             started = parse_datetime(raw.get("started_at"))
-            confirmed = phase is DetectorPhase.ACTIVE or (
+            confirmed = raw.get("confirmed_active") is True or phase is DetectorPhase.ACTIVE or (
                 valid_id and detected is not None
             ) or (
-                invalid_phase and detected is not None and started is not None
-                and isinstance(raw.get("reason"), str) and bool(raw.get("reason"))
-                and (nonnegative_float(raw.get("estimated_volume_l")) or 0) > 0
+                (invalid_phase or phase is DetectorPhase.IDLE)
+                and detected is not None and started is not None
             )
             if not confirmed:
                 runtime.reset()
