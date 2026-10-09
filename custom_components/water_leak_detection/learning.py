@@ -70,6 +70,9 @@ class AdaptiveFlowLearner:
         self.quiet_seconds = max(10.0, float(quiet_seconds))
         self.samples: list[LearningSample] = []
         self._episode: _Episode | None = None
+        self._clock_utc: datetime | None = None
+        self._clock_runtime: datetime | None = None
+        self._rollback_valid_until: datetime | None = None
 
     def update_window(self, window_days: int, now: datetime) -> None:
         """Change the rolling window while retaining still-valid samples."""
@@ -90,6 +93,8 @@ class AdaptiveFlowLearner:
         Returns True when the learned sample set changed.
         """
         timing = now if runtime_now is None else runtime_now
+        if runtime_now is not None:
+            self.observe_clock(now, runtime_now)
         flow = max(0.0, float(flow_lph))
         changed = self._prune(now)
 
@@ -130,6 +135,7 @@ class AdaptiveFlowLearner:
         """Clear all learned history."""
         self.samples.clear()
         self._episode = None
+        self._rollback_valid_until = None
 
     def snapshot(self, now: datetime) -> LearningSnapshot:
         """Return robust short/long references and confidence."""
@@ -191,15 +197,44 @@ class AdaptiveFlowLearner:
             confidence=confidence,
         )
 
-    def to_dict(self) -> dict[str, Any]:
+    def observe_clock(self, now: datetime, runtime_now: datetime) -> None:
+        """Record rollback evidence only for samples admitted before the correction."""
+        if self._clock_utc is not None and self._clock_runtime is not None:
+            expected = self._clock_utc + (runtime_now - self._clock_runtime)
+            if now < expected - timedelta(seconds=1):
+                admitted_until = max((sample.timestamp for sample in self.samples), default=now)
+                if admitted_until > now:
+                    self._rollback_valid_until = max(
+                        self._rollback_valid_until or now, admitted_until
+                    )
+        self._clock_utc = now
+        self._clock_runtime = runtime_now
+
+    def to_dict(
+        self, *, now: datetime | None = None, runtime_now: datetime | None = None
+    ) -> dict[str, Any]:
         """Serialize only admitted normal samples.
 
         The in-progress episode is intentionally not persisted because an
         incomplete pre-restart episode is not trustworthy learning evidence.
         """
-        return {
+        if now is not None and runtime_now is not None:
+            self.observe_clock(now, runtime_now)
+        result = {
             "samples": [sample.to_dict() for sample in self.samples],
         }
+        # Bound the exception to an observed correction and an admitted timestamp.
+        # Offline rollbacks and corrections exceeding one day stay conservative.
+        if (
+            now is not None
+            and self._rollback_valid_until is not None
+            and now < self._rollback_valid_until <= now + timedelta(days=1)
+        ):
+            result["clock_rollback"] = {
+                "observed_at": now.isoformat(),
+                "valid_until": self._rollback_valid_until.isoformat(),
+            }
+        return result
 
     def restore(self, raw: Any, now: datetime) -> None:
         """Restore valid admitted samples."""
@@ -208,6 +243,22 @@ class AdaptiveFlowLearner:
         samples = raw.get("samples")
         if not isinstance(samples, list):
             return
+
+        valid_until = now
+        context = raw.get("clock_rollback")
+        if isinstance(context, dict):
+            try:
+                observed_at = datetime.fromisoformat(context["observed_at"])
+                admitted_until = datetime.fromisoformat(context["valid_until"])
+                if (
+                    observed_at.tzinfo is not None
+                    and admitted_until.tzinfo is not None
+                    and observed_at <= now < admitted_until
+                    and admitted_until - observed_at <= timedelta(days=1)
+                ):
+                    valid_until = admitted_until
+            except (KeyError, TypeError, ValueError):
+                pass
 
         restored: list[LearningSample] = []
         for item in samples:
@@ -222,10 +273,16 @@ class AdaptiveFlowLearner:
                 peak = float(peak_raw)
             except (TypeError, ValueError):
                 continue
-            if timestamp.tzinfo is not None and timestamp <= now and isfinite(peak) and peak > 0:
+            if (
+                timestamp.tzinfo is not None
+                and timestamp <= valid_until
+                and isfinite(peak)
+                and peak > 0
+            ):
                 restored.append(LearningSample(timestamp=timestamp, peak_lph=peak))
         self.samples = restored
         self._episode = None
+        self._rollback_valid_until = valid_until if valid_until > now else None
         self._prune(now)
 
     def _prune(self, now: datetime) -> bool:

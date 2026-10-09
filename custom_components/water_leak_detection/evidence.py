@@ -56,7 +56,12 @@ class SourceEvidence:
                 or any(isclose(gap, known, rel_tol=0.25) for known in self.intervals)
             )
             interrupted = not trusted
-            self.long_outage = gap > max(300.0, self.limit(configured) * 3)
+            # A shorter qualified mode must not shrink the startup outage
+            # horizon and erase recurring longer candidates before they mature.
+            # This horizon permits learning only; credit still uses trusted above.
+            self.long_outage = gap > max(
+                300.0 if configured > 0 else 900.0, self.limit(configured) * 3
+            )
             if self.long_outage:
                 self.intervals.clear()
                 self.candidates.clear()

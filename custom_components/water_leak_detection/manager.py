@@ -850,7 +850,7 @@ class WaterLeakManager:
                 for event_id in self.engine.active_events()
             },
             "acknowledgements": self.notifications.to_dict(),
-            "learning": self.learner.to_dict(),
+            "learning": self.learner.to_dict(now=dt_util.utcnow(), runtime_now=self.timer_now),
         }
 
     @callback
