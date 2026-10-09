@@ -78,17 +78,17 @@ def test_f05_single_long_outlier_retains_short_mode_without_qualifying_long_mode
     assert 600 not in evidence.intervals
 
 
-def test_f05_qualification_only_credits_future_intervals_and_real_outages_reset_learning():
+def test_f05_qualification_only_credits_future_intervals_and_outages_keep_profile():
     evidence = SourceEvidence()
     second = 0
     observe(evidence, second)
     for _ in range(8):
         second += 120
         observe(evidence, second)
-    for index in range(3):
+    for index in range(8):
         second += 600
         observe(evidence, second)
-        assert evidence.credited_seconds == (600 if index == 2 else 0)
+        assert evidence.credited_seconds == (600 if index >= 4 else 0)
         second += 120
         observe(evidence, second)
         assert evidence.credited_seconds == 120
@@ -96,12 +96,13 @@ def test_f05_qualification_only_credits_future_intervals_and_real_outages_reset_
     assert observe(evidence, second) == (True, True)
     assert evidence.long_outage
     assert evidence.credited_seconds == 0
-    assert not evidence.intervals
-    assert not evidence.candidates
-    for index in range(3):
+    assert 600 in evidence.intervals
+    assert 120 in evidence.intervals
+    assert evidence.candidates
+    for _ in range(3):
         second += 120
         observe(evidence, second)
-        assert evidence.credited_seconds == (120 if index == 2 else 0)
+        assert evidence.credited_seconds == 120
 
 
 def test_f05_explicit_gap_keeps_existing_outage_boundary():

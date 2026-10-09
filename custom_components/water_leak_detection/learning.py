@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
+from hashlib import sha256
 from math import isfinite
 from typing import Any
 
@@ -72,7 +75,7 @@ class AdaptiveFlowLearner:
         self._episode: _Episode | None = None
         self._clock_utc: datetime | None = None
         self._clock_runtime: datetime | None = None
-        self._rollback_valid_until: datetime | None = None
+        self._rollback_samples: set[str] = set()
 
     def update_window(self, window_days: int, now: datetime) -> None:
         """Change the rolling window while retaining still-valid samples."""
@@ -135,7 +138,7 @@ class AdaptiveFlowLearner:
         """Clear all learned history."""
         self.samples.clear()
         self._episode = None
-        self._rollback_valid_until = None
+        self._rollback_samples.clear()
 
     def snapshot(self, now: datetime) -> LearningSnapshot:
         """Return robust short/long references and confidence."""
@@ -201,14 +204,21 @@ class AdaptiveFlowLearner:
         """Record rollback evidence only for samples admitted before the correction."""
         if self._clock_utc is not None and self._clock_runtime is not None:
             expected = self._clock_utc + (runtime_now - self._clock_runtime)
-            if now < expected - timedelta(seconds=1):
-                admitted_until = max((sample.timestamp for sample in self.samples), default=now)
-                if admitted_until > now:
-                    self._rollback_valid_until = max(
-                        self._rollback_valid_until or now, admitted_until
-                    )
+            # datetime resolution is one microsecond; one millisecond suppresses
+            # clock-read/numeric jitter while reliably detecting a 0.5 s step.
+            if now < expected - timedelta(milliseconds=1):
+                self._rollback_samples.update(
+                    _fingerprint(sample) for sample in self.samples if sample.timestamp > now
+                )
         self._clock_utc = now
         self._clock_runtime = runtime_now
+        self._trim_clock_context(now)
+
+    def _trim_clock_context(self, now: datetime) -> None:
+        """Drop identities after UTC catches up or the corresponding sample is pruned."""
+        self._rollback_samples.intersection_update(
+            _fingerprint(sample) for sample in self.samples if sample.timestamp > now
+        )
 
     def to_dict(
         self, *, now: datetime | None = None, runtime_now: datetime | None = None
@@ -223,16 +233,16 @@ class AdaptiveFlowLearner:
         result = {
             "samples": [sample.to_dict() for sample in self.samples],
         }
-        # Bound the exception to an observed correction and an admitted timestamp.
-        # Offline rollbacks and corrections exceeding one day stay conservative.
-        if (
-            now is not None
-            and self._rollback_valid_until is not None
-            and now < self._rollback_valid_until <= now + timedelta(days=1)
-        ):
+        future = [
+            sample for sample in self.samples
+            if now is not None and now < sample.timestamp <= now + timedelta(days=1)
+            and _fingerprint(sample) in self._rollback_samples
+        ]
+        if future:
             result["clock_rollback"] = {
                 "observed_at": now.isoformat(),
-                "valid_until": self._rollback_valid_until.isoformat(),
+                "valid_until": max(sample.timestamp for sample in future).isoformat(),
+                "fingerprints": sorted(_fingerprint(sample) for sample in future),
             }
         return result
 
@@ -245,18 +255,28 @@ class AdaptiveFlowLearner:
             return
 
         valid_until = now
+        fingerprints: Counter[str] = Counter()
         context = raw.get("clock_rollback")
         if isinstance(context, dict):
             try:
                 observed_at = datetime.fromisoformat(context["observed_at"])
                 admitted_until = datetime.fromisoformat(context["valid_until"])
+                identities = context.get("fingerprints")
                 if (
                     observed_at.tzinfo is not None
                     and admitted_until.tzinfo is not None
                     and observed_at <= now < admitted_until
                     and admitted_until - observed_at <= timedelta(days=1)
+                    and isinstance(identities, list)
+                    and len(identities) <= len(samples)
+                    and all(
+                        isinstance(identity, str) and len(identity) == 64
+                        and all(char in "0123456789abcdef" for char in identity)
+                        for identity in identities
+                    )
                 ):
                     valid_until = admitted_until
+                    fingerprints = Counter(identities)
             except (KeyError, TypeError, ValueError):
                 pass
 
@@ -273,23 +293,37 @@ class AdaptiveFlowLearner:
                 peak = float(peak_raw)
             except (TypeError, ValueError):
                 continue
+            sample = LearningSample(timestamp=timestamp, peak_lph=peak)
             if (
                 timestamp.tzinfo is not None
-                and timestamp <= valid_until
                 and isfinite(peak)
                 and peak > 0
+                and timestamp <= valid_until
+                and (timestamp <= now or fingerprints[_fingerprint(sample)] > 0)
             ):
-                restored.append(LearningSample(timestamp=timestamp, peak_lph=peak))
+                restored.append(sample)
+                if timestamp > now:
+                    fingerprints[_fingerprint(sample)] -= 1
         self.samples = restored
         self._episode = None
-        self._rollback_valid_until = valid_until if valid_until > now else None
+        self._rollback_samples = set(fingerprints)
         self._prune(now)
 
     def _prune(self, now: datetime) -> bool:
         cutoff = now - timedelta(days=self.window_days)
         before = len(self.samples)
         self.samples = [sample for sample in self.samples if sample.timestamp >= cutoff]
+        self._trim_clock_context(now)
         return len(self.samples) != before
+
+
+def _fingerprint(sample: LearningSample) -> str:
+    """Bind permission to all persisted semantic fields, never just a time range."""
+    payload = json.dumps(
+        {"timestamp": sample.timestamp.isoformat(), "peak_lph": float(sample.peak_lph)},
+        sort_keys=True, separators=(",", ":"), allow_nan=False,
+    )
+    return sha256(payload.encode()).hexdigest()
 
 
 def _percentile(values: list[float], quantile: float) -> float | None:

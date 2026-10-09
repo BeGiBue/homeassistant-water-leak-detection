@@ -8,6 +8,7 @@ from test_manager_runtime import report, start_manager
 
 from custom_components.water_leak_detection.const import (
     CONF_NOTIFICATION_RECIPIENTS,
+    CONF_SOURCE_MAX_AGE_SEC,
     DOMAIN,
     MOBILE_ACTION_EVENT,
     DetectorKind,
@@ -27,6 +28,7 @@ def recipient(name):
 def configure(hass, entry, clock, *names):
     hass.config_entries.async_update_entry(entry, options={
         CONF_NOTIFICATION_RECIPIENTS: [recipient(name) for name in names],
+        CONF_SOURCE_MAX_AGE_SEC: 10,  # Routing tests use an explicitly known cadence.
     })
     for name in names:
         hass.states.async_set(f"device_tracker.{name}", "home",

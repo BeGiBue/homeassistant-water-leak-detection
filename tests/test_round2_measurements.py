@@ -61,7 +61,7 @@ async def test_f05_single_frozen_report_never_activates_or_resets(
         measurement_clock.advance(5)
         await manager._async_tick(measurement_clock.utcnow())
     assert not manager.engine.snapshot().alarm_active
-    for _ in range(5):
+    for _ in range(6):
         measurement_clock.advance(10)
         await fresh(runtime_hass, manager, measurement_clock, flow)
     event_id = manager.engine.runtimes[kind].event_id
@@ -89,14 +89,17 @@ async def test_f05_outage_is_not_learned_as_normal_cadence(
     assert runtime.phase is DetectorPhase.MONITORING
     assert runtime.started_at == manager.timer_now
     assert runtime.estimated_volume_l == 0
-    assert not manager._flow_evidence.intervals
+    assert max(manager._flow_evidence.intervals) == 60
+    assert manager._flow_evidence.credited_seconds == 0
 
 
 @pytest.mark.parametrize("shift", [-3600, 3600])
 async def test_f15_utc_correction_reports_duration_quiet_bypass_and_reload(
     runtime_hass, runtime_entry, measurement_clock, shift
 ):
-    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 2500)
+    manager = await start_manager(
+        runtime_hass, runtime_entry, measurement_clock, 2500, configured_gap=10
+    )
     for _ in range(3):
         measurement_clock.advance(10)
         await fresh(runtime_hass, manager, measurement_clock, 2500)
@@ -225,7 +228,9 @@ async def test_f05_missing_two_regular_reports_does_not_credit_unknown_gap(
 async def test_f15_event_utc_labels_stay_real_while_timers_are_monotonic(
     runtime_hass, runtime_entry, measurement_clock
 ):
-    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 2500)
+    manager = await start_manager(
+        runtime_hass, runtime_entry, measurement_clock, 2500, configured_gap=10
+    )
     started_utc = measurement_clock.utcnow()
     measurement_clock.wall_shift -= 3600
     for _ in range(3):
@@ -243,7 +248,9 @@ async def test_f15_event_utc_labels_stay_real_while_timers_are_monotonic(
 async def test_f15_same_utc_timestamp_report_after_clock_rollback_is_still_new(
     runtime_hass, runtime_entry, measurement_clock
 ):
-    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 2500)
+    manager = await start_manager(
+        runtime_hass, runtime_entry, measurement_clock, 2500, configured_gap=10
+    )
     for _ in range(3):
         measurement_clock.advance(10)
         await fresh(runtime_hass, manager, measurement_clock, 2500)

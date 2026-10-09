@@ -29,7 +29,12 @@ def report(hass, clock, value, entity="sensor.flow", unit="L/h"):
                           timestamp=clock.utcnow().timestamp())
 
 
-async def start_manager(hass, entry, clock, value=7):
+async def start_manager(hass, entry, clock, value=7, *, configured_gap=0):
+    if configured_gap:
+        # Tests of established safety states can explicitly declare their cadence.
+        hass.config_entries.async_update_entry(entry, options={
+            **entry.options, CONF_SOURCE_MAX_AGE_SEC: configured_gap,
+        })
     report(hass, clock, value)
     manager = WaterLeakManager(hass, entry)
     manager.notifications._async_common_translations = AsyncMock(return_value={})
@@ -82,7 +87,7 @@ async def test_f05_identical_reports_are_fresh_but_frozen_value_is_not(
 ):
     manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 2500)
     initial = runtime_hass.states.get("sensor.flow").last_updated
-    for _ in range(3):
+    for _ in range(5):
         measurement_clock.advance(10)
         report(runtime_hass, measurement_clock, 2500)
         await manager.async_refresh()
@@ -116,7 +121,9 @@ async def test_f05_single_high_report_cannot_mature_after_expiry(
 async def test_invalid_source_keeps_alarm_and_shutoff(
     runtime_hass, runtime_entry, measurement_clock, invalid
 ):
-    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 2500)
+    manager = await start_manager(
+        runtime_hass, runtime_entry, measurement_clock, 2500, configured_gap=10
+    )
     for _ in range(3):
         measurement_clock.advance(10)
         report(runtime_hass, measurement_clock, 2500)
@@ -137,7 +144,9 @@ async def test_f13_switch_source_preserves_active_identity_without_old_total(
         CONF_FLOW_ENTITY: "sensor.flow", CONF_TOTAL_ENTITY: "sensor.total",
     })
     report(runtime_hass, measurement_clock, 1000, "sensor.total", "L")
-    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 2500)
+    manager = await start_manager(
+        runtime_hass, runtime_entry, measurement_clock, 2500, configured_gap=10
+    )
     for _ in range(3):
         measurement_clock.advance(10)
         report(runtime_hass, measurement_clock, 2500)
@@ -188,7 +197,9 @@ async def test_f17_bus_ended_payload_has_original_burst_reason(
     started, ended = [], []
     runtime_hass.bus.async_listen(EVENT_LEAK_STARTED, lambda event: started.append(event.data))
     runtime_hass.bus.async_listen(EVENT_LEAK_ENDED, lambda event: ended.append(event.data))
-    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 0)
+    manager = await start_manager(
+        runtime_hass, runtime_entry, measurement_clock, 0, configured_gap=10
+    )
     for flow in (1500, 1500, 0, 0, 0, 0, 0, 0, 0):
         measurement_clock.advance(10)
         report(runtime_hass, measurement_clock, flow)
@@ -233,11 +244,11 @@ async def test_f12_config_entry_recipient_update_retains_monitoring(
     monkeypatch.setattr(runtime_hass.config_entries, "async_forward_entry_setups", AsyncMock())
     await asyncio.wait_for(integration.async_setup_entry(runtime_hass, runtime_entry), 3)
     manager = runtime_hass.data[DOMAIN][runtime_entry.entry_id]
-    started_at = manager.engine.runtimes[DetectorKind.SLOW_LEAK].started_at
     for _ in range(5):
         measurement_clock.advance(10)
         report(runtime_hass, measurement_clock, 7)
         await manager.async_refresh()
+    started_at = manager.engine.runtimes[DetectorKind.SLOW_LEAK].started_at
     runtime_hass.config_entries.async_update_entry(runtime_entry, options={
         CONF_NOTIFICATION_RECIPIENTS: [{
             "id": "new", "name": "New phone", "notify_service": "notify.mobile_app_new",
@@ -253,7 +264,9 @@ async def test_f12_config_entry_recipient_update_retains_monitoring(
 async def test_f01_real_timer_saves_safety_transition_within_bound(
     runtime_hass, runtime_entry, measurement_clock
 ):
-    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 2500)
+    manager = await start_manager(
+        runtime_hass, runtime_entry, measurement_clock, 2500, configured_gap=10
+    )
     for _ in range(3):
         measurement_clock.advance(10)
         report(runtime_hass, measurement_clock, 2500)
@@ -350,7 +363,7 @@ async def test_f13_entry_unload_setup_rebases_new_meter_and_preserves_safety(
                         AsyncMock(return_value=True))
     runtime_hass.config_entries.async_update_entry(runtime_entry, data={
         CONF_FLOW_ENTITY: "sensor.flow", CONF_TOTAL_ENTITY: "sensor.total",
-    })
+    }, options={CONF_SOURCE_MAX_AGE_SEC: 10})
     report(runtime_hass, measurement_clock, 2500)
     report(runtime_hass, measurement_clock, 1000, "sensor.total", "L")
     await integration.async_setup_entry(runtime_hass, runtime_entry)

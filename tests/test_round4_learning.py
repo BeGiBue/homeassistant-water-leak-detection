@@ -65,12 +65,11 @@ def test_f15_corrupt_future_sample_outside_observed_rollback_is_rejected(future)
     now = measurement_origin()
     valid = LearningSample(now + timedelta(hours=1), 50)
     corrupt = LearningSample(now + future, 100)
-    raw = {
-        "samples": [valid.to_dict(), corrupt.to_dict()],
-        "clock_rollback": {
-            "observed_at": now.isoformat(), "valid_until": valid.timestamp.isoformat(),
-        },
-    }
+    admitted = AdaptiveFlowLearner()
+    admitted.samples = [valid]
+    admitted.observe_clock(valid.timestamp, valid.timestamp)
+    raw = admitted.to_dict(now=now, runtime_now=valid.timestamp)
+    raw["samples"].append(corrupt.to_dict())
     learner = AdaptiveFlowLearner()
     learner.restore(raw, now)
     assert learner.samples == [valid]

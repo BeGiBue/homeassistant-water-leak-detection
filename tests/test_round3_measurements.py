@@ -95,7 +95,7 @@ async def test_f05_frozen_states_supply_no_time_but_identical_reports_do(
     manager.engine.update_settings(
         DetectorSettings(high_detection_seconds=20, high_reset_seconds=20)
     )
-    for _ in range(4):
+    for _ in range(6):
         measurement_clock.advance(5)
         await fresh(runtime_hass, manager, measurement_clock, 800)
     event_id = manager.engine.snapshot().active_event_id

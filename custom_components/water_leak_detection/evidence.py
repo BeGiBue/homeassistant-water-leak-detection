@@ -38,6 +38,15 @@ class SourceEvidence:
     def expired(self, now: float, configured: float = 0) -> bool:
         return self.received_at is not None and now - self.received_at > self.limit(configured)
 
+    def _supported(self, gap: float) -> bool:
+        """Require recurrence and at least one quarter of the last twenty reports.
+
+        Count reports, not elapsed time: a very long outlier cannot buy support.
+        The same rule supports up to four regularly recurring modes.
+        """
+        matches = sum(isclose(gap, old, rel_tol=0.25) for _, old in self.candidates)
+        return matches >= 2 and matches * 4 >= len(self.candidates)
+
     def observe(self, state: State, now: float, configured: float = 0) -> tuple[bool, bool]:
         signature = (id(state), state.last_reported)
         if signature == self.signature and self.pending_at is None:
@@ -52,30 +61,29 @@ class SourceEvidence:
             gap = max(0.0, received - self.received_at)
             # Decide credit from knowledge available BEFORE this report.
             trusted = gap <= configured if configured > 0 else (
-                gap <= min(self.intervals, default=TICK_SECONDS)
-                or any(isclose(gap, known, rel_tol=0.25) for known in self.intervals)
+                any(
+                    isclose(gap, known, rel_tol=0.25)
+                    and self._supported(gap)
+                    for known in self.intervals
+                )
             )
-            interrupted = not trusted
-            # A shorter qualified mode must not shrink the startup outage
-            # horizon and erase recurring longer candidates before they mature.
-            # This horizon permits learning only; credit still uses trusted above.
+            # Fresh fast startup reports need no communication suspension, but
+            # still earn zero time until qualification. Unknown gaps in an
+            # established profile conservatively suspend unconfirmed evidence.
+            interrupted = not trusted and (
+                configured > 0 or bool(self.intervals) or gap > TICK_SECONDS
+            )
+            # Diagnose outages independently; no gap destroys the learned profile.
             self.long_outage = gap > max(
                 300.0 if configured > 0 else 900.0, self.limit(configured) * 3
             )
-            if self.long_outage:
-                self.intervals.clear()
-                self.candidates.clear()
-            elif not interrupted:
+            if trusted:
                 self.credited_seconds = gap
-                if gap > 0:
-                    self.intervals.append(gap)
-            elif configured <= 0 and gap > 0:
-                if any(
-                    self.report_index - index <= 4 and isclose(gap, old, rel_tol=0.25)
-                    for index, old in self.candidates
-                ):
-                    self.intervals.append(gap)
+            if gap > 0:
                 self.candidates.append((self.report_index, gap))
+                # Learning happens AFTER credit, including the qualifying report.
+                if trusted or (configured <= 0 and self._supported(gap)):
+                    self.intervals.append(gap)
         self.received_at = received
         self.signature = signature
         self.last_state = state
