@@ -260,24 +260,33 @@ new reports from cached readings. Superseded queued state events are rejected by
 current-state identity, not UTC ordering. Runtime intervals and active durations
 use a process-local monotonic axis. Persisted active duration excludes offline time.
 
-`source_max_age_seconds` defaults to **0 (automatic cadence)**. Cadence learning
-and credited measurement time are separate. A newly learned slower interval only
-permits future reports; it never legitimizes the unknown interval that taught it.
-Two comparable slower intervals within four reports qualify a new cadence. Recent qualified intervals
-retain alternating modes (for example 60/120 or 600/120 seconds). Automatic gap
-availability limits use 1.5 times the longest of the last twenty qualified intervals.
-Time credit requires a previously qualified mode (25% cadence tolerance), or a
-shorter fresh interval, not merely being within that availability limit. Before any
-mode is known, intervals within the internal ten-second tick can qualify directly. Before
-qualification, startup observations use a five-minute availability bound, but that
-bound does not itself credit detection time. Unknown gaps clear unconfirmed
-monitoring/quiet evidence, retaining active safety events. Long outages also clear
-cadence qualifications. Internal ticks credit no time, including after cadence
-learning. Constant 5, 30, 60, 120 and 600 second sources work without expert changes.
-A positive option explicitly overrides the permitted report gap (equality is
-allowed). Round 1's persisted 30-second default is treated as automatic unless
-explicitly re-saved. Other positive legacy limits are preserved. No algorithm can
-prove continuous physical flow between reports; these are endpoint observations.
+`source_max_age_seconds` defaults to **0 (no artificial report-gap limit)**.
+The integration evaluates fresh measurement reports; it does not statistically
+classify or guess sensor reporting cadence. Two consecutive fresh valid reports
+contribute their completed monotonic interval only when the second report arrives.
+Internal ticks contribute zero evidence and cannot activate or reset a leak from a
+cached high or zero value. Confirmed monitoring time accumulates independently of
+report spacing; existing detector thresholds and reset rules remain unchanged.
+
+Observed unknown, unavailable, negative, nonfinite or otherwise invalid source
+values break the measurement chain. The first valid report after that interruption
+contributes zero time. Confirmed monitoring progress and active leaks are retained;
+quiet and rate evidence cannot cross the interruption.
+
+A positive expert option sets the **maximum creditable interval between reports**.
+Equality is allowed: with a 60-second limit, 60 seconds count and 61 seconds add
+zero. An excluded gap never erases earlier confirmed monitoring progress. Later
+normal reports can add evidence again. No limit is inferred from report history.
+Round 1's persisted 30-second default is treated as automatic unless explicitly
+re-saved. Other positive legacy limits are preserved.
+
+Without an explicit maximum gap, the integration cannot distinguish a legitimate
+slow reporting cadence from a silent communication failure between fresh reports.
+Endpoint observations cannot prove continuous physical flow between them. Users
+whose sensors may silently freeze should configure a suitable positive limit.
+An additional genuine report can reveal an already reached detection threshold
+sooner; it does not create extra elapsed time or change evidence at the original
+report endpoints.
 
 Optional total-meter progress is compared with accumulated confirmed flow volume,
 without a fixed litre-resolution offset or a 1.5 volume multiplier. Unused flow

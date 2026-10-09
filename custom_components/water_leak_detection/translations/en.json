@@ -134,7 +134,7 @@
           "burst_rate_rise_lph_10s": "Burst rate-of-rise threshold per 10 seconds",
           "burst_rate_confirm_seconds": "Rapid-rise Burst confirmation time",
           "go_back": "Back without saving",
-          "source_max_age_seconds": "Maximum report gap (0 = automatic cadence)"
+          "source_max_age_seconds": "Maximum creditable report interval (0 = no limit)"
         },
         "submit": "Save and go back"
       },

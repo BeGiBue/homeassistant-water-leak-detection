@@ -99,9 +99,12 @@ async def test_f05_identical_reports_are_fresh_but_frozen_value_is_not(
     await manager.async_refresh()
     measurement_clock.advance(61)
     await manager.async_refresh()
-    assert not manager.source_available
+    assert manager.source_available
     assert manager.engine.runtimes[DetectorKind.BURST_LEAK].event_id == event_id
-    assert manager.engine.runtimes[DetectorKind.BURST_LEAK].quiet_since is None
+    assert (
+        manager.engine.runtimes[DetectorKind.BURST_LEAK].quiet_since
+        == manager.engine.last_sample_at
+    )
 
 
 async def test_f05_single_high_report_cannot_mature_after_expiry(
@@ -111,10 +114,10 @@ async def test_f05_single_high_report_cannot_mature_after_expiry(
     measurement_clock.advance(30)
     await manager.async_refresh()
     assert not manager.engine.snapshot().alarm_active
-    assert not manager.source_available
+    assert manager.source_available
     report(runtime_hass, measurement_clock, 2500)
     await manager.async_refresh()
-    assert manager.engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.MONITORING
+    assert manager.engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.ACTIVE
 
 
 @pytest.mark.parametrize("invalid", [-1, "unknown", "unavailable", "None", "nan", "bad"])

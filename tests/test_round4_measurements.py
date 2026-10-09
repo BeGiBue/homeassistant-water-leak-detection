@@ -30,7 +30,6 @@ async def test_f05_alternating_modes_mature_for_six_hours_with_no_tick_credit(
         await fresh(runtime_hass, manager, measurement_clock, 800)
     start = measurement_clock.seconds
     credited = 0
-    unknown_long = 0
     index = 0
     while measurement_clock.seconds - start < 6 * 3600:
         period = periods[index % len(periods)]
@@ -42,10 +41,7 @@ async def test_f05_alternating_modes_mature_for_six_hours_with_no_tick_credit(
             assert manager.engine.last_sample_at == before
         await fresh(runtime_hass, manager, measurement_clock, 800)
         credit = manager._flow_evidence.credited_seconds
-        assert credit in (0, period)
-        if period == 600 and unknown_long < 2:
-            assert credit == 0  # Includes the report that qualifies the new mode.
-            unknown_long += 1
+        assert credit == period
         credited += credit
     assert credited >= 4 * 3600
     assert manager.engine.runtimes[DetectorKind.HIGH_FLOW].phase is DetectorPhase.ACTIVE
@@ -59,46 +55,26 @@ def test_f05_single_long_outlier_retains_short_mode_without_qualifying_long_mode
     evidence = SourceEvidence()
     second = 0
     observe(evidence, second)
-    for _ in range(8):
-        second += 120
-        observe(evidence, second)
-    qualified = list(evidence.intervals)
-    second += 600
-    assert observe(evidence, second) == (True, True)
-    assert evidence.credited_seconds == 0
-    assert list(evidence.intervals) == qualified
-    assert not evidence.long_outage
-    for _ in range(8):
-        second += 120
+    for gap in [120] * 8 + [600] + [120] * 8 + [600]:
+        second += gap
         assert observe(evidence, second) == (True, False)
-        assert evidence.credited_seconds == 120
-    second += 600
-    assert observe(evidence, second) == (True, True)
-    assert evidence.credited_seconds == 0
-    assert 600 not in evidence.intervals
+        assert evidence.credited_seconds == gap
+    assert evidence.received_at == second
 
 
 def test_f05_qualification_only_credits_future_intervals_and_outages_keep_profile():
     evidence = SourceEvidence()
     second = 0
     observe(evidence, second)
-    for _ in range(8):
-        second += 120
+    for gap in [120] * 8 + [600, 120] * 8:
+        second += gap
         observe(evidence, second)
-    for index in range(8):
-        second += 600
-        observe(evidence, second)
-        assert evidence.credited_seconds == (600 if index >= 4 else 0)
-        second += 120
-        observe(evidence, second)
-        assert evidence.credited_seconds == 120
+        assert evidence.credited_seconds == gap
+    # An explicitly observed source interruption breaks the chain, not a learned mode.
+    evidence.invalidate()
     second += 7200
-    assert observe(evidence, second) == (True, True)
-    assert evidence.long_outage
+    assert observe(evidence, second) == (True, False)
     assert evidence.credited_seconds == 0
-    assert 600 in evidence.intervals
-    assert 120 in evidence.intervals
-    assert evidence.candidates
     for _ in range(3):
         second += 120
         observe(evidence, second)
@@ -108,6 +84,7 @@ def test_f05_qualification_only_credits_future_intervals_and_outages_keep_profil
 def test_f05_explicit_gap_keeps_existing_outage_boundary():
     evidence = SourceEvidence()
     evidence.observe(State("sensor.flow", "800"), 0, configured=120)
-    evidence.observe(State("sensor.flow", "800"), 600, configured=120)
-    assert evidence.long_outage
+    assert evidence.observe(State("sensor.flow", "800"), 600, configured=120) == (True, True)
     assert evidence.credited_seconds == 0
+    evidence.observe(State("sensor.flow", "800"), 720, configured=120)
+    assert evidence.credited_seconds == 120

@@ -186,9 +186,15 @@ Change these values only with measured household data where possible.
 
 ## Measurement validity and navigation (unreleased)
 
-`source_max_age_seconds` defaults to 0 (automatic report cadence), range 0–3600.
-A positive value is an explicit permitted gap, not permission to count ticks as
-new evidence. Automatic startup and outage handling are described in the README.
+`source_max_age_seconds` defaults to 0 (no artificial report-gap limit), range 0–3600.
+Only consecutive fresh valid reports contribute their completed interval; internal
+ticks contribute zero. No automatic cadence classification or inferred gap limit
+exists. A positive expert limit excludes intervals strictly greater than the limit
+without erasing earlier confirmed monitoring progress; equality counts. Explicit
+invalid/unavailable/unknown source states break the measurement chain. The first
+valid report after that interruption contributes zero time. Without an explicit
+limit, silent outages cannot be distinguished from legitimate slow reporting.
+See the README for the full measurement-evidence contract.
 Negative and nonfinite samples are invalid, not zero. Low/High quiet and Burst reset
 flow limits remain strictly positive; legacy zero values are clamped to 1 L/h.
 Other detector thresholds and detection times are unchanged.

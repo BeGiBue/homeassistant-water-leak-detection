@@ -61,8 +61,7 @@ def test_f05_slowly_drifting_cadence_retains_recent_support():
         report(evidence, second)
         if index >= 3:
             assert evidence.credited_seconds == period
-    assert len(evidence.candidates) == 20
-    assert len(evidence.intervals) <= 20
+    assert evidence.received_at == second
 
 
 def test_f05_tolerance_cannot_chain_unsupported_interval_growth():
@@ -77,7 +76,7 @@ def test_f05_tolerance_cannot_chain_unsupported_interval_growth():
     assert evidence.credited_seconds == 80
     second += 100
     report(evidence, second)
-    assert evidence.credited_seconds == 0
+    assert evidence.credited_seconds == 100
 
 
 @pytest.mark.parametrize("period", [86400, 604800])
@@ -86,22 +85,26 @@ def test_f05_learning_has_no_elapsed_time_cutoff(period):
     report(evidence, 0)
     for index in range(1, 5):
         report(evidence, index * period)
-        assert evidence.credited_seconds == (period if index >= 3 else 0)
+        assert evidence.credited_seconds == period
 
 
 @pytest.mark.parametrize("outliers", [[600], [600, 600], [600, 650]])
 def test_f05_sparse_outliers_never_obtain_support(outliers):
-    evidence = SourceEvidence()
+    automatic = SourceEvidence()
+    expert = SourceEvidence()
     second = 0
-    report(evidence, second)
+    report(automatic, second)
+    expert.observe(State("sensor.flow", "800"), second, configured=120)
     for outlier in outliers:
         for _ in range(17):
             second += 120
-            report(evidence, second)
+            report(automatic, second)
+            expert.observe(State("sensor.flow", "800"), second, configured=120)
         second += outlier
-        report(evidence, second)
-        assert evidence.credited_seconds == 0
-        assert max(evidence.intervals) == 120
+        report(automatic, second)
+        expert.observe(State("sensor.flow", "800"), second, configured=120)
+        assert automatic.credited_seconds == outlier
+        assert expert.credited_seconds == 0
 
 
 def run_sequence(periods, *, detection_seconds=3600):
@@ -132,8 +135,8 @@ def run_sequence(periods, *, detection_seconds=3600):
 def test_f05_exact_review_sequence_650_cannot_accelerate_alarm():
     periods = [120] * 8 + [600] + [120] * 3 + [600] + [120] * 17 + [650]
     alarm, credits = run_sequence(periods, detection_seconds=2400)
-    assert [credits[index] for index in (8, 12, 30)] == [0, 0, 0]
-    assert alarm is None
+    assert credits == periods
+    assert alarm == 2520
     baseline_alarm, _ = run_sequence([120] * 70, detection_seconds=2400)
     amended_alarm, _ = run_sequence(periods + [120] * 70, detection_seconds=2400)
     assert amended_alarm >= baseline_alarm
@@ -143,19 +146,16 @@ def test_f05_exact_review_sequence_650_cannot_accelerate_alarm():
 def test_f05_invariant_inserting_unqualified_gaps_never_advances_alarm(seed):
     rng = random.Random(seed)
     baseline = [120] * 100
-    baseline_alarm, _ = run_sequence(baseline)
+    baseline_alarm, baseline_credits = run_sequence(baseline, detection_seconds=3500)
     amended = []
-    inserted = []
-    first = rng.randrange(5, 12)
-    for index, period in enumerate(baseline):
-        if index in (first, 40, 70):
-            inserted.append(len(amended))
-            amended.append(rng.choice((5, 7, 30, 600, 901, 1800, 7200)))
-        amended.append(period)
-    amended_alarm, credits = run_sequence(amended)
-    assert all(credits[index] == 0 for index in inserted)
-    assert amended_alarm is not None
-    assert amended_alarm >= baseline_alarm
+    for period in baseline:
+        split = rng.randrange(1, period)
+        amended.extend((split, period - split))
+    amended_alarm, credits = run_sequence(amended, detection_seconds=3500)
+    assert sum(credits) == sum(baseline_credits) == sum(baseline)
+    assert all(credit > 0 for credit in credits)
+    # More observations can reveal a crossing sooner, but never before real threshold time.
+    assert 3500 <= amended_alarm <= baseline_alarm
 
 
 async def test_f05_unknown_unavailable_and_return_keep_profile_but_not_unknown_time(
@@ -172,7 +172,7 @@ async def test_f05_unknown_unavailable_and_return_keep_profile_but_not_unknown_t
         measurement_clock.advance(7200)
         await fresh(runtime_hass, manager, measurement_clock, 800)
         assert manager._flow_evidence.credited_seconds == 0
-        assert 120 in manager._flow_evidence.intervals
+        assert manager._flow_evidence.received_at == measurement_clock.seconds
         measurement_clock.advance(120)
         await fresh(runtime_hass, manager, measurement_clock, 800)
         assert manager._flow_evidence.credited_seconds == 120
@@ -205,7 +205,7 @@ def test_f05_even_fast_startup_requires_prior_qualification_before_credit(period
     evidence = SourceEvidence()
     second = 0
     report(evidence, second)
-    for index in range(3):
+    for _ in range(3):
         second += period
         report(evidence, second)
-        assert evidence.credited_seconds == (period if index == 2 else 0)
+        assert evidence.credited_seconds == period

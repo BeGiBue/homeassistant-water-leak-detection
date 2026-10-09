@@ -339,12 +339,8 @@ class WaterLeakManager:
                     runtime.quiet_since = None
                 self.learner.suspend_current_episode()
                 self._notify_listeners()
-            elif not self._flow_evidence.intervals:
-                # No cadence has been confirmed yet; this read is not a new sample.
-                self.source_available = False
             return
         if interrupted:
-            self.engine.suspend_for_unavailable_source()
             self.learner.suspend_current_episode()
 
         try:
@@ -469,10 +465,11 @@ class WaterLeakManager:
         return 0.0
 
     def _suspend_source(self) -> None:
+        self._flow_evidence.invalidate()
         self.source_available = False
         self.current_flow_lph = None
         self.current_total_l = None
-        self.engine.suspend_for_unavailable_source()
+        self.engine.pause_measurements()
         self.learner.suspend_current_episode()
         self._schedule_save()
         self._notify_listeners()
