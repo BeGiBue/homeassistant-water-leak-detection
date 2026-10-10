@@ -179,7 +179,7 @@ Jeder Detektor besitzt eine eigene Resetbedingung.
 | Detektor | Reset |
 |---|---|
 | Slow | <3 L/h für 10 min |
-| Low | <20 L/h für 7 min |
+| Low | <20 L/h für 3 min |
 | High | <100 L/h für 5 min |
 | Burst | <500 L/h für 60 s |
 

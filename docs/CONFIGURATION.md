@@ -49,9 +49,32 @@ Default:
 - start threshold: 150 L/h
 - detection time: 60 min
 - quiet threshold: 20 L/h
-- quiet/reset time: 7 min
+- quiet/reset time: 3 min
 
 Typical purpose: a tap left running.
+
+Low Flow has two activation paths in the band **150 L/h ≤ flow < the static High threshold** (default 600 L/h):
+
+- **Long-lasting Low Flow:** the normal 60-minute path remains the safety net, including variable consumption.
+- **Particularly steady Low Flow:** enabled by default, activation after 30 minutes of continuous confirmed Low evidence, with a stable trailing 15-minute window.
+
+Steadiness is an additional indication of a tap left open, **not a prerequisite for Low Flow detection**. The reference is the time-weighted median M of the window; tolerance is `max(20 L/h, 0.10 × M)`. At least 90% of confirmed window time must lie within `M ± tolerance`. Both the median and the share use interval duration, not sample count. The oldest interval is trimmed at the window boundary. Credited intervals belong to the current valid report, following F05; the first report in a new chain contributes zero seconds. Different reporting frequencies therefore do not add extra weight; sampling still limits which physical variations can be observed.
+
+Any real report below the Low threshold immediately discards the stability series, including 20–149 L/h and even a short quiet pause. Thus 15 minutes steady, 30 seconds quiet, then 15 minutes steady cannot trigger early activation. The normal Low progress continues under its existing rules until a full quiet reset. A continuous confirmed phase **below 20 L/h for 3 minutes** resets Low monitoring and active Low events (179 seconds does not; 180 seconds does). Existing explicitly saved reset durations, including 7 minutes, remain unchanged.
+
+High-band reports discard Low stability and retain the existing Low/High handover. Unknown, unavailable and invalid values interrupt stability; the returning first report contributes zero evidence. Round7 retains normal confirmed Low progress across same-source outages. Internal ticks supply no evidence. Stability cannot end an already ACTIVE Low event; only its physical quiet/reset condition does. Stability history is transient and is rebuilt after restart; active event persistence is unchanged.
+
+| Expert option | Default |
+|---|---|
+| `low_stability_enabled` | true |
+| `low_stability_early_minutes` | 30 min |
+| `low_stability_window_minutes` | 15 min |
+| `low_stability_relative_percent` | 10% |
+| `low_stability_absolute_lph` | 20 L/h |
+| `low_stability_required_percent` | 90% |
+| `low_reset_minutes` (only when unset) | 3 min |
+
+Window must be positive and no longer than early detection. Early detection must be shorter than normal Low detection. Tolerances must be positive; required share must be >0 and ≤100%. When configuring shorter normal detection, also adjust the early detection and window. No additional HA entities are created.
 
 Low Flow has its own enable/disable switch.
 

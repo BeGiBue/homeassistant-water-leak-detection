@@ -97,7 +97,7 @@ Low Flow ist ausdrücklich **nicht** dasselbe wie Slow Leak.
 | oberes Low-Band | unter statischer High-Basis von 600 L/h |
 | Erkennungszeit | 60 Minuten |
 | Ruhegrenze | unter 20 L/h |
-| Resetzeit | 7 Minuten |
+| Resetzeit | 3 Minuten |
 
 ## Erkennungsentscheidung
 
@@ -111,7 +111,7 @@ Kurze Schwankungen unterhalb der Startgrenze löschen die Beobachtung nicht sofo
 
 Stattdessen wird eine Ruhephase benötigt:
 
-`Durchfluss < 20 L/h für 7 Minuten`
+`Durchfluss < 20 L/h für 3 Minuten`
 
 ## Warum nicht bei jedem kurzen Abfall zurücksetzen?
 
@@ -122,6 +122,19 @@ Mehrere aufeinanderfolgende Duschen oder kurze Unterbrechungen an einem Wasserha
 Die 7-minütige Ruhephase bedeutet sinngemäß:
 
 > Der relevante Verbrauch ist tatsächlich beendet.
+
+## Stabilitätserkennung (F08)
+
+Low Flow hat zwei Aktivierungswege im Band **150 L/h ≤ Durchfluss < statische High-Schwelle** (standardmäßig 600 L/h):
+
+- **Lang anhaltender Low Flow:** Der normale 60-Minuten-Pfad bleibt das Sicherheitsnetz, auch bei wechselndem Verbrauch.
+- **Besonders gleichmäßiger Low Flow:** Standardmäßig aktiviert; Früherkennung nach 30 Minuten zusammenhängender bestätigter Low-Evidenz, wenn das letzte 15-Minuten-Fenster stabil ist.
+
+Gleichmäßigkeit ist ein zusätzlicher Hinweis auf einen offenen Wasserhahn, aber **keine Voraussetzung für Low-Flow-Erkennung**. Referenz ist der zeitgewichtete Median M. Die Toleranz beträgt `max(20 L/h, 0,10 × M)`. Mindestens 90 % der bestätigten Fensterzeit müssen innerhalb `M ± Toleranz` liegen. Median und Anteil werden nach bestätigter Intervalldauer gewichtet, nicht nach Anzahl der Reports. Das älteste Intervall wird an der Fenstergrenze anteilig gekürzt. Wie in F05 gehört die bestätigte Intervallzeit zum aktuellen gültigen Report; der erste Report einer neuen Kette liefert null Sekunden. Häufigere Reports erhalten kein zusätzliches Gewicht; die Abtastrate begrenzt weiterhin, welche tatsächlichen Schwankungen sichtbar sind.
+
+Jede echte Messung unter der Low-Schwelle löscht die Stabilitätsserie sofort, auch im Bereich 20–149 L/h und bei kurzen Ruhepausen. 15 Minuten stabil, 30 Sekunden Pause und weitere 15 Minuten stabil ergeben daher keinen Frühalarm. Der normale Low-Fortschritt folgt weiter seinen bestehenden Regeln. Erst **3 Minuten bestätigte Ruhe unter 20 L/h** setzen Low vollständig zurück: bei 179 Sekunden noch nicht, bei 180 Sekunden schon. Explizit gespeicherte Resetzeiten, etwa 7 Minuten, bleiben erhalten.
+
+High verwirft die Low-Stabilität; die bestehende Low/High-Übernahme bleibt erhalten. Unknown, unavailable und ungültige Werte unterbrechen die Stabilität. Der erste Report nach Rückkehr liefert null Sekunden Evidenz. Round7 erhält den normalen bestätigten Low-Fortschritt beim Ausfall derselben Quelle. Interne Ticks liefern keine Evidenz. Ungleichmäßigkeit beendet kein bereits ACTIVE Low; dafür gilt weiterhin die physische Ruhe-/Resetbedingung. Die Stabilitätshistorie ist flüchtig und wird nach Neustart neu aufgebaut; aktive Ereignisse werden unverändert wiederhergestellt.
 
 ## Warum verwendet Low Flow die statische High-Basis?
 
@@ -139,7 +152,7 @@ Auch hier gilt:
 
 Ein aktiver Low Flow endet deshalb nur nach der konfigurierten Ruhebedingung:
 
-**7 Minuten unter 20 L/h.**
+**3 Minuten unter 20 L/h.**
 
 ## Ein-/Ausschaltbarkeit
 
@@ -334,7 +347,7 @@ Niedrigere aktive Klassen können intern weiterlaufen.
 | Klasse | Wird aktiv durch | Bleibt aktiv bis |
 |---|---|---|
 | Slow Leak | 3–<150 L/h für 60 min | <3 L/h für 10 min |
-| Low Flow | 150–<600 L/h, Zeitkontext 60 min | <20 L/h für 7 min |
+| Low Flow | 150–<600 L/h, Zeitkontext 60 min | <20 L/h für 3 min |
 | High Flow | effektive High-Grenze + 45 min **oder** 500 L | <100 L/h für 5 min oder bewusster High-Bypass |
 | Burst Leak | absolute Grenze 30 s **oder** Rapid Rise 10 s | <500 L/h für 60 s |
 

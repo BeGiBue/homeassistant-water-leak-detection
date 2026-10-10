@@ -143,3 +143,27 @@ Englischer Fallback ist **Water Leak Guard**.
 Änderungen über die Konfiguration führen zu einem Reload der Integration.
 
 Bei einer HACS-Aktualisierung sollte Home Assistant vollständig neu gestartet werden, wenn HACS dies anfordert.
+
+## Low-Flow-Stabilität in den Expertenoptionen (F08)
+
+Low Flow hat zwei Aktivierungswege im Band **150 L/h ≤ Durchfluss < statische High-Schwelle** (standardmäßig 600 L/h):
+
+- **Lang anhaltender Low Flow:** Der normale 60-Minuten-Pfad bleibt das Sicherheitsnetz, auch bei wechselndem Verbrauch.
+- **Besonders gleichmäßiger Low Flow:** Standardmäßig aktiviert; Früherkennung nach 30 Minuten zusammenhängender bestätigter Low-Evidenz, wenn das letzte 15-Minuten-Fenster stabil ist.
+
+Gleichmäßigkeit ist ein zusätzlicher Hinweis auf einen offenen Wasserhahn, aber **keine Voraussetzung für Low-Flow-Erkennung**. Referenz ist der zeitgewichtete Median M. Die Toleranz beträgt `max(20 L/h, 0,10 × M)`. Mindestens 90 % der bestätigten Fensterzeit müssen innerhalb `M ± Toleranz` liegen. Median und Anteil werden nach bestätigter Intervalldauer gewichtet, nicht nach Anzahl der Reports. Das älteste Intervall wird an der Fenstergrenze anteilig gekürzt. Wie in F05 gehört die bestätigte Intervallzeit zum aktuellen gültigen Report; der erste Report einer neuen Kette liefert null Sekunden. Häufigere Reports erhalten kein zusätzliches Gewicht; die Abtastrate begrenzt weiterhin, welche tatsächlichen Schwankungen sichtbar sind.
+
+Jede echte Messung unter der Low-Schwelle löscht die Stabilitätsserie sofort, auch im Bereich 20–149 L/h und bei kurzen Ruhepausen. 15 Minuten stabil, 30 Sekunden Pause und weitere 15 Minuten stabil ergeben daher keinen Frühalarm. Der normale Low-Fortschritt folgt weiter seinen bestehenden Regeln. Erst **3 Minuten bestätigte Ruhe unter 20 L/h** setzen Low vollständig zurück: bei 179 Sekunden noch nicht, bei 180 Sekunden schon. Explizit gespeicherte Resetzeiten, etwa 7 Minuten, bleiben erhalten.
+
+High verwirft die Low-Stabilität; die bestehende Low/High-Übernahme bleibt erhalten. Unknown, unavailable und ungültige Werte unterbrechen die Stabilität. Der erste Report nach Rückkehr liefert null Sekunden Evidenz. Round7 erhält den normalen bestätigten Low-Fortschritt beim Ausfall derselben Quelle. Interne Ticks liefern keine Evidenz. Ungleichmäßigkeit beendet kein bereits ACTIVE Low; dafür gilt weiterhin die physische Ruhe-/Resetbedingung. Die Stabilitätshistorie ist flüchtig und wird nach Neustart neu aufgebaut; aktive Ereignisse werden unverändert wiederhergestellt.
+
+| Option | Standard |
+|---|---|
+| `low_stability_enabled` | aktiviert |
+| `low_stability_early_minutes` | 30 min |
+| `low_stability_window_minutes` | 15 min |
+| `low_stability_relative_percent` | 10 % |
+| `low_stability_absolute_lph` | 20 L/h |
+| `low_stability_required_percent` | 90 % |
+
+Das Fenster muss positiv und höchstens so lang wie die Früherkennung sein. Die Früherkennung muss kürzer als die normale Low-Erkennungszeit sein. Toleranzen müssen positiv sein; der Anteil muss größer als 0 und höchstens 100 % sein. Bei kürzerer normaler Erkennungszeit auch Früherkennung und Fenster entsprechend verkürzen. Es entstehen keine zusätzlichen HA-Entities.

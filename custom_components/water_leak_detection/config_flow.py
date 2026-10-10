@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from math import isfinite
 from secrets import token_urlsafe
 from typing import Any
 from uuid import uuid4
@@ -52,6 +53,12 @@ from .const import (
     CONF_LOW_DETECTION_MIN,
     CONF_LOW_QUIET_LPH,
     CONF_LOW_RESET_MIN,
+    CONF_LOW_STABILITY_ABSOLUTE_LPH,
+    CONF_LOW_STABILITY_EARLY_MIN,
+    CONF_LOW_STABILITY_ENABLED,
+    CONF_LOW_STABILITY_RELATIVE_PERCENT,
+    CONF_LOW_STABILITY_REQUIRED_PERCENT,
+    CONF_LOW_STABILITY_WINDOW_MIN,
     CONF_LOW_THRESHOLD_LPH,
     CONF_MANUAL_MAX_FLOW_LPH,
     CONF_NOTIFICATION_RECIPIENTS,
@@ -87,6 +94,12 @@ from .const import (
     DEFAULT_LOW_DETECTION_MIN,
     DEFAULT_LOW_QUIET_LPH,
     DEFAULT_LOW_RESET_MIN,
+    DEFAULT_LOW_STABILITY_ABSOLUTE_LPH,
+    DEFAULT_LOW_STABILITY_EARLY_MIN,
+    DEFAULT_LOW_STABILITY_ENABLED,
+    DEFAULT_LOW_STABILITY_RELATIVE_PERCENT,
+    DEFAULT_LOW_STABILITY_REQUIRED_PERCENT,
+    DEFAULT_LOW_STABILITY_WINDOW_MIN,
     DEFAULT_LOW_THRESHOLD_LPH,
     DEFAULT_MANUAL_MAX_FLOW_LPH,
     DEFAULT_PIPE_DIAMETER_MM,
@@ -854,6 +867,42 @@ class WaterLeakOptionsFlow(_NavigationForms, OptionsFlowWithReload):
                     ),
                 ): _number(1, 180, 1, "min"),
                 probatio.Required(
+                    CONF_LOW_STABILITY_ENABLED,
+                    default=values.get(
+                        CONF_LOW_STABILITY_ENABLED, DEFAULT_LOW_STABILITY_ENABLED
+                    ),
+                ): BooleanSelector(),
+                probatio.Required(
+                    CONF_LOW_STABILITY_EARLY_MIN,
+                    default=values.get(
+                        CONF_LOW_STABILITY_EARLY_MIN, DEFAULT_LOW_STABILITY_EARLY_MIN
+                    ),
+                ): _number(0.1, 1440, 0.1, "min"),
+                probatio.Required(
+                    CONF_LOW_STABILITY_WINDOW_MIN,
+                    default=values.get(
+                        CONF_LOW_STABILITY_WINDOW_MIN, DEFAULT_LOW_STABILITY_WINDOW_MIN
+                    ),
+                ): _number(0.1, 1440, 0.1, "min"),
+                probatio.Required(
+                    CONF_LOW_STABILITY_RELATIVE_PERCENT,
+                    default=values.get(
+                        CONF_LOW_STABILITY_RELATIVE_PERCENT, DEFAULT_LOW_STABILITY_RELATIVE_PERCENT
+                    ),
+                ): _number(0.1, 100, 0.1, "%"),
+                probatio.Required(
+                    CONF_LOW_STABILITY_ABSOLUTE_LPH,
+                    default=values.get(
+                        CONF_LOW_STABILITY_ABSOLUTE_LPH, DEFAULT_LOW_STABILITY_ABSOLUTE_LPH
+                    ),
+                ): _number(0.1, 5000, 0.1, "L/h"),
+                probatio.Required(
+                    CONF_LOW_STABILITY_REQUIRED_PERCENT,
+                    default=values.get(
+                        CONF_LOW_STABILITY_REQUIRED_PERCENT, DEFAULT_LOW_STABILITY_REQUIRED_PERCENT
+                    ),
+                ): _number(0.1, 100, 0.1, "%"),
+                probatio.Required(
                     CONF_HIGH_THRESHOLD_LPH,
                     default=values.get(
                         CONF_HIGH_THRESHOLD_LPH,
@@ -1276,4 +1325,34 @@ class WaterLeakOptionsFlow(_NavigationForms, OptionsFlowWithReload):
             return {"base": "invalid_high_quiet_threshold"}
         if not 0 < float(values[CONF_BURST_RESET_LPH]) < burst:
             return {"base": "invalid_burst_reset_threshold"}
+        window = float(values.get(CONF_LOW_STABILITY_WINDOW_MIN, DEFAULT_LOW_STABILITY_WINDOW_MIN))
+        early = float(values.get(CONF_LOW_STABILITY_EARLY_MIN, DEFAULT_LOW_STABILITY_EARLY_MIN))
+        stability_values = [
+            window, early,
+            float(values.get(
+                CONF_LOW_STABILITY_RELATIVE_PERCENT, DEFAULT_LOW_STABILITY_RELATIVE_PERCENT
+            )),
+            float(values.get(
+                CONF_LOW_STABILITY_ABSOLUTE_LPH, DEFAULT_LOW_STABILITY_ABSOLUTE_LPH
+            )),
+            float(values.get(
+                CONF_LOW_STABILITY_REQUIRED_PERCENT, DEFAULT_LOW_STABILITY_REQUIRED_PERCENT
+            )),
+        ]
+        if not all(isfinite(value) for value in stability_values):
+            return {"base": "invalid_low_stability"}
+        if (
+            not 0 < window <= early
+            or early >= float(values.get(CONF_LOW_DETECTION_MIN, DEFAULT_LOW_DETECTION_MIN))
+            or not float(values.get(
+                CONF_LOW_STABILITY_RELATIVE_PERCENT, DEFAULT_LOW_STABILITY_RELATIVE_PERCENT
+            )) > 0
+            or not float(values.get(
+                CONF_LOW_STABILITY_ABSOLUTE_LPH, DEFAULT_LOW_STABILITY_ABSOLUTE_LPH
+            )) > 0
+            or not 0 < float(values.get(
+                CONF_LOW_STABILITY_REQUIRED_PERCENT, DEFAULT_LOW_STABILITY_REQUIRED_PERCENT
+            )) <= 100
+        ):
+            return {"base": "invalid_low_stability"}
         return {}

@@ -29,6 +29,8 @@ async def test_f05_round6_every_pattern_detects_using_only_completed_intervals(
 ):
     manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, flow)
     manager.engine.update_settings(DetectorSettings(
+        # Exercise the unchanged normal Low path, independently of F08 acceleration.
+        low_stability_enabled=False,
         slow_detection_seconds=3600, low_detection_seconds=3600,
         high_detection_seconds=3600, high_volume_l=999999,
     ))

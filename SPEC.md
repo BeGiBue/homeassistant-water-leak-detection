@@ -146,7 +146,7 @@ Provisional defaults:
 - start threshold: **150 l/h**
 - detection duration: **60 minutes**
 - quiet-flow threshold: **20 l/h**
-- quiet period required for reset: **7 minutes**
+- quiet period required for reset: **3 minutes**
 
 The values must be configurable in expert settings.
 
@@ -154,17 +154,25 @@ The values must be configurable in expert settings.
 
 Low Flow must not reset on every short drop in flow.
 
-Instead, the event resets only after a configurable quiet period, initially 5–10 minutes.
+Instead, the event resets only after a configurable quiet period, by default 3 minutes.
 
 Default:
 
-**7 minutes below the quiet threshold**
+**3 minutes below the quiet threshold**
 
-### 6.5 Future refinement
+### 6.5 Stability acceleration (F08)
 
-The architecture shall allow adding flow-pattern stability analysis later.
+Low Flow has two activation paths in the band **150 L/h ≤ flow < the static High threshold** (default 600 L/h):
 
-A forgotten tap is often relatively stable, whereas multiple showers or appliance usage may produce more variable flow.
+- **Long-lasting Low Flow:** the normal 60-minute path remains the safety net, including variable consumption.
+- **Particularly steady Low Flow:** enabled by default, activation after 30 minutes of continuous confirmed Low evidence, with a stable trailing 15-minute window.
+
+Steadiness is an additional indication of a tap left open, **not a prerequisite for Low Flow detection**. The reference is the time-weighted median M of the window; tolerance is `max(20 L/h, 0.10 × M)`. At least 90% of confirmed window time must lie within `M ± tolerance`. Both the median and the share use interval duration, not sample count. The oldest interval is trimmed at the window boundary. Credited intervals belong to the current valid report, following F05; the first report in a new chain contributes zero seconds. Different reporting frequencies therefore do not add extra weight; sampling still limits which physical variations can be observed.
+
+Any real report below the Low threshold immediately discards the stability series, including 20–149 L/h and even a short quiet pause. Thus 15 minutes steady, 30 seconds quiet, then 15 minutes steady cannot trigger early activation. The normal Low progress continues under its existing rules until a full quiet reset. A continuous confirmed phase **below 20 L/h for 3 minutes** resets Low monitoring and active Low events (179 seconds does not; 180 seconds does). Existing explicitly saved reset durations, including 7 minutes, remain unchanged.
+
+High-band reports discard Low stability and retain the existing Low/High handover. Unknown, unavailable and invalid values interrupt stability; the returning first report contributes zero evidence. Round7 retains normal confirmed Low progress across same-source outages. Internal ticks supply no evidence. Stability cannot end an already ACTIVE Low event; only its physical quiet/reset condition does. Stability history is transient and is rebuilt after restart; active event persistence is unchanged.
+
 
 Presence and device-state context may be added as a second-stage modifier, but must not be required for base detection.
 
@@ -761,6 +769,7 @@ Expert settings include at least:
 - Low Flow detection duration,
 - Low Flow quiet threshold,
 - Low Flow reset duration,
+- Low Flow stability enable, early duration, window, relative/absolute tolerance and required stable share,
 - High Flow parameters,
 - Burst Leak parameters,
 - learning window,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from math import isclose, isfinite
@@ -25,7 +26,13 @@ class DetectorSettings:
     low_threshold_lph: float = 150.0
     low_detection_seconds: float = 3600.0
     low_quiet_lph: float = 20.0
-    low_reset_seconds: float = 420.0
+    low_reset_seconds: float = 180.0
+    low_stability_enabled: bool = True
+    low_stability_early_seconds: float = 1800.0
+    low_stability_window_seconds: float = 900.0
+    low_stability_relative_percent: float = 10.0
+    low_stability_absolute_lph: float = 20.0
+    low_stability_required_percent: float = 90.0
     high_threshold_lph: float = 600.0
     high_detection_seconds: float = 2700.0
     high_volume_l: float = 500.0
@@ -116,8 +123,90 @@ class DetectionEngine:
     last_observed_total_l: float | None = None
     total_expected_l: float = 0.0
 
+    low_stability_history: deque[tuple[float, float]] = field(default_factory=deque)
+    low_stability_seconds: float = 0.0
+
+    def _clear_low_stability(self) -> None:
+        """Discard only the continuous Low stability series, never normal progress."""
+        self.low_stability_history.clear()
+        self.low_stability_seconds = 0.0
+
+    def _record_low_stability(self, flow: float, credit: float) -> None:
+        """Keep the trailing window in confirmed evidence seconds, not report count.
+
+        Like F05 integration, a credited interval belongs to the current report.
+        Both endpoints must be in the Low band; a returning first report has no
+        credit. Partially trim the oldest interval at the exact window boundary.
+        """
+        s = self.settings
+        in_band = s.low_threshold_lph <= flow < s.high_threshold_lph
+        if (
+            not s.low_enabled
+            or not s.low_stability_enabled
+            or not in_band
+            or self.runtimes[DetectorKind.LOW_FLOW].phase is DetectorPhase.IDLE
+        ):
+            self._clear_low_stability()
+            return
+        if self.last_flow_lph is None or not (
+            s.low_threshold_lph <= self.last_flow_lph < s.high_threshold_lph
+        ):
+            self._clear_low_stability()
+            return
+        if credit <= 0:
+            return
+        self.low_stability_seconds += credit
+        if self.low_stability_history and self.low_stability_history[-1][0] == flow:
+            value, seconds = self.low_stability_history.pop()
+            self.low_stability_history.append((value, seconds + credit))
+        else:
+            self.low_stability_history.append((flow, credit))
+        excess = (
+            sum(seconds for _, seconds in self.low_stability_history)
+            - s.low_stability_window_seconds
+        )
+        while excess > 0 and self.low_stability_history:
+            value, seconds = self.low_stability_history.popleft()
+            removed = min(seconds, excess)
+            excess -= removed
+            if seconds > removed:
+                self.low_stability_history.appendleft((value, seconds - removed))
+
+    def _low_is_stable(self) -> bool:
+        """Use a time-weighted median and a time-weighted in-tolerance share."""
+        s = self.settings
+        if (
+            not s.low_stability_enabled
+            or self.low_stability_seconds < s.low_stability_early_seconds
+            or s.low_stability_window_seconds <= 0
+        ):
+            return False
+        duration = sum(seconds for _, seconds in self.low_stability_history)
+        if duration < s.low_stability_window_seconds:
+            return False
+        ordered = sorted(self.low_stability_history)
+        cumulative = 0.0
+        median = ordered[-1][0]
+        for index, (value, seconds) in enumerate(ordered):
+            cumulative += seconds
+            if cumulative >= duration / 2:
+                median = value
+                if cumulative == duration / 2 and index + 1 < len(ordered):
+                    median = (value + ordered[index + 1][0]) / 2
+                break
+        tolerance = max(
+            s.low_stability_absolute_lph, median * s.low_stability_relative_percent / 100
+        )
+        stable = sum(
+            seconds for value, seconds in self.low_stability_history
+            if abs(value - median) <= tolerance
+        )
+        return stable >= duration * s.low_stability_required_percent / 100
+
     def update_settings(self, settings: DetectorSettings) -> None:
         """Apply updated thresholds without discarding current state."""
+        if settings != self.settings:
+            self._clear_low_stability()
         self.settings = settings
 
     def suspend_for_unavailable_source(self) -> None:
@@ -127,6 +216,7 @@ class DetectionEngine:
         remain active for safety, but any in-progress quiet/reset interval is
         cleared because an unavailable source is not evidence of zero flow.
         """
+        self._clear_low_stability()
         for runtime in self.runtimes.values():
             runtime.quiet_since = None
             if runtime.phase is DetectorPhase.MONITORING:
@@ -143,6 +233,7 @@ class DetectionEngine:
         need continuous evidence; quiet and rate history cannot cross the gap.
         Source rebinds continue to use the separate destructive suspension.
         """
+        self._clear_low_stability()
         for kind, runtime in self.runtimes.items():
             runtime.quiet_since = None
             if kind is DetectorKind.BURST_LEAK and runtime.phase is DetectorPhase.MONITORING:
@@ -186,6 +277,7 @@ class DetectionEngine:
                     if paused > 0:
                         runtime.quiet_since = None
                 if paused > 0:
+                    self._clear_low_stability()
                     self.last_flow_lph = None  # No rapid-rise evidence across an unknown gap.
                 raw_delta_seconds = credit
             delta_seconds = raw_delta_seconds
@@ -245,6 +337,8 @@ class DetectionEngine:
             if effective_burst_threshold_lph is None
             else max(effective_high, float(effective_burst_threshold_lph))
         )
+
+        self._record_low_stability(flow_lph, raw_delta_seconds)
 
         previous_flow = self.last_flow_lph
         previous_at = self.last_sample_at
@@ -389,6 +483,8 @@ class DetectionEngine:
     ) -> list[DetectorTransition]:
         """Apply non-measurement controls without reusing a cached flow sample."""
         transitions: list[DetectorTransition] = []
+        if not self.settings.low_enabled or not self.settings.low_stability_enabled:
+            self._clear_low_stability()
         disabled = {
             DetectorKind.SLOW_LEAK: not self.settings.slow_enabled,
             DetectorKind.LOW_FLOW: not self.settings.low_enabled,
@@ -538,7 +634,10 @@ class DetectionEngine:
 
         if (
             runtime.phase is DetectorPhase.MONITORING
-            and self._elapsed(now, runtime.started_at) >= s.low_detection_seconds
+            and (
+                self._elapsed(now, runtime.started_at) >= s.low_detection_seconds
+                or self._low_is_stable()
+            )
         ):
             self._append_transition(
                 out,
@@ -766,6 +865,7 @@ class DetectionEngine:
         # A restart creates an observation gap. Never integrate that gap and never
         # let a pre-restart MONITORING or quiet/reset timer mature while HA was
         # offline. Confirmed ACTIVE events are retained for safety.
+        self._clear_low_stability()
         self.last_sample_at = None
         self.last_flow_lph = None
         self.reset_total_reference()

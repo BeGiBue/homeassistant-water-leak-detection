@@ -133,7 +133,13 @@
           "burst_rate_rise_lph_10s": "Burst-Anstiegsgrenze pro 10 Sekunden",
           "burst_rate_confirm_seconds": "Bestätigungszeit für schnellen Burst-Anstieg",
           "go_back": "Zurück ohne Speichern",
-          "source_max_age_seconds": "Maximal anrechenbarer Abstand zwischen zwei Messwertmeldungen (0 = ohne Grenze)"
+          "source_max_age_seconds": "Maximal anrechenbarer Abstand zwischen zwei Messwertmeldungen (0 = ohne Grenze)",
+          "low_stability_enabled": "Low-Flow-Stabilitätserkennung aktiviert",
+          "low_stability_early_minutes": "Low-Flow-Stabilitäts-Früherkennung",
+          "low_stability_window_minutes": "Low-Flow-Stabilitätsfenster",
+          "low_stability_relative_percent": "Relative Stabilitätstoleranz",
+          "low_stability_absolute_lph": "Absolute Mindesttoleranz",
+          "low_stability_required_percent": "Erforderlicher stabiler Anteil"
         },
         "submit": "Speichern und zurück"
       },
@@ -217,7 +223,8 @@
       "same_source_entity": "Durchfluss und Gesamtverbrauch müssen unterschiedliche Entitäten sein.",
       "already_configured": "Dieser Durchflusssensor wird bereits von einem anderen Eintrag verwendet.",
       "required_fields_missing": "Bitte fülle alle erforderlichen Felder aus.",
-      "derived_source": "Abgeleitete Sensoren von Wasserwächter dürfen nicht als Messquelle verwendet werden."
+      "derived_source": "Abgeleitete Sensoren von Wasserwächter dürfen nicht als Messquelle verwendet werden.",
+      "invalid_low_stability": "Das Stabilitätsfenster muss positiv und höchstens so lang wie die Früherkennung sein. Früherkennung muss kürzer als die normale Low-Erkennung sein. Toleranzen müssen positiv sein, der stabile Anteil größer als 0 und höchstens 100 %."
     },
     "abort": {
       "no_mobile_app_notify_services": "Es wurden keine mobile_app-Benachrichtigungsdienste gefunden. Richte zuerst die Home Assistant Companion App ein.",

@@ -48,6 +48,12 @@ from .const import (
     CONF_LOW_ENABLED,
     CONF_LOW_QUIET_LPH,
     CONF_LOW_RESET_MIN,
+    CONF_LOW_STABILITY_ABSOLUTE_LPH,
+    CONF_LOW_STABILITY_EARLY_MIN,
+    CONF_LOW_STABILITY_ENABLED,
+    CONF_LOW_STABILITY_RELATIVE_PERCENT,
+    CONF_LOW_STABILITY_REQUIRED_PERCENT,
+    CONF_LOW_STABILITY_WINDOW_MIN,
     CONF_LOW_THRESHOLD_LPH,
     CONF_MANUAL_MAX_FLOW_LPH,
     CONF_PIPE_DIAMETER_MM,
@@ -82,6 +88,12 @@ from .const import (
     DEFAULT_LOW_ENABLED,
     DEFAULT_LOW_QUIET_LPH,
     DEFAULT_LOW_RESET_MIN,
+    DEFAULT_LOW_STABILITY_ABSOLUTE_LPH,
+    DEFAULT_LOW_STABILITY_EARLY_MIN,
+    DEFAULT_LOW_STABILITY_ENABLED,
+    DEFAULT_LOW_STABILITY_RELATIVE_PERCENT,
+    DEFAULT_LOW_STABILITY_REQUIRED_PERCENT,
+    DEFAULT_LOW_STABILITY_WINDOW_MIN,
     DEFAULT_LOW_THRESHOLD_LPH,
     DEFAULT_MANUAL_MAX_FLOW_LPH,
     DEFAULT_PIPE_DIAMETER_MM,
@@ -602,6 +614,24 @@ class WaterLeakManager:
                 opt.get(CONF_LOW_RESET_MIN, DEFAULT_LOW_RESET_MIN)
             )
             * 60,
+            low_stability_enabled=bool(
+                opt.get(CONF_LOW_STABILITY_ENABLED, DEFAULT_LOW_STABILITY_ENABLED)
+            ),
+            low_stability_early_seconds=float(
+                opt.get(CONF_LOW_STABILITY_EARLY_MIN, DEFAULT_LOW_STABILITY_EARLY_MIN)
+            ) * 60,
+            low_stability_window_seconds=float(
+                opt.get(CONF_LOW_STABILITY_WINDOW_MIN, DEFAULT_LOW_STABILITY_WINDOW_MIN)
+            ) * 60,
+            low_stability_relative_percent=float(
+                opt.get(CONF_LOW_STABILITY_RELATIVE_PERCENT, DEFAULT_LOW_STABILITY_RELATIVE_PERCENT)
+            ),
+            low_stability_absolute_lph=float(
+                opt.get(CONF_LOW_STABILITY_ABSOLUTE_LPH, DEFAULT_LOW_STABILITY_ABSOLUTE_LPH)
+            ),
+            low_stability_required_percent=float(
+                opt.get(CONF_LOW_STABILITY_REQUIRED_PERCENT, DEFAULT_LOW_STABILITY_REQUIRED_PERCENT)
+            ),
             high_threshold_lph=float(
                 opt.get(CONF_HIGH_THRESHOLD_LPH, DEFAULT_HIGH_THRESHOLD_LPH)
             ),

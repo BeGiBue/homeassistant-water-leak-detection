@@ -133,7 +133,13 @@
           "burst_rate_rise_lph_10s": "Burst rate-of-rise threshold per 10 seconds",
           "burst_rate_confirm_seconds": "Rapid-rise Burst confirmation time",
           "go_back": "Back without saving",
-          "source_max_age_seconds": "Maximum credited gap between measurement reports (0 = no limit)"
+          "source_max_age_seconds": "Maximum credited gap between measurement reports (0 = no limit)",
+          "low_stability_enabled": "Low Flow stability detection enabled",
+          "low_stability_early_minutes": "Low Flow stability early detection",
+          "low_stability_window_minutes": "Low Flow stability window",
+          "low_stability_relative_percent": "Relative stability tolerance",
+          "low_stability_absolute_lph": "Minimum absolute stability tolerance",
+          "low_stability_required_percent": "Required stable share"
         },
         "submit": "Save and go back"
       },
@@ -217,7 +223,8 @@
       "same_source_entity": "Flow and total consumption must use different entities.",
       "already_configured": "This flow sensor is already used by another entry.",
       "required_fields_missing": "Please complete all required fields.",
-      "derived_source": "Water Leak Guard output sensors cannot be used as measurement sources."
+      "derived_source": "Water Leak Guard output sensors cannot be used as measurement sources.",
+      "invalid_low_stability": "Stability window must be positive and no longer than early detection; early detection must be shorter than normal Low detection. Tolerances must be positive and the required share must be greater than 0 and at most 100%."
     },
     "abort": {
       "no_mobile_app_notify_services": "No mobile_app notification services were found. Set up the Home Assistant Companion App first.",

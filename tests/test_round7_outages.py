@@ -14,6 +14,8 @@ INVALID = ['unavailable', 'unknown', '-1', 'nan', 'inf', 'bad']
 
 def settings(duration=3600):
     return DetectorSettings(
+        # Keep Round7 focused on retained normal monitoring progress.
+        low_stability_enabled=False,
         slow_detection_seconds=duration, low_detection_seconds=duration,
         high_detection_seconds=duration, high_volume_l=999999,
         slow_reset_seconds=300, low_reset_seconds=300, high_reset_seconds=300,
