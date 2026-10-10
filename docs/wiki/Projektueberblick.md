@@ -1,5 +1,8 @@
 # Projektüberblick
 
+> **Standhinweis:** Veröffentlichte Basis ist **1.0.3**. Aussagen zur statischen High-Flow-Schwelle (F02) beschreiben den Branch `feature/f02-static-high-flow` und sind noch **nicht Bestandteil von 1.0.3**.
+
+
 ## Identität
 
 | Eigenschaft | Wert |
@@ -9,7 +12,7 @@
 | Technische Domain | `water_leak_detection` |
 | Plattform | Home Assistant |
 | Integrationstyp | Service-Integration |
-| Aktueller Stand | 1.0.2 |
+| Aktueller Release | 1.0.3 |
 | Repository | `BeGiBue/homeassistant-water-leak-detection` |
 | Fokus | Backend-Integration |
 | Sprache | folgt der in Home Assistant eingestellten Sprache; Deutsch und Englisch enthalten |

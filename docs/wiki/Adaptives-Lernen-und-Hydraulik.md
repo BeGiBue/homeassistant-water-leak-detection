@@ -1,5 +1,8 @@
 # Adaptives Lernen und Hydraulik
 
+> **Standhinweis:** Veröffentlichte Basis ist **1.0.3**. Aussagen zur statischen High-Flow-Schwelle (F02) beschreiben den Branch `feature/f02-static-high-flow` und sind noch **nicht Bestandteil von 1.0.3**.
+
+
 ## Ziel
 
 Haushalte unterscheiden sich stark.

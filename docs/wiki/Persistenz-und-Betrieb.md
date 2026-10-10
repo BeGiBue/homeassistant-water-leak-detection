@@ -1,5 +1,8 @@
 # Persistenz und Neustartverhalten
 
+> **Standhinweis:** Veröffentlichte Basis ist **1.0.3**. Aussagen zur statischen High-Flow-Schwelle (F02) beschreiben den Branch `feature/f02-static-high-flow` und sind noch **nicht Bestandteil von 1.0.3**.
+
+
 ## Ziel
 
 Ein Home-Assistant-Neustart darf einen aktiven Wasserfehler nicht stillschweigend in einen unkritischen Ausgangszustand verwandeln.
@@ -150,7 +153,7 @@ Ein unvollständig beobachteter Messzeitraum darf nicht als vollständiger Leak-
 
 Darum sind aktive Events langlebig, unbestätigte Zeitfenster bei fehlender Evidenz dagegen konservativ.
 
-## Korrekturrunde 1 (unveröffentlicht)
+## Korrekturrunde 1 (in 1.0.3 veröffentlicht)
 
 Sicherheitsübergänge werden mit einer festen Frist von 1 s gespeichert; Mess-/Lernupdates
 mit 10 s ab dem ersten vorgemerkten Update. Weitere Samples verschieben die Frist nicht.
@@ -166,9 +169,9 @@ verwenden eine monotone Uhr; Neustarts setzen unbestätigte Intervalle zurück.
 Zählerreset, unplausibler Sprung und Quellenwechsel lösen den alten Volumenbezug.
 Aktive Leckage und Absperranforderung bleiben dabei erhalten. Eingefrorene oder fehlende
 Totalwerte werden durch Durchflussintegration ersetzt. Die fachlichen Findings
-F02 ist geschlossen; F04/F08 und die Rapid-Rise-Definition bleiben für eine separate Spezifikation offen.
+Auf dem Branch `feature/f02-static-high-flow` ist F02 fachlich geschlossen; diese Änderung ist noch nicht Bestandteil von 1.0.3. F04/F08 und die Rapid-Rise-Definition bleiben für eine separate Spezifikation offen.
 
-## Korrekturrunde 2 (unveröffentlicht)
+## Korrekturrunde 2 (in 1.0.3 veröffentlicht)
 
 Interne Ticks bestätigen weder Detektions- noch Quiet-Intervalle. Neue Meldungen
 werden unabhängig von UTC-Rückstellungen nach State-Identität/Meldung erkannt.
@@ -190,7 +193,7 @@ Beschädigte Runtime-Felder löschen ein anhand verbleibender Bestätigungsdaten
 klar erkennbares aktives Ereignis nicht. Unbestätigtes Monitoring bleibt verwerfbar.
 
 
-## Korrekturrunde 3 (unveröffentlicht)
+## Korrekturrunde 3 (in 1.0.3 veröffentlicht)
 
 Die historische Kadenzqualifikation aus Runde 3 wurde in Runde 6 entfernt.
 Interne Ticks zählen weiterhin weder Leak- noch Ruhezeit.
@@ -220,7 +223,7 @@ die echte UTC des Abschlusses; das Rolling Window arbeitet ebenfalls mit realer 
 Wiki-Dateien dieser Runde werden nur lokal gepflegt, nicht veröffentlicht.
 
 
-## Korrekturrunde 6: deterministische Mess-Evidenz (unveröffentlicht)
+## Korrekturrunde 6: deterministische Mess-Evidenz (in 1.0.3 veröffentlicht)
 
 Die Integration bewertet frische gültige Messmeldungen. Sie versucht im
 Automatikbetrieb nicht mehr, die Meldekadenz statistisch zu erraten. Erst der

@@ -2,7 +2,7 @@
 
 **Wasserwächter** (englisch: **Water Leak Guard**) ist eine Home-Assistant-Custom-Integration zur Erkennung auffälliger Wasserverbräuche und möglicher Leckagen.
 
-Dieses Wiki beschreibt den **aktuellen Stand der Backend-Integration 1.0.2** und dokumentiert sowohl die Bedienung als auch die technischen und fachlichen Entscheidungen hinter der Erkennung.
+Dieses Wiki basiert auf dem veröffentlichten Stand **1.0.3**. Änderungen zu **F02 (statische High-Flow-Schwelle)** sind auf dem Branch `feature/f02-static-high-flow` fachlich umgesetzt, aber noch **nicht Bestandteil von 1.0.3**. Das Wiki dokumentiert sowohl die Bedienung als auch die technischen und fachlichen Entscheidungen hinter der Erkennung.
 
 > **Wichtig:** Die technische Domain bleibt `water_leak_detection`. Der sichtbare Name ist auf Deutsch **Wasserwächter**.
 
