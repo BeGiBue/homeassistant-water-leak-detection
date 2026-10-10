@@ -2,29 +2,40 @@
 
 All notable changes to Water Leak Guard are documented here.
 
-## Unreleased — correction rounds 1, 2 and 3
+## 1.0.3 — 2026-10-10
 
-- Bounded state persistence; defensive recovery of stored runtime data.
-- Negative/stale/out-of-order measurements cannot provide reset evidence.
-- Plausibility checks and rebasing for optional cumulative meters.
-- Persistent per-recipient notification delivery with retry and acknowledgement guards.
-- Live recipient updates, setup rollback and consistent Back without saving controls.
-- Release validation and publication target the same immutable commit.
-- Detector definitions for F02, F04, F08 and Rapid Rise remain pending specification.
-- Round 2: report-based evidence with automatic cadence and UTC-independent ordering.
-- Round 2: independent per-recipient HA handoffs without duplicate-producing timeout.
-- Round 2: common total-meter reference without fixed litre resolution.
-- Round 2: conservative confirmed-event repair and monotonic bypass/active duration.
-- Round 2: validate existing release tags before creating a Release.
+### Safety and reliability
 
-- Round 3: non-retroactive cadence evidence, including alternating slow report periods.
-- Round 3: immediate control changes independent of fresh flow reports.
-- Round 3: per-route notification status and cleanup of ended-event dispatch workers.
-- Round 3: total revalidation requires a fresh total report and sufficient flow volume.
-- Round 3: actual UTC learning history with process-local episode timing.
-- Round 3: class-independent redundant active confirmation and action-safe event IDs.
-- Round 3: atomic release tag refs, repeated SHA checks and per-tag concurrency;
-  complete immutability requires GitHub Rulesets / Tag Protection.
+- Hardened persistence and restore handling so malformed or stale runtime data cannot silently weaken confirmed safety state.
+- Negative, invalid, stale and out-of-order measurements no longer provide reset or quiet evidence.
+- Added plausibility handling for the optional cumulative water meter and prevented rejected meter jumps from being accepted without fresh evidence.
+- Preserved confirmed leak events and Water Shut Off requests across source outages and restore paths.
+- Notification delivery is tracked per recipient and route, with retry-safe acknowledgement handling and cleanup of ended-event workers.
+- Configuration/control changes are applied independently from the arrival of a new flow measurement.
+- Source changes no longer inherit old meter baselines or unconfirmed monitoring evidence from a different sensor.
+
+### Deterministic measurement evidence
+
+- Replaced automatic sensor-cadence classification with deterministic evidence from consecutive fresh, valid flow reports.
+- Internal ticks never create leak or quiet evidence.
+- Constant and irregular report intervals are accepted without cadence learning.
+- The optional expert maximum report gap is deterministic: intervals above the configured limit contribute zero time without deleting already confirmed monitoring progress.
+- Temporary `unknown`, `unavailable` or invalid flow states pause Slow/Low/High monitoring without discarding already confirmed progress.
+- Time spent unavailable contributes zero evidence; the first valid returning report also contributes zero time.
+- Burst candidates and Rapid-Rise history remain conservative across observation gaps, while already ACTIVE events remain active.
+- A real source rebind remains destructive for unconfirmed evidence, preventing progress from one physical meter from being transferred to another.
+
+### Release and validation hardening
+
+- Release publication is bound to the exact validated commit and verifies existing tags before accepting or creating a release.
+- Added extensive regression coverage for persistence, evidence timing, outages, notification routing, source changes, restore behavior and release integrity.
+- Final reviewed state: 713 repository tests passed; the independent acceptance review additionally ran 110 external tests and reported 0 Critical, High, Medium or Low findings.
+
+### Known documented limits
+
+- A Home Assistant restart still discards unconfirmed monitoring candidates; ACTIVE events are restored and offline time never counts as evidence.
+- Without an explicit maximum report gap, a silent communications outage that never produces `unknown`/`unavailable` cannot be distinguished from a legitimate slowly reporting sensor.
+- The separate detector-design topics F02, F04, F08 and the fachliche Rapid-Rise definition remain intentionally reserved for a later feature release.
 
 ## 1.0.2 — 2026-10-07
 
