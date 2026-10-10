@@ -224,7 +224,7 @@
       "already_configured": "This flow sensor is already used by another entry.",
       "required_fields_missing": "Please complete all required fields.",
       "derived_source": "Water Leak Guard output sensors cannot be used as measurement sources.",
-      "invalid_low_stability": "Stability window must be positive and no longer than early detection; early detection must be shorter than normal Low detection. Tolerances must be positive and the required share must be greater than 0 and at most 100%."
+      "invalid_low_stability": "When stability detection is enabled, its window must be positive and no longer than early detection; early detection must be shorter than normal Low detection. Tolerances must be positive and the required share must be greater than 0 and at most 100%."
     },
     "abort": {
       "no_mobile_app_notify_services": "No mobile_app notification services were found. Set up the Home Assistant Companion App first.",

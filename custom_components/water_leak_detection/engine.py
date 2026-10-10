@@ -13,6 +13,9 @@ from uuid import uuid4
 from .const import DETECTOR_PRIORITY, DetectorKind, DetectorPhase
 from .validation import nonnegative_float, parse_datetime
 
+# Absolute only: datetime has microsecond resolution; long gaps must not scale it.
+EVIDENCE_TIME_TOLERANCE_SECONDS = 2e-6
+
 
 @dataclass(slots=True)
 class DetectorSettings:
@@ -270,6 +273,14 @@ class DetectionEngine:
             raw_delta_seconds = max(0.0, (now - self.last_sample_at).total_seconds())
             if evidence_seconds is not None:
                 credit = max(0.0, min(raw_delta_seconds, evidence_seconds))
+                # datetime rounds to microseconds, while monotonic credit is a
+                # float. Such rounding is not an outage. Never promote explicit
+                # zero credit (the first report after a broken evidence chain).
+                if credit > 0 and isclose(
+                    raw_delta_seconds, credit,
+                    rel_tol=0.0, abs_tol=EVIDENCE_TIME_TOLERANCE_SECONDS,
+                ):
+                    credit = raw_delta_seconds
                 paused = raw_delta_seconds - credit
                 for runtime in self.runtimes.values():
                     if runtime.phase is DetectorPhase.MONITORING and runtime.started_at:

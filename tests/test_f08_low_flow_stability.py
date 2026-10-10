@@ -351,3 +351,206 @@ def test_zero_credit_gap_and_clock_rollback_do_not_accumulate_stability():
     assert engine.low_stability_seconds == 0
     report(engine, 1830, 250, 30)
     assert engine.low_stability_seconds == 30
+
+
+async def test_fractional_monotonic_origin_keeps_exact_30s_series(
+    runtime_hass, runtime_entry, measurement_clock
+):
+    measurement_clock.seconds = 0.1
+    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 250)
+    started = manager.engine.runtimes[LOW].started_at
+    for index in range(60):
+        measurement_clock.advance(30)
+        await fresh(runtime_hass, manager, measurement_clock, 250)
+        assert manager.engine.low_stability_seconds == (index + 1) * 30
+        assert manager.engine.runtimes[LOW].started_at == started
+        assert manager.engine.runtimes[LOW].phase is (
+            DetectorPhase.ACTIVE if index == 59 else DetectorPhase.MONITORING
+        )
+
+
+async def test_submicrosecond_rounding_is_not_outage(
+    runtime_hass, runtime_entry, measurement_clock
+):
+    manager = await start_manager(runtime_hass, runtime_entry, measurement_clock, 250)
+    started = manager.engine.runtimes[LOW].started_at
+    previous = 0
+    for index in range(60):
+        measurement_clock.advance(30.0000001)
+        await fresh(runtime_hass, manager, measurement_clock, 250)
+        assert manager.engine.low_stability_seconds > previous
+        assert manager.engine.runtimes[LOW].started_at == started
+        assert manager.engine.last_flow_lph == 250
+        assert manager.engine.runtimes[LOW].phase is (
+            DetectorPhase.ACTIVE if index == 59 else DetectorPhase.MONITORING
+        )
+        previous = manager.engine.low_stability_seconds
+
+
+@pytest.mark.parametrize("difference", [1e-10, 1e-7, 1e-6])
+def test_rounding_preserves_quiet_history_and_monitoring_start(difference):
+    engine = DetectionEngine()
+    report(engine, 0, 250)
+    low = engine.runtimes[LOW]
+    low.quiet_since = START  # Existing quiet evidence must not be erased by rounding.
+    report(engine, 30, 0, 30 - difference)
+    assert low.started_at == START
+    assert low.quiet_since == START
+    assert engine.last_flow_lph == 0
+    assert low.phase is DetectorPhase.MONITORING
+
+
+def test_real_gap_just_above_rounding_tolerance_still_interrupts():
+    from custom_components.water_leak_detection.engine import EVIDENCE_TIME_TOLERANCE_SECONDS
+
+    engine = DetectionEngine()
+    run(engine, 0, 900)
+    low = engine.runtimes[LOW]
+    low.quiet_since = START
+    gap = EVIDENCE_TIME_TOLERANCE_SECONDS * 1.5  # 3 us: already a genuine uncredited gap.
+    report(engine, 930, 250, 30 - gap)
+    assert engine.low_stability_seconds == 0
+    assert not engine.low_stability_history
+    assert low.started_at == START + timedelta(seconds=gap)
+    assert low.quiet_since is None
+    assert low.phase is DetectorPhase.MONITORING
+
+
+@pytest.mark.parametrize("gap", [3e-6, 0.001, 1.0])
+def test_rapid_rise_history_cannot_bridge_real_unknown_gap(gap):
+    engine = DetectionEngine(DetectorSettings(burst_rate_rise_lph_10s=100))
+    report(engine, 0, 0)
+    report(engine, 10, 1500, 10 - gap)
+    assert engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.IDLE
+    assert engine.runtimes[DetectorKind.BURST_LEAK].reason is None
+
+
+def test_rounding_preserves_existing_rapid_rise_evidence():
+    engine = DetectionEngine(DetectorSettings(burst_rate_rise_lph_10s=100))
+    report(engine, 0, 0)
+    report(engine, 10, 1500, 10 - 1e-7)
+    assert engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.MONITORING
+    assert engine.runtimes[DetectorKind.BURST_LEAK].reason == "rapid_rise"
+
+
+def test_zero_credit_is_not_promoted_even_inside_rounding_tolerance():
+    engine = DetectionEngine()
+    run(engine, 0, 900)
+    engine.pause_source_evidence()
+    report(engine, 900.000001, 250, 0)
+    assert engine.low_stability_seconds == 0
+    assert engine.runtimes[LOW].started_at == START + timedelta(microseconds=1)
+
+
+@pytest.mark.parametrize("normal", [10, 20, 30, 60])
+async def test_legacy_short_normal_defaults_are_valid(runtime_hass, runtime_entry, normal):
+    from test_config_runtime import options_flow
+
+    from custom_components.water_leak_detection.manager import WaterLeakManager
+
+    expected = {10: (5, 2.5), 20: (10, 5), 30: (15, 7.5), 60: (30, 15)}[normal]
+    runtime_hass.config_entries.async_update_entry(
+        runtime_entry, options={"low_detection_minutes": normal}
+    )
+    settings = WaterLeakManager(runtime_hass, runtime_entry).engine.settings
+    form = await options_flow(runtime_hass, runtime_entry).async_step_expert()
+    values = form["data_schema"]({})
+    actual = values["low_stability_early_minutes"], values["low_stability_window_minutes"]
+    assert actual == expected
+    assert actual == (
+        settings.low_stability_early_seconds / 60,
+        settings.low_stability_window_seconds / 60,
+    )
+    assert 0 < actual[1] <= actual[0] < normal
+    assert WaterLeakOptionsFlow._validate_expert_options(values) == {}
+    assert dict(runtime_entry.options) == {"low_detection_minutes": normal}
+
+
+async def test_disabled_stability_can_save_short_normal(runtime_hass, runtime_entry):
+    from test_config_runtime import options_flow
+
+    from custom_components.water_leak_detection.manager import WaterLeakManager
+
+    options = dict(
+        low_detection_minutes=10,
+        low_stability_enabled=False,
+        low_stability_early_minutes=30,
+        low_stability_window_minutes=15,
+    )
+    runtime_hass.config_entries.async_update_entry(runtime_entry, options=options)
+    flow = options_flow(runtime_hass, runtime_entry)
+    form = await flow.async_step_expert()
+    values = form["data_schema"]({})
+    assert WaterLeakOptionsFlow._validate_expert_options(values) == {}
+    result = await flow.async_step_expert(values)
+    assert result["type"] == "menu"
+    settings = WaterLeakManager(runtime_hass, runtime_entry).engine.settings
+    assert settings.low_stability_enabled is False
+    assert settings.low_stability_early_seconds == 1800
+    assert settings.low_stability_window_seconds == 900
+    engine = DetectionEngine(settings)
+    run(engine, 0, 570)
+    assert engine.runtimes[LOW].phase is DetectorPhase.MONITORING
+    assert not engine.low_stability_history
+    assert report(engine, 600, 250, 30) is DetectorPhase.ACTIVE  # normal path only
+    values["low_stability_enabled"] = True
+    result = await flow.async_step_expert(values)
+    assert result["type"] == "form"
+    assert result["errors"] == {"base": "invalid_low_stability"}
+    assert runtime_entry.options["low_stability_enabled"] is False
+    assert runtime_entry.options["low_stability_early_minutes"] == 30
+    assert runtime_entry.options["low_stability_window_minutes"] == 15
+
+
+@pytest.mark.parametrize(
+    "explicit,expected",
+    [
+        ({"low_stability_early_minutes": 7, "low_stability_window_minutes": 3}, (7, 3)),
+        ({"low_stability_early_minutes": 4}, (4, 2)),
+        ({"low_stability_window_minutes": 1}, (5, 1)),
+    ],
+)
+async def test_explicit_stability_times_are_preserved_in_ui_and_runtime(
+    runtime_hass, runtime_entry, explicit, expected
+):
+    from test_config_runtime import options_flow
+
+    from custom_components.water_leak_detection.manager import WaterLeakManager
+
+    saved = {"low_detection_minutes": 10, **explicit}
+    runtime_hass.config_entries.async_update_entry(runtime_entry, options=saved)
+    settings = WaterLeakManager(runtime_hass, runtime_entry).engine.settings
+    form = await options_flow(runtime_hass, runtime_entry).async_step_expert()
+    values = form["data_schema"]({})
+    assert (
+        values["low_stability_early_minutes"],
+        values["low_stability_window_minutes"],
+    ) == expected
+    assert (settings.low_stability_early_seconds, settings.low_stability_window_seconds) == (
+        expected[0] * 60,
+        expected[1] * 60,
+    )
+    assert dict(runtime_entry.options) == saved
+
+
+@pytest.mark.parametrize("normal,expected", [(1, (0.5, 0.2)), (3, (1.5, 0.7)), (7, (3.5, 1.7))])
+async def test_missing_defaults_use_valid_ui_resolution(
+    runtime_hass, runtime_entry, normal, expected
+):
+    from test_config_runtime import options_flow
+
+    from custom_components.water_leak_detection.manager import WaterLeakManager
+
+    runtime_hass.config_entries.async_update_entry(
+        runtime_entry, options={"low_detection_minutes": normal}
+    )
+    form = await options_flow(runtime_hass, runtime_entry).async_step_expert()
+    values = form["data_schema"]({})
+    actual = values["low_stability_early_minutes"], values["low_stability_window_minutes"]
+    assert actual == expected
+    assert WaterLeakOptionsFlow._validate_expert_options(values) == {}
+    settings = WaterLeakManager(runtime_hass, runtime_entry).engine.settings
+    assert (settings.low_stability_early_seconds, settings.low_stability_window_seconds) == (
+        expected[0] * 60,
+        expected[1] * 60,
+    )

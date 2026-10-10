@@ -74,7 +74,16 @@ High-band reports discard Low stability and retain the existing Low/High handove
 | `low_stability_required_percent` | 90% |
 | `low_reset_minutes` (only when unset) | 3 min |
 
-Window must be positive and no longer than early detection. Early detection must be shorter than normal Low detection. Tolerances must be positive; required share must be >0 and ≤100%. When configuring shorter normal detection, also adjust the early detection and window. No additional HA entities are created.
+When stability is enabled, the window must be positive and no longer than early detection, which must be shorter than normal Low detection. When disabled, the relation between stability times does not block saving; saved times remain intact and are checked again on reactivation. Tolerances must be positive; required share must be >0 and ≤100%. No additional HA entities are created.
+
+Only missing stability times are derived jointly for UI and runtime: `early = min(30, normal / 2)` minutes and `window = min(15, resolved early / 2)` minutes, rounded down to the 0.1-minute UI grid with a 0.1-minute minimum. An explicit early time is used when deriving a missing window. Explicitly stored times are never overwritten. For the UI's normal Low minimum of 1 minute, the derived times remain valid.
+
+| Normal Low detection | Missing early default | Missing window default |
+|---|---:|---:|
+| 10 min | 5 min | 2.5 min |
+| 20 min | 10 min | 5 min |
+| 30 min | 15 min | 7.5 min |
+| 60 min | 30 min | 15 min |
 
 Low Flow has its own enable/disable switch.
 

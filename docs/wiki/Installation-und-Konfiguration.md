@@ -166,4 +166,13 @@ High verwirft die Low-Stabilität; die bestehende Low/High-Übernahme bleibt erh
 | `low_stability_absolute_lph` | 20 L/h |
 | `low_stability_required_percent` | 90 % |
 
-Das Fenster muss positiv und höchstens so lang wie die Früherkennung sein. Die Früherkennung muss kürzer als die normale Low-Erkennungszeit sein. Toleranzen müssen positiv sein; der Anteil muss größer als 0 und höchstens 100 % sein. Bei kürzerer normaler Erkennungszeit auch Früherkennung und Fenster entsprechend verkürzen. Es entstehen keine zusätzlichen HA-Entities.
+Bei aktivierter Stabilität muss das Fenster positiv und höchstens so lang wie die Früherkennung sein; die Früherkennung muss kürzer als die normale Low-Erkennungszeit sein. Bei deaktivierter Stabilität blockiert diese Zeitrelation das Speichern nicht. Gespeicherte Zeiten bleiben erhalten und werden beim Wiedereinschalten wieder geprüft. Toleranzen müssen positiv sein; der Anteil muss größer als 0 und höchstens 100 % sein. Es entstehen keine zusätzlichen HA-Entities.
+
+Nur fehlende Stabilitätszeiten werden für UI und Runtime gemeinsam abgeleitet: `Früherkennung = min(30, normale Low-Zeit / 2)` Minuten; `Fenster = min(15, resultierende Früherkennung / 2)` Minuten. Abgerundet wird auf die UI-Auflösung von 0,1 Minuten, mit einem Minimum von 0,1 Minuten. Eine explizite Früherkennungszeit wird bei einem fehlenden Fenster berücksichtigt; explizit gespeicherte Zeiten werden nie überschrieben. Bei der im UI zulässigen normalen Low-Zeit ab 1 Minute bleiben die abgeleiteten Zeiten gültig.
+
+| Normale Low-Zeit | Fehlender Früherkennungs-Default | Fehlender Fenster-Default |
+|---|---:|---:|
+| 10 min | 5 min | 2,5 min |
+| 20 min | 10 min | 5 min |
+| 30 min | 15 min | 7,5 min |
+| 60 min | 30 min | 15 min |

@@ -49,11 +49,9 @@ from .const import (
     CONF_LOW_QUIET_LPH,
     CONF_LOW_RESET_MIN,
     CONF_LOW_STABILITY_ABSOLUTE_LPH,
-    CONF_LOW_STABILITY_EARLY_MIN,
     CONF_LOW_STABILITY_ENABLED,
     CONF_LOW_STABILITY_RELATIVE_PERCENT,
     CONF_LOW_STABILITY_REQUIRED_PERCENT,
-    CONF_LOW_STABILITY_WINDOW_MIN,
     CONF_LOW_THRESHOLD_LPH,
     CONF_MANUAL_MAX_FLOW_LPH,
     CONF_PIPE_DIAMETER_MM,
@@ -89,11 +87,9 @@ from .const import (
     DEFAULT_LOW_QUIET_LPH,
     DEFAULT_LOW_RESET_MIN,
     DEFAULT_LOW_STABILITY_ABSOLUTE_LPH,
-    DEFAULT_LOW_STABILITY_EARLY_MIN,
     DEFAULT_LOW_STABILITY_ENABLED,
     DEFAULT_LOW_STABILITY_RELATIVE_PERCENT,
     DEFAULT_LOW_STABILITY_REQUIRED_PERCENT,
-    DEFAULT_LOW_STABILITY_WINDOW_MIN,
     DEFAULT_LOW_THRESHOLD_LPH,
     DEFAULT_MANUAL_MAX_FLOW_LPH,
     DEFAULT_PIPE_DIAMETER_MM,
@@ -122,6 +118,7 @@ from .engine import DetectionEngine, DetectorSettings, DetectorTransition
 from .evidence import SourceEvidence
 from .hydraulic import hydraulic_reference_flow_lph
 from .learning import AdaptiveFlowLearner, LearningConfidence, LearningSnapshot
+from .low_flow_options import low_stability_minutes
 from .notifications import NotificationController
 from .units import UnsupportedUnitError, normalize_flow_lph, normalize_volume_l
 from .validation import nonnegative_float, parse_datetime
@@ -586,6 +583,7 @@ class WaterLeakManager:
 
     def _settings_from_options(self) -> DetectorSettings:
         opt = self.entry.options
+        early_minutes, window_minutes = low_stability_minutes(opt)
         return DetectorSettings(
             slow_enabled=bool(opt.get(CONF_SLOW_ENABLED, DEFAULT_SLOW_ENABLED)),
             slow_threshold_lph=float(
@@ -617,12 +615,8 @@ class WaterLeakManager:
             low_stability_enabled=bool(
                 opt.get(CONF_LOW_STABILITY_ENABLED, DEFAULT_LOW_STABILITY_ENABLED)
             ),
-            low_stability_early_seconds=float(
-                opt.get(CONF_LOW_STABILITY_EARLY_MIN, DEFAULT_LOW_STABILITY_EARLY_MIN)
-            ) * 60,
-            low_stability_window_seconds=float(
-                opt.get(CONF_LOW_STABILITY_WINDOW_MIN, DEFAULT_LOW_STABILITY_WINDOW_MIN)
-            ) * 60,
+            low_stability_early_seconds=early_minutes * 60,
+            low_stability_window_seconds=window_minutes * 60,
             low_stability_relative_percent=float(
                 opt.get(CONF_LOW_STABILITY_RELATIVE_PERCENT, DEFAULT_LOW_STABILITY_RELATIVE_PERCENT)
             ),

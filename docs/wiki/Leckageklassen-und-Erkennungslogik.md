@@ -119,7 +119,7 @@ Haushaltsverbrauch ist nicht perfekt konstant.
 
 Mehrere aufeinanderfolgende Duschen oder kurze Unterbrechungen an einem Wasserhahn sollen den Zeitkontext nicht ständig auf Null setzen.
 
-Die 7-minütige Ruhephase bedeutet sinngemäß:
+Die 3-minütige Ruhephase bedeutet sinngemäß:
 
 > Der relevante Verbrauch ist tatsächlich beendet.
 

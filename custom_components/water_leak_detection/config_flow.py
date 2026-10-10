@@ -95,11 +95,9 @@ from .const import (
     DEFAULT_LOW_QUIET_LPH,
     DEFAULT_LOW_RESET_MIN,
     DEFAULT_LOW_STABILITY_ABSOLUTE_LPH,
-    DEFAULT_LOW_STABILITY_EARLY_MIN,
     DEFAULT_LOW_STABILITY_ENABLED,
     DEFAULT_LOW_STABILITY_RELATIVE_PERCENT,
     DEFAULT_LOW_STABILITY_REQUIRED_PERCENT,
-    DEFAULT_LOW_STABILITY_WINDOW_MIN,
     DEFAULT_LOW_THRESHOLD_LPH,
     DEFAULT_MANUAL_MAX_FLOW_LPH,
     DEFAULT_PIPE_DIAMETER_MM,
@@ -123,6 +121,7 @@ from .const import (
     RECIPIENT_TRACKER_ENTITY,
     RECIPIENT_TRUSTED_STATIONARY,
 )
+from .low_flow_options import low_stability_minutes
 from .units import is_supported_flow_unit, is_supported_volume_unit
 
 SOURCE_ENTITIES = "entities"
@@ -806,6 +805,7 @@ class WaterLeakOptionsFlow(_NavigationForms, OptionsFlowWithReload):
 
         options = self.config_entry.options
         values = user_input if user_input is not None else options
+        early_minutes, window_minutes = low_stability_minutes(values)
         schema = probatio.Schema(
             {
                 probatio.Optional(
@@ -874,15 +874,11 @@ class WaterLeakOptionsFlow(_NavigationForms, OptionsFlowWithReload):
                 ): BooleanSelector(),
                 probatio.Required(
                     CONF_LOW_STABILITY_EARLY_MIN,
-                    default=values.get(
-                        CONF_LOW_STABILITY_EARLY_MIN, DEFAULT_LOW_STABILITY_EARLY_MIN
-                    ),
+                    default=early_minutes,
                 ): _number(0.1, 1440, 0.1, "min"),
                 probatio.Required(
                     CONF_LOW_STABILITY_WINDOW_MIN,
-                    default=values.get(
-                        CONF_LOW_STABILITY_WINDOW_MIN, DEFAULT_LOW_STABILITY_WINDOW_MIN
-                    ),
+                    default=window_minutes,
                 ): _number(0.1, 1440, 0.1, "min"),
                 probatio.Required(
                     CONF_LOW_STABILITY_RELATIVE_PERCENT,
@@ -1325,34 +1321,29 @@ class WaterLeakOptionsFlow(_NavigationForms, OptionsFlowWithReload):
             return {"base": "invalid_high_quiet_threshold"}
         if not 0 < float(values[CONF_BURST_RESET_LPH]) < burst:
             return {"base": "invalid_burst_reset_threshold"}
-        window = float(values.get(CONF_LOW_STABILITY_WINDOW_MIN, DEFAULT_LOW_STABILITY_WINDOW_MIN))
-        early = float(values.get(CONF_LOW_STABILITY_EARLY_MIN, DEFAULT_LOW_STABILITY_EARLY_MIN))
-        stability_values = [
-            window, early,
-            float(values.get(
-                CONF_LOW_STABILITY_RELATIVE_PERCENT, DEFAULT_LOW_STABILITY_RELATIVE_PERCENT
-            )),
-            float(values.get(
-                CONF_LOW_STABILITY_ABSOLUTE_LPH, DEFAULT_LOW_STABILITY_ABSOLUTE_LPH
-            )),
-            float(values.get(
-                CONF_LOW_STABILITY_REQUIRED_PERCENT, DEFAULT_LOW_STABILITY_REQUIRED_PERCENT
-            )),
-        ]
-        if not all(isfinite(value) for value in stability_values):
+        early, window = low_stability_minutes(values)
+        enabled = values.get(CONF_LOW_STABILITY_ENABLED, DEFAULT_LOW_STABILITY_ENABLED)
+        relative = float(values.get(
+            CONF_LOW_STABILITY_RELATIVE_PERCENT, DEFAULT_LOW_STABILITY_RELATIVE_PERCENT
+        ))
+        absolute = float(values.get(
+            CONF_LOW_STABILITY_ABSOLUTE_LPH, DEFAULT_LOW_STABILITY_ABSOLUTE_LPH
+        ))
+        required = float(values.get(
+            CONF_LOW_STABILITY_REQUIRED_PERCENT, DEFAULT_LOW_STABILITY_REQUIRED_PERCENT
+        ))
+        # Disabled stability retains saved times without enforcing their relation.
+        if enabled and (
+            not all(isfinite(value) for value in (early, window))
+            or not 0 < window <= early
+            or early >= float(values.get(CONF_LOW_DETECTION_MIN, DEFAULT_LOW_DETECTION_MIN))
+        ):
             return {"base": "invalid_low_stability"}
         if (
-            not 0 < window <= early
-            or early >= float(values.get(CONF_LOW_DETECTION_MIN, DEFAULT_LOW_DETECTION_MIN))
-            or not float(values.get(
-                CONF_LOW_STABILITY_RELATIVE_PERCENT, DEFAULT_LOW_STABILITY_RELATIVE_PERCENT
-            )) > 0
-            or not float(values.get(
-                CONF_LOW_STABILITY_ABSOLUTE_LPH, DEFAULT_LOW_STABILITY_ABSOLUTE_LPH
-            )) > 0
-            or not 0 < float(values.get(
-                CONF_LOW_STABILITY_REQUIRED_PERCENT, DEFAULT_LOW_STABILITY_REQUIRED_PERCENT
-            )) <= 100
+            not all(isfinite(value) for value in (relative, absolute, required))
+            or relative <= 0
+            or absolute <= 0
+            or not 0 < required <= 100
         ):
             return {"base": "invalid_low_stability"}
         return {}

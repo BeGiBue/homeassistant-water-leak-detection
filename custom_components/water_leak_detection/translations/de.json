@@ -224,7 +224,7 @@
       "already_configured": "Dieser Durchflusssensor wird bereits von einem anderen Eintrag verwendet.",
       "required_fields_missing": "Bitte fülle alle erforderlichen Felder aus.",
       "derived_source": "Abgeleitete Sensoren von Wasserwächter dürfen nicht als Messquelle verwendet werden.",
-      "invalid_low_stability": "Das Stabilitätsfenster muss positiv und höchstens so lang wie die Früherkennung sein. Früherkennung muss kürzer als die normale Low-Erkennung sein. Toleranzen müssen positiv sein, der stabile Anteil größer als 0 und höchstens 100 %."
+      "invalid_low_stability": "Bei aktivierter Stabilitätserkennung muss das Fenster positiv und höchstens so lang wie die Früherkennung sein. Früherkennung muss kürzer als die normale Low-Erkennung sein. Toleranzen müssen positiv sein, der stabile Anteil größer als 0 und höchstens 100 %."
     },
     "abort": {
       "no_mobile_app_notify_services": "Es wurden keine mobile_app-Benachrichtigungsdienste gefunden. Richte zuerst die Home Assistant Companion App ein.",
