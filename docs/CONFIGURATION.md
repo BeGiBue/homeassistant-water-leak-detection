@@ -187,7 +187,7 @@ The integration options expose detector thresholds, durations, reset limits, byp
 
 Change these values only with measured household data where possible.
 
-## Measurement validity and navigation (unreleased)
+## Measurement validity and navigation
 
 `source_max_age_seconds` defaults to 0 (no artificial gap limit), range 0–3600.
 This is the **Maximum credited gap between measurement reports** expert setting.
