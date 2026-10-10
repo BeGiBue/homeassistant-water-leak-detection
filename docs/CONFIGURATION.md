@@ -193,7 +193,11 @@ A positive limit includes equality (60 s counts at a 60 s limit); larger interva
 add zero without removing previously accumulated confirmed monitoring evidence.
 Normal subsequent reports count immediately. Automatic mode never learns cadence.
 Observed invalid/unavailable/unknown flow breaks the chain; recovery's first report
-adds zero, and existing detector failure/reset rules apply. Confirmed leaks survive.
+adds zero. Temporary interruptions of the same source preserve confirmed
+Slow/Low/High monitoring progress, clear quiet windows and unconfirmed Burst
+candidates, and retain active leaks/shutoff requests. An outage is not zero flow;
+actual returned values follow the existing detector/reset rules. Changing the
+configured source discards unconfirmed monitoring instead of transferring it.
 Without a positive limit, legitimate slow reports and silent communication failures
 between valid endpoints cannot be distinguished. See the README for this boundary.
 Negative and nonfinite samples are invalid, not zero. Low/High quiet and Burst reset

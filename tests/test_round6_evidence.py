@@ -127,7 +127,7 @@ async def test_f05_round6_failure_breaks_chain_preserves_active_and_clears_quiet
     assert not manager.source_available
     assert manager._flow_evidence.credited_seconds == 0
     assert runtime.quiet_since is None
-    assert runtime.phase is (DetectorPhase.ACTIVE if active else DetectorPhase.IDLE)
+    assert runtime.phase is (DetectorPhase.ACTIVE if active else DetectorPhase.MONITORING)
     measurement_clock.advance(86400)
     await manager._async_tick(measurement_clock.utcnow())
     assert runtime.event_id == event if active else runtime.event_id is None

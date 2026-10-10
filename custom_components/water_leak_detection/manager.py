@@ -470,7 +470,7 @@ class WaterLeakManager:
         self.source_available = False
         self.current_flow_lph = None
         self.current_total_l = None
-        self.engine.suspend_for_unavailable_source()
+        self.engine.pause_source_evidence()
         self.learner.suspend_current_episode()
         self._schedule_save()
         self._notify_listeners()

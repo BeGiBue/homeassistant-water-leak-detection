@@ -276,9 +276,14 @@ The engine represents accumulated confirmed monitoring time by shifting the time
 origin over excluded intervals; report history never reclassifies earlier credit.
 
 Observed `unknown`, `unavailable`, negative, nonfinite or otherwise invalid flow
-breaks the measurement chain and supplies neither leak nor quiet evidence. Existing
-source-failure reset rules clear unconfirmed monitoring and quiet windows while
-confirmed leaks stay active. The first valid report after recovery starts a new
+breaks the measurement chain and supplies neither leak nor quiet evidence.
+A temporary interruption preserves confirmed Slow/Low/High monitoring time while
+clearing quiet windows and unconfirmed Burst candidates. Confirmed leaks and
+shutoff requests stay active. An interruption is not a measurement of zero flow.
+Actual values measured after recovery still run the normal detector/reset rules.
+A switch to another configured source discards unconfirmed monitoring instead;
+evidence from the old physical source never transfers to the replacement.
+The first valid report after recovery starts a new
 chain with zero credit; time across the interruption is excluded. A frozen state
 without new reports cannot activate or reset a leak.
 

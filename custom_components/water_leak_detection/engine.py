@@ -135,6 +135,21 @@ class DetectionEngine:
         self.last_flow_lph = None
         self.reset_total_reference()
 
+    def pause_source_evidence(self) -> None:
+        """Pause the same source without invalidating confirmed Slow/Low/High time.
+
+        Retain last_sample_at so the first returning zero-credit report shifts
+        monitoring starts by exactly the unobserved duration. Burst candidates
+        need continuous evidence; quiet and rate history cannot cross the gap.
+        Source rebinds continue to use the separate destructive suspension.
+        """
+        for kind, runtime in self.runtimes.items():
+            runtime.quiet_since = None
+            if kind is DetectorKind.BURST_LEAK and runtime.phase is DetectorPhase.MONITORING:
+                runtime.reset()
+        self.last_flow_lph = None
+        self.reset_total_reference()
+
     def sample(
         self,
         now: datetime,
