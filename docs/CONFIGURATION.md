@@ -59,12 +59,15 @@ Low Flow has its own enable/disable switch.
 
 High Flow represents unusually high but potentially legitimate water use.
 
-The effective threshold is adaptive and uses:
+The start threshold is static and configurable in expert settings (default
+600 L/h). Low Flow covers 150 L/h to strictly below this threshold; High Flow
+starts MONITORING at the threshold, with no gap. Learned maxima, manual maxima
+and hydraulics cannot raise it. Duration, volume, quiet and reset confirmation
+rules are unchanged: reaching 600 L/h is not an immediate alarm.
 
-- the fixed base threshold,
-- learned normal peak usage when confidence permits,
-- optional manually known normal maximum,
-- hydraulic plausibility limits.
+The former High multiplier is hidden and ignored; existing saved values are
+preserved. The Burst multiplier remains available without a High-multiplier
+comparison. Burst remains adaptive and uses static High in its dynamic floor.
 
 High Flow can be temporarily bypassed. This bypass does not disable Burst Leak.
 
@@ -208,3 +211,9 @@ All source, expert and recipient forms provide **Back without saving**. Recipien
 changes apply live and preserve detection timers. Source changes rebase meter volume,
 reset unconfirmed windows and learning, and retain confirmed safety. See README for
 total-meter quantization, parallel HA dispatch and interruption semantics.
+
+F02 is closed. Learning admission still excludes High MONITORING and bypass
+episodes, including legitimate use at or above the static threshold. Admitting
+such episodes as normal Burst context needs a separate product decision. F04,
+F08 and Rapid Rise remain open. The `effective_high_threshold` entity identity
+and translation key are retained; its displayed value is now static.

@@ -26,7 +26,7 @@ A backend-focused Home Assistant custom integration for detecting abnormal water
 - Continuous rolling learning of normal peak consumption.
 - Learning confidence states: `insufficient`, `learning`, and `reliable`.
 - Hydraulic plausibility context using nominal pipe diameter and static pressure.
-- Adaptive High Flow and Burst Leak thresholds.
+- Static High Flow and adaptive Burst Leak thresholds.
 - Rapid rate-of-rise Burst detection.
 - Persistent event state, bypass expiry, acknowledgements, and learned history across Home Assistant restarts.
 
@@ -82,7 +82,7 @@ Supported flow units include L/h, L/min, L/s, m³/h, m³/min, and m³/s.
 |---|---|---|
 | Slow Leak | Very small continuous loss | ≥ 3 L/h for 60 min |
 | Low Flow | Moderate flow lasting too long | ≥ 150 L/h for 60 min |
-| High Flow | Sustained unusually high use | Adaptive; fixed base 600 L/h |
+| High Flow | Sustained unusually high use | Static; default 600 L/h |
 | Burst Leak | Major leak / pipe failure | Adaptive absolute + rapid-rise detection |
 
 Slow Leak and Low Flow can be switched off independently. High Flow can be temporarily bypassed. Burst Leak cannot be bypassed by the High Flow bypass.
@@ -108,7 +108,7 @@ The integration creates a Home Assistant device with backend entities including:
 - **Learning confidence**
 - **Learning coverage**
 - **Hydraulic reference flow**
-- **Effective High Flow threshold**
+- **High Flow threshold**
 - **Effective Burst Leak threshold**
 
 ## Language and later configuration
@@ -175,7 +175,7 @@ Learning confidence:
 
 - `insufficient` — learned values do not raise safety thresholds,
 - `learning` — learned values have reduced influence,
-- `reliable` — the robust learned reference can fully influence adaptive thresholds.
+- `reliable` — the robust learned reference can fully influence the adaptive Burst threshold.
 
 Use `water_leak_detection.reset_learning` to intentionally clear admitted learning history.
 
@@ -183,7 +183,7 @@ Use `water_leak_detection.reset_learning` to intentionally clear admitted learni
 
 Nominal pipe diameter and static pressure are used as a **plausibility envelope**, not as an exact physical maximum. Actual flow depends on the meter, pressure reducer, dynamic pressure, pipe length, fittings, and upstream supply.
 
-The hydraulic model limits how far adaptive thresholds can move upward.
+The hydraulic model limits how far the adaptive Burst threshold can move upward.
 
 ## Shutoff request
 
@@ -250,7 +250,7 @@ See [LICENSE](LICENSE) for the complete license text.
 ## Unreleased correction rounds: operational contract
 
 The packaged version remains **1.0.2**; these working-tree corrections have not been
-released. F02, F04 and F08 remain known findings awaiting separate detector
+released. F02 is closed by the static High Flow threshold. F04 and F08 remain known findings awaiting separate detector
 specifications. The Rapid-Rise definition also remains unchanged.
 
 Only actual flow reports supply detection/quiet evidence. Re-reading a cached HA
@@ -358,3 +358,19 @@ without validating or saving unfinished fields. Own derived Water Leak Guard sen
 are rejected as sources. Physical valve control remains in user HA automations.
 
 These technical rounds do not establish absence of false alarms during normal use.
+
+### F02: static High Flow boundary
+
+High Flow starts MONITORING at exactly the configured expert threshold (default
+600 L/h). Slow Leak covers 3 to <150 L/h; Low Flow covers 150 L/h to strictly
+below High. Low ends exactly where High starts. Learning, manual maximum usage,
+hydraulic context and legacy High multipliers cannot raise this boundary.
+Monitoring is not an immediate alarm: duration, volume, quiet/reset rules and
+High bypass are unchanged. Burst remains active during bypass and can still use
+adaptive context; its dynamic floor uses static High as the High reference.
+
+Learning admission remains unchanged: High MONITORING marks an episode as
+suspicious, excluding even legitimate episodes reaching 600 L/h from learning.
+Bypassed episodes are also excluded. Whether such usage should be admitted as
+normal Burst context requires a separate product decision; F02 adds no learning
+exception. F04, F08 and the Rapid Rise definition remain open.

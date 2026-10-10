@@ -4,21 +4,13 @@
 
 Haushalte unterscheiden sich stark.
 
-Ein statischer High-Flow-Grenzwert kann deshalb entweder:
+High Flow beginnt immer an der konfigurierten statischen Schwelle
+(Standard 600 L/h). Dauer und Volumen bestätigen den Alarm.
 
-- zu viele Fehlalarme erzeugen oder
-- bei sehr hohem normalem Verbrauch zu unempfindlich sein
-
-Der Wasserwächter kombiniert daher:
-
-- konservative feste Basisgrenzen
-- kontinuierliches Lernmodell
-- optional manuell bekanntes Maximum
-- hydraulische Plausibilitätsgrenzen
-
-Das Lernmodell beeinflusst **High Flow** und **Burst Leak**.
-
-Slow Leak und Low Flow bleiben bewusst fachlich statisch.
+Für Burst kombiniert der Wasserwächter feste Basisgrenzen, kontinuierliches
+Lernen, ein optional manuell bekanntes Maximum und hydraulische
+Plausibilitätsgrenzen. Das Lernmodell beeinflusst **Burst Leak**, nicht die
+High-Flow-Startschwelle. Slow Leak und Low Flow bleiben fachlich statisch.
 
 ---
 
@@ -172,19 +164,15 @@ Die Normalreferenz ist dann das Maximum aus:
 
 ---
 
-# 7. Adaptive High-Grenze
+# 7. Statische High-Grenze
 
-Basis:
-
-**600 L/h**
-
-Kandidat:
-
-`max(Basis; Normalreferenz × 1,20)`
-
-Diese Grenze darf aber nicht beliebig wachsen.
-
-Sie wird durch die hydraulische Plausibilität nach oben begrenzt.
+Standard: **600 L/h**, in Expertenoptionen konfigurierbar.
+High beginnt exakt hier mit MONITORING; Low endet strikt darunter.
+Lernen, manuelles Maximum und Hydraulik erhöhen High nicht.
+Dauer, Volumen, Quiet/Reset und Bypass bleiben unverändert.
+High-MONITORING und Bypass schließen Episoden weiterhin vom Lernen aus.
+Die Aufnahme legitimer hoher Verbräuche als Burst-Kontext braucht eine
+separate fachliche Entscheidung außerhalb F02.
 
 ---
 
@@ -247,7 +235,7 @@ Die hydraulische Hülle verhindert:
 
 > „Sehr hoch wurde oft gesehen, also muss noch viel höher erst gefährlich sein.“
 
-Die adaptive High-Grenze reserviert außerdem Abstand zum Burst-Bereich.
+Die statische High-Grenze dient als High-Referenz für den Dynamic Burst Floor.
 
 ---
 
@@ -259,7 +247,7 @@ Home Assistant zeigt unter anderem:
 - Lernzuverlässigkeit
 - Lernabdeckung
 - Hydraulischer Referenzdurchfluss
-- Effektive High-Flow-Grenze
+- High-Flow-Schwelle
 - Effektive Burst-Leak-Grenze
 
 Das adaptive Verhalten soll dadurch nachvollziehbar bleiben und keine Blackbox sein.

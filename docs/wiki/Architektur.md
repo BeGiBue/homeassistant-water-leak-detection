@@ -30,7 +30,7 @@ Er übernimmt:
 - Lesen der Home-Assistant-Quellzustände
 - Normalisierung der Messwerte
 - Ausführung der Detektoren
-- Berechnung adaptiver High-/Burst-Grenzen
+- Berechnung statischer High- und adaptiver Burst-Grenzen
 - Übergabe sicherer Episoden an das Lernmodell
 - Erzeugen von Home-Assistant-Events
 - Verwaltung des High-Flow-Bypass
@@ -122,7 +122,7 @@ Nach längeren HA-Ausfallzeiten wird nicht beliebig viel Volumen rückwirkend in
 
 Slow und Low verwenden bewusst statische fachliche Bänder.
 
-High und Burst können dagegen adaptive Grenzwerte verwenden.
+High verwendet eine statische Grenze; Burst kann adaptive Grenzwerte verwenden.
 
 Dadurch wird vermieden, dass ein gelerntes hohes Haushaltsmaximum den Low-Flow-Bereich ungewollt nach oben verschiebt.
 

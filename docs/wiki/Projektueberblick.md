@@ -136,5 +136,5 @@ Die niedrigeren Detektoren dürfen intern weiter aktiv bleiben. Das ist wichtig,
 - Confidence-Stufen
 - Kurz-/Langzeitreferenzen
 - hydraulische Plausibilisierung
-- adaptive High-/Burst-Grenzen
+- statische High- und adaptive Burst-Grenzen
 - Burst-Erkennung über schnellen Durchflussanstieg

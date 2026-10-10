@@ -163,3 +163,6 @@ Konfigurationsdokumentation und im lokalen Wiki-Quelltext ausdrücklich beschrie
 Die fachlichen Findings F02/F04/F08 und Rapid Rise bleiben unverändert offen.
 
 Keine Änderung an main, kein Merge, PR, Tag, Release oder Wiki-Publishing.
+
+Aktueller Nachtrag F02: Die statische High-Flow-Schwelle schließt F02.
+F04, F08 und Rapid Rise bleiben offen; die damalige Review-Aussage ist historisch.

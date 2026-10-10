@@ -2,7 +2,8 @@
 > fachliche Anforderungen und historische Roadmap-Abschnitte, keine vollständige
 > Zusicherung des implementierten Ist-Verhaltens. Der aktuelle Betriebskontrakt
 > steht in README und docs/CONFIGURATION.md. Messwertvalidierung, Persistenz,
-> Quittierung und Notify-Retry wurden technisch abgesichert. F02, F04 und F08
+> Quittierung und Notify-Retry wurden technisch abgesichert. F02 ist durch die
+> statische High-Schwelle geschlossen. F04 und F08
 > sowie die fachliche Rapid-Rise-Definition sind weiterhin offen und werden separat
 > spezifiziert. Repository-Wiki-Quellen sind maßgeblich für diese Arbeitskopie;
 > das veröffentlichte GitHub-Wiki wurde in dieser Runde nicht synchronisiert.
@@ -1015,3 +1016,23 @@ The following rules are binding across all implementation versions:
 14. **The integration must remain usable without any custom frontend card.**
 15. **Home Assistant-native mechanisms should be preferred wherever practical.**
 16. **Slow Leak and Low Flow detector enable state is independent from alarm state and exposed as dedicated HA entities.**
+
+## F02 — Statische High-Flow-Startschwelle
+
+High startet MONITORING exakt bei `high_threshold_lph` (Standard 600 L/h).
+Slow: 3 bis <150 L/h; Low: 150 bis <High; High: >=High. Lernen, manuelles
+Maximum, Hydraulik, Multiplikatoren und `effective_high_threshold_lph` dürfen
+diese Grenze nicht verschieben. Die Engine nutzt statisches High auch als
+Referenz im bestehenden Dynamic Burst Floor. Burst bleibt adaptiv; F04 und
+Rapid Rise werden nicht neu definiert. Bestätigung über Dauer/Volumen,
+Quiet/Reset und High-Bypass bleiben unverändert.
+
+`high_learned_multiplier` bleibt als gespeicherter Altwert toleriert, wird
+nicht angezeigt oder verwendet. Der Burst-Multiplikator bleibt unabhängig.
+`effective_high_threshold` behält Entity-Identität und translation key.
+
+Die Lernaufnahme bleibt unverändert: High-MONITORING schließt die gesamte
+Episode als suspicious aus. Damit können normale Episoden >=600 L/h nicht
+mehr regulär als Burst-Normalkontext gelernt werden; auch Bypass hilft nicht.
+Eine Ausnahme erfordert eine separate fachliche Entscheidung außerhalb F02.
+F02 ist geschlossen; F04, F08 und Rapid Rise bleiben offen.

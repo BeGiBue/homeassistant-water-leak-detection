@@ -165,7 +165,7 @@ def test_f21_versions_and_current_operational_documentation_agree():
     assert manifest["version"] == project["project"]["version"] == c.VERSION == "1.0.3"
     readme = Path("README.md").read_text()
     assert "last_reported" in readme
-    assert "F02, F04 and F08 remain" in readme
+    assert "F04 and F08 remain" in readme
     for language in ("de", "en"):
         translated = json.loads(Path(
             "custom_components/water_leak_detection/translations/" + language + ".json"

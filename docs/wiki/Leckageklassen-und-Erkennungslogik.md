@@ -168,23 +168,17 @@ High Flow ist deshalb bewusst **kein sofortiger Leckalarm nur aufgrund einer hoh
 
 | Parameter | Standard |
 |---|---:|
-| statische Basisgrenze | 600 L/h |
+| statische Startschwelle | 600 L/h |
 | Erkennungszeit | 45 Minuten |
 | Mengengrenze | 500 L |
 | Ruhegrenze | unter 100 L/h |
 | Resetzeit | 5 Minuten |
-| adaptiver Faktor | 1,20 × Normalreferenz |
 
-## Effektive High-Flow-Grenze
+## Statische High-Flow-Schwelle
 
-Die tatsächliche High-Grenze kann über 600 L/h liegen.
-
-Sie ergibt sich aus:
-
-- statischer Basis
-- optional manuell bekanntem Normalmaximum
-- gelerntem Normalmaximum abhängig von Confidence
-- hydraulischer Plausibilitätsobergrenze
+Die konfigurierte Experten-Schwelle beträgt standardmäßig 600 L/h.
+Lernen, manuelles Maximum und Hydraulik erhöhen sie nicht.
+Low endet exakt darunter; High beginnt exakt an der Schwelle.
 
 Details: [Adaptives Lernen und Hydraulik](Adaptives-Lernen-und-Hydraulik)
 
@@ -227,7 +221,7 @@ Ein aktiver High Flow endet regulär erst, wenn:
 
 gemessen wurden.
 
-Ein bloßes Unterschreiten der adaptiven High-Grenze reicht nicht. Der Verbrauch soll eindeutig in einen ruhigen Bereich zurückgekehrt sein.
+Ein bloßes Unterschreiten der statischen High-Grenze reicht nicht. Der Verbrauch soll eindeutig in einen ruhigen Bereich zurückgekehrt sein.
 
 ---
 

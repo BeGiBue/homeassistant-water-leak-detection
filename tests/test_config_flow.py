@@ -76,14 +76,12 @@ def test_burst_reset_must_be_below_burst_start() -> None:
     }
 
 
-def test_adaptive_burst_multiplier_must_exceed_high_multiplier() -> None:
+def test_legacy_high_multiplier_does_not_constrain_burst() -> None:
     values = _valid_values()
     values[CONF_HIGH_LEARNED_MULTIPLIER] = 2.0
     values[CONF_BURST_LEARNED_MULTIPLIER] = 1.8
 
-    assert WaterLeakOptionsFlow._validate_expert_options(values) == {
-        "base": "invalid_adaptive_multiplier_order"
-    }
+    assert WaterLeakOptionsFlow._validate_expert_options(values) == {}
 
 
 def test_recipient_overview_lists_all_configured_devices() -> None:

@@ -295,7 +295,7 @@ class HydraulicReferenceFlowSensor(WaterLeakEntity, SensorEntity):
 
 
 class EffectiveHighThresholdSensor(WaterLeakEntity, SensorEntity):
-    """Current adaptive High Flow threshold."""
+    """Configured static High Flow threshold."""
 
     _attr_translation_key = "effective_high_threshold"
     _attr_native_unit_of_measurement = UnitOfVolumeFlowRate.LITERS_PER_HOUR

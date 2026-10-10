@@ -128,7 +128,6 @@
           "manual_max_flow_lph": "Known maximum normal flow (0 = disabled)",
           "pipe_diameter_mm": "Nominal pipe diameter",
           "static_pressure_bar": "Static supply pressure",
-          "high_learned_multiplier": "High Flow multiplier on learned maximum",
           "burst_learned_multiplier": "Burst Leak multiplier on learned maximum",
           "hydraulic_burst_fraction": "Hydraulic Burst plausibility fraction",
           "burst_rate_rise_lph_10s": "Burst rate-of-rise threshold per 10 seconds",
@@ -212,7 +211,6 @@
       "invalid_burst_reset_threshold": "The Burst Leak reset threshold must be below the Burst Leak absolute threshold.",
       "recipient_notify_service_exists": "This Companion notification service is already configured as a recipient.",
       "recipient_name_required": "Enter a name for the notification device.",
-      "invalid_adaptive_multiplier_order": "The Burst Leak multiplier must be greater than the High Flow multiplier.",
       "entity_not_available": "The selected entity is not currently available.",
       "unsupported_flow_unit": "The flow sensor uses an unsupported unit.",
       "unsupported_volume_unit": "The total sensor uses an unsupported unit.",
@@ -381,7 +379,7 @@
         "name": "Hydraulic reference flow"
       },
       "effective_high_threshold": {
-        "name": "Effective High Flow threshold"
+        "name": "High Flow threshold"
       },
       "effective_burst_threshold": {
         "name": "Effective Burst Leak threshold",

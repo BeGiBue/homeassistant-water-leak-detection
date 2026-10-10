@@ -66,7 +66,7 @@ def test_learning_confidence_uses_damped_reference() -> None:
     thresholds = manager.adaptive_thresholds(NOW)
 
     assert thresholds.normal_reference_lph == 1020.0
-    assert thresholds.effective_high_lph == 1224.0
+    assert thresholds.effective_high_lph == 600.0
 
 
 def test_reliable_learning_uses_full_reference() -> None:
@@ -78,7 +78,7 @@ def test_reliable_learning_uses_full_reference() -> None:
     thresholds = manager.adaptive_thresholds(NOW)
 
     assert thresholds.normal_reference_lph == 1200.0
-    assert thresholds.effective_high_lph == 1440.0
+    assert thresholds.effective_high_lph == 600.0
     assert thresholds.effective_burst_lph == 2160.0
 
 
@@ -92,7 +92,7 @@ def test_manual_reference_is_used_even_before_learning_is_reliable() -> None:
     thresholds = manager.adaptive_thresholds(NOW)
 
     assert thresholds.normal_reference_lph == 1500.0
-    assert thresholds.effective_high_lph == 1800.0
+    assert thresholds.effective_high_lph == 600.0
     assert thresholds.effective_burst_lph == 2700.0
 
 

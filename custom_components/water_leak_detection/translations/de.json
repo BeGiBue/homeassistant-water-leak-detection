@@ -128,7 +128,6 @@
           "manual_max_flow_lph": "Manuell bekannter maximaler Normaldurchfluss (0 = aus)",
           "pipe_diameter_mm": "Nennweite / Rohrdurchmesser",
           "static_pressure_bar": "Statischer Hausanschlussdruck",
-          "high_learned_multiplier": "High-Flow-Faktor auf gelerntes Maximum",
           "burst_learned_multiplier": "Burst-Leak-Faktor auf gelerntes Maximum",
           "hydraulic_burst_fraction": "Hydraulischer Burst-Plausibilitätsfaktor",
           "burst_rate_rise_lph_10s": "Burst-Anstiegsgrenze pro 10 Sekunden",
@@ -212,7 +211,6 @@
       "invalid_burst_reset_threshold": "Die Burst-Leak-Resetgrenze muss unter der Burst-Leak-Absolutgrenze liegen.",
       "recipient_notify_service_exists": "Dieser Companion-Benachrichtigungsdienst ist bereits als Empfänger konfiguriert.",
       "recipient_name_required": "Bitte gib einen Namen für das Benachrichtigungsgerät ein.",
-      "invalid_adaptive_multiplier_order": "Der Burst-Leak-Faktor muss größer als der High-Flow-Faktor sein.",
       "entity_not_available": "Die ausgewählte Entität ist derzeit nicht verfügbar.",
       "unsupported_flow_unit": "Der Durchflusssensor verwendet eine nicht unterstützte Einheit.",
       "unsupported_volume_unit": "Der Verbrauchssensor verwendet eine nicht unterstützte Einheit.",
@@ -381,7 +379,7 @@
         "name": "Hydraulischer Referenzdurchfluss"
       },
       "effective_high_threshold": {
-        "name": "Effektive High-Flow-Grenze"
+        "name": "High-Flow-Schwelle"
       },
       "effective_burst_threshold": {
         "name": "Effektive Burst-Leak-Grenze",

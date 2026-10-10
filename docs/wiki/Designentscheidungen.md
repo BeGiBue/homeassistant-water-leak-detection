@@ -37,7 +37,7 @@ Das adaptive Lernmodell verändert nicht die grundlegenden Slow-/Low-Grenzen.
 
 Ein gelerntes hohes Haushaltsmaximum darf nicht dazu führen, dass ein sehr hoher Verbrauch plötzlich als Low Flow interpretiert wird.
 
-Adaptive Haushaltsnormalität ist vor allem für High und Burst relevant.
+Adaptive Haushaltsnormalität ist vor allem für Burst relevant.
 
 ---
 

@@ -43,7 +43,6 @@ from .const import (
     CONF_BYPASS_DEFAULT_MIN,
     CONF_FLOW_ENTITY,
     CONF_HIGH_DETECTION_MIN,
-    CONF_HIGH_LEARNED_MULTIPLIER,
     CONF_HIGH_QUIET_LPH,
     CONF_HIGH_RESET_MIN,
     CONF_HIGH_THRESHOLD_LPH,
@@ -79,7 +78,6 @@ from .const import (
     DEFAULT_BURST_THRESHOLD_LPH,
     DEFAULT_BYPASS_DEFAULT_MIN,
     DEFAULT_HIGH_DETECTION_MIN,
-    DEFAULT_HIGH_LEARNED_MULTIPLIER,
     DEFAULT_HIGH_QUIET_LPH,
     DEFAULT_HIGH_RESET_MIN,
     DEFAULT_HIGH_THRESHOLD_LPH,
@@ -954,13 +952,6 @@ class WaterLeakOptionsFlow(_NavigationForms, OptionsFlowWithReload):
                     ),
                 ): _number(0.5, 12, 0.1, "bar"),
                 probatio.Required(
-                    CONF_HIGH_LEARNED_MULTIPLIER,
-                    default=values.get(
-                        CONF_HIGH_LEARNED_MULTIPLIER,
-                        DEFAULT_HIGH_LEARNED_MULTIPLIER,
-                    ),
-                ): _number(1.0, 3.0, 0.05, "×"),
-                probatio.Required(
                     CONF_BURST_LEARNED_MULTIPLIER,
                     default=values.get(
                         CONF_BURST_LEARNED_MULTIPLIER,
@@ -1285,8 +1276,4 @@ class WaterLeakOptionsFlow(_NavigationForms, OptionsFlowWithReload):
             return {"base": "invalid_high_quiet_threshold"}
         if not 0 < float(values[CONF_BURST_RESET_LPH]) < burst:
             return {"base": "invalid_burst_reset_threshold"}
-        high_multiplier = float(values[CONF_HIGH_LEARNED_MULTIPLIER])
-        burst_multiplier = float(values[CONF_BURST_LEARNED_MULTIPLIER])
-        if burst_multiplier <= high_multiplier:
-            return {"base": "invalid_adaptive_multiplier_order"}
         return {}

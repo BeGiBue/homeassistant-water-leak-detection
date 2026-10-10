@@ -114,9 +114,9 @@ Diagnostische hydraulische Plausibilitätsreferenz.
 
 Nicht als exaktes physikalisches Maximum interpretieren.
 
-## Effektive High-Flow-Grenze
+## High-Flow-Schwelle
 
-Aktuell tatsächlich verwendeter adaptiver High-Grenzwert.
+Konfigurierter statischer High-Grenzwert.
 
 ## Effektive Burst-Leak-Grenze
 

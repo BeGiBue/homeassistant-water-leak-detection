@@ -166,7 +166,7 @@ verwenden eine monotone Uhr; Neustarts setzen unbestätigte Intervalle zurück.
 Zählerreset, unplausibler Sprung und Quellenwechsel lösen den alten Volumenbezug.
 Aktive Leckage und Absperranforderung bleiben dabei erhalten. Eingefrorene oder fehlende
 Totalwerte werden durch Durchflussintegration ersetzt. Die fachlichen Findings
-F02/F04/F08 und die Rapid-Rise-Definition bleiben für eine separate Spezifikation offen.
+F02 ist geschlossen; F04/F08 und die Rapid-Rise-Definition bleiben für eine separate Spezifikation offen.
 
 ## Korrekturrunde 2 (unveröffentlicht)
 

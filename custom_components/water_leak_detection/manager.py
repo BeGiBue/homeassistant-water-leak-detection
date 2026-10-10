@@ -38,7 +38,6 @@ from .const import (
     CONF_BYPASS_DEFAULT_MIN,
     CONF_FLOW_ENTITY,
     CONF_HIGH_DETECTION_MIN,
-    CONF_HIGH_LEARNED_MULTIPLIER,
     CONF_HIGH_QUIET_LPH,
     CONF_HIGH_RESET_MIN,
     CONF_HIGH_THRESHOLD_LPH,
@@ -73,7 +72,6 @@ from .const import (
     DEFAULT_BURST_THRESHOLD_LPH,
     DEFAULT_BYPASS_DEFAULT_MIN,
     DEFAULT_HIGH_DETECTION_MIN,
-    DEFAULT_HIGH_LEARNED_MULTIPLIER,
     DEFAULT_HIGH_QUIET_LPH,
     DEFAULT_HIGH_RESET_MIN,
     DEFAULT_HIGH_THRESHOLD_LPH,
@@ -661,7 +659,7 @@ class WaterLeakManager:
         return self.learner.snapshot(dt_util.utcnow())
 
     def adaptive_thresholds(self, now=None) -> AdaptiveThresholds:
-        """Calculate effective High/Burst thresholds from safe context."""
+        """Return static High and adaptive Burst thresholds from safe context."""
         now = now or dt_util.utcnow()
         learning = self.learner.snapshot(now)
         opt = self.entry.options
@@ -710,22 +708,7 @@ class WaterLeakManager:
         base_high = float(
             opt.get(CONF_HIGH_THRESHOLD_LPH, DEFAULT_HIGH_THRESHOLD_LPH)
         )
-        high_multiplier = float(
-            opt.get(
-                CONF_HIGH_LEARNED_MULTIPLIER,
-                DEFAULT_HIGH_LEARNED_MULTIPLIER,
-            )
-        )
-        adaptive_high_candidate = (
-            max(base_high, normal_reference * high_multiplier)
-            if normal_reference is not None
-            else base_high
-        )
-        # High Flow may adapt upward with learned usage, but cannot outrun the
-        # hydraulic plausibility envelope. Reserve at least 20% headroom for
-        # Burst Leak so the severity bands cannot collapse into each other.
-        high_ceiling = max(base_high, hydraulic_burst_ceiling * 0.80)
-        effective_high = min(adaptive_high_candidate, high_ceiling)
+        effective_high = base_high
 
         burst_multiplier = float(
             opt.get(

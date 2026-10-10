@@ -292,7 +292,7 @@ def test_disabling_low_detector_does_not_disable_burst() -> None:
     assert engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.ACTIVE
 
 
-def test_adaptive_high_threshold_creates_normal_peak_band() -> None:
+def test_external_adaptive_high_threshold_cannot_create_gap() -> None:
     engine = DetectionEngine()
     engine.sample(
         at(0),
@@ -303,7 +303,7 @@ def test_adaptive_high_threshold_creates_normal_peak_band() -> None:
     )
 
     assert engine.runtimes[DetectorKind.LOW_FLOW].phase is DetectorPhase.IDLE
-    assert engine.runtimes[DetectorKind.HIGH_FLOW].phase is DetectorPhase.IDLE
+    assert engine.runtimes[DetectorKind.HIGH_FLOW].phase is DetectorPhase.MONITORING
     assert engine.runtimes[DetectorKind.BURST_LEAK].phase is DetectorPhase.IDLE
 
 

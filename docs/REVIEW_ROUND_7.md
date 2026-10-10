@@ -103,3 +103,6 @@ Endpunktwerte beweisen keine kontinuierliche physische Strömung. F02/F04/F08 un
 die fachliche Rapid-Rise-Definition bleiben außerhalb dieser Runde.
 
 F15 bleibt VERIFIED. Kein Merge, PR, Tag, Release oder Wiki-Publish.
+
+Aktueller Nachtrag F02: Die statische High-Flow-Schwelle schließt F02.
+F04, F08 und Rapid Rise bleiben offen; die damalige Review-Aussage ist historisch.

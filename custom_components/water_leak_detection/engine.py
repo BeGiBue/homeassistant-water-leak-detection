@@ -237,11 +237,9 @@ class DetectionEngine:
                     if runtime.phase is not DetectorPhase.IDLE and runtime.start_total_l is None:
                         runtime.start_total_l = raw_total - runtime.estimated_volume_l
 
-        effective_high = (
-            self.settings.high_threshold_lph
-            if effective_high_threshold_lph is None
-            else max(self.settings.low_threshold_lph, float(effective_high_threshold_lph))
-        )
+        # Keep the legacy context argument for caller compatibility. High starts
+        # exactly at the configured static threshold, including the Burst floor.
+        effective_high = self.settings.high_threshold_lph
         effective_burst = (
             self.settings.burst_threshold_lph
             if effective_burst_threshold_lph is None

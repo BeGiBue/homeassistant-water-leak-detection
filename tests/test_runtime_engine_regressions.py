@@ -126,12 +126,8 @@ def test_corrupt_learning_and_ack_are_isolated():
     assert ack.globally_acknowledged_at is None
 
 
-def test_deferred_f02_f04_f08_behavior_is_not_redefined():
+def test_deferred_f04_f08_behavior_is_not_redefined():
     """Known product decisions remain for the separate specification round."""
-    engine = DetectionEngine()
-    engine.sample(at(0), 1000, None, effective_high_threshold_lph=1500)
-    engine.sample(at(86400), 1000, None, effective_high_threshold_lph=1500)
-    assert not engine.snapshot().alarm_active  # F02: unchanged band gap
     engine = DetectionEngine()
     engine.sample(at(0), 0, None)
     engine.sample(at(10), 1500, None)
