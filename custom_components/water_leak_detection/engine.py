@@ -120,6 +120,7 @@ class DetectionEngine:
     runtimes: dict[DetectorKind, DetectorRuntime] = field(
         default_factory=lambda: {kind: DetectorRuntime() for kind in DetectorKind}
     )
+    last_evidence_gap: bool = False
     last_sample_at: datetime | None = None
     last_flow_lph: float | None = None
     last_total_l: float | None = None
@@ -267,6 +268,7 @@ class DetectionEngine:
         if total_l is not None and (not isfinite(total_l) or total_l < 0):
             total_l = None
 
+        self.last_evidence_gap = False
         raw_delta_seconds = 0.0
         delta_seconds = 0.0
         if self.last_sample_at is not None:
@@ -288,6 +290,7 @@ class DetectionEngine:
                     if paused > 0:
                         runtime.quiet_since = None
                 if paused > 0:
+                    self.last_evidence_gap = True
                     self._clear_low_stability()
                     self.last_flow_lph = None  # No rapid-rise evidence across an unknown gap.
                 raw_delta_seconds = credit

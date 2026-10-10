@@ -40,15 +40,32 @@ Eine Episode wird ausgeschlossen, sobald sie als verdächtig gilt.
 Insbesondere ausgeschlossen:
 
 - aktiver Leckalarm
-- High-Flow-Monitoring
+- High-Flow-Monitoring im allgemeinen Lernpfad
 - Burst-Leak-Monitoring
 - Zeit mit aktivem High-Flow-Bypass
 
-## Warum auch High/Burst-Monitoring?
+## Warum auch High/Burst-Monitoring im allgemeinen Lernpfad?
 
 Das Lernmodell darf nicht warten, bis ein außergewöhnlicher Wert schon zum bestätigten Alarm geworden ist.
 
-Sonst könnte ein knapp vor der Bestätigung endendes gefährliches Ereignis als „normal“ gespeichert werden.
+Sonst könnte bereits ein einzelnes knapp vor der Bestätigung endendes gefährliches Ereignis als „normal“ gespeichert werden. Nur der separate Mehrfachbestätigungspfad darf saubere High-Episoden nachträglich zulassen.
+
+## Wiederholt bestätigte normale High-Episoden
+
+High bleibt **statisch**: standardmäßig 600 L/h, ACTIVE nach 45 Minuten **oder** 500 Litern, Reset nach 5 Minuten strikt unter 100 L/h. Lernen verändert keine dieser Grenzen. Es kann ausschließlich die bestehende adaptive Normalreferenz für Burst beeinflussen.
+
+Der allgemeine Lernpfad schließt High-MONITORING weiterhin aus. Ein separater Bestätigungspfad verfolgt den Peak ab High IDLE → MONITORING und speichert erst beim normalen physischen MONITORING → IDLE einen abgeschlossenen Kandidaten. Eine einzelne Episode, etwa 750 L/h für 12 Minuten, reicht nicht. Auch zwei Episoden beeinflussen die normale Lernreferenz noch nicht.
+
+Mindestens **drei** ähnliche saubere Episoden müssen innerhalb des bestehenden `learning_window_days` liegen, standardmäßig **30 Tage**. Für jeden bestätigenden Cluster gilt exakt und symmetrisch: `max_peak <= min_peak × 1,15`. Die 15-%-Grenze zählt mit. 750/780/800 sowie 700/800/805 passen zusammen; 650/850/1400 nicht. Sortierte, gegebenenfalls überlappende gültige Bänder werden deterministisch bewertet, ohne reihenfolgeabhängiges Aufbrauchen von Kandidaten.
+
+Beim dritten passenden Kandidaten werden bisher unbestätigte Mitglieder höchstens einmal als normale LearningSamples aufgenommen. Ihre **ursprünglichen Abschlusszeitpunkte** bleiben erhalten. Bereits bestätigte High-Episoden können einen vierten Kandidaten sofort bestätigen, wenn weiterhin mindestens drei passende Episoden einschließlich des neuen Kandidaten im Fenster liegen. Gelernt wird nur der Peak, keine Dauer, Litergrenze oder Resetzeit. P95, kurze/lange Referenz, saisonale Gewichtung und bestehende Confidence bleiben unverändert. Drei High-Episoden umgehen INSUFFICIENT nicht. Bei ausreichender Confidence wirken bestätigte Peaks über Normalreferenz, Burst-Multiplikator und hydraulische Obergrenze auf Burst; High bleibt statisch.
+
+Bypass-Episoden werden niemals gelernt. High ACTIVE, jeder andere aktive Leckagealarm sowie Burst MONITORING/ACTIVE einschließlich eines später verworfenen Rapid-Rise-Kandidaten schließen die Episode dauerhaft aus. Dasselbe gilt für unknown/unavailable, ungültige Werte, echte ausgeschlossene Evidenzlücken, Source-Rebind und Neustart. Die bestehende Engine-Entscheidung einschließlich der absoluten 2-µs-Rundungstoleranz wird wiederverwendet; explizite Null-Evidenz bleibt null. Das Abbrechen eines Bypass während fortgesetzten hohen Verbrauchs macht diesen nicht lernfähig. Nach Ablehnung muss die konfigurierte physische High-Ruhebedingung erfüllt werden. Ein bereits hoher erster Report nach Restore wird konservativ abgelehnt.
+
+Laufende Kandidaten und Ablehnungs-/Ruhetracking werden nicht persistiert. Abgeschlossene Pending-Kandidaten und bestätigte High-Historie werden getrennt mit Timestamp und Peak gespeichert. Optionale Felder benötigen keine neue Storage-Version. Beide Listen verwenden denselben F15-Kontext mit begrenzten, exakt gebundenen Rücksprungberechtigungen; Promotion verschiebt keine Zeitstempel und erzeugt keine Duplikate. Alte Stores liefern leere High-Historien. Ungültige Einträge werden ignoriert; die Bestätigungshistorie ist auf die neuesten 4096 Einträge begrenzt.
+
+Normale Samples und beide High-Historien altern gemeinsam im konfigurierten Fenster aus, auch nach Verkleinerung und Restore. Alte Winterwerte verlieren so automatisch ihre Bestätigungswirkung, ohne Monats- oder Saisonregeln. `reset_learning` löscht alle drei Historien, laufendes Tracking und zugehörigen Rollback-Kontext. Quellenwechsel neutralisieren Lernen wie bisher. Es entstehen keine neuen Optionen oder Entities; drei Bestätigungen und 15 % bleiben interne Konstanten.
+
 
 ## Warum Bypass-Zeiten nicht lernen?
 
@@ -173,9 +190,9 @@ Standard: **600 L/h**, in Expertenoptionen konfigurierbar.
 High beginnt exakt hier mit MONITORING; Low endet strikt darunter.
 Lernen, manuelles Maximum und Hydraulik erhöhen High nicht.
 Dauer, Volumen, Quiet/Reset und Bypass bleiben unverändert.
-High-MONITORING und Bypass schließen Episoden weiterhin vom Lernen aus.
-Die Aufnahme legitimer hoher Verbräuche als Burst-Kontext braucht eine
-separate fachliche Entscheidung außerhalb F02.
+High-MONITORING bleibt im allgemeinen Lernpfad ausgeschlossen. Der separate
+Bestätigungspfad für normale High-Episoden verändert F02 nicht. Bypass und
+Alarmepisoden bleiben stets vom Lernen ausgeschlossen.
 
 ---
 

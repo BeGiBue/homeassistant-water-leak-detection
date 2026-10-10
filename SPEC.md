@@ -427,6 +427,23 @@ New extreme maxima should require either:
 - or explicit confirmation,
 - or conservative statistical admission.
 
+### Repeatedly confirmed normal High episodes
+
+High remains **static**: default 600 L/h, ACTIVE after 45 minutes **or** 500 litres, reset after 5 minutes strictly below 100 L/h. Learning changes none of these values. Only the existing adaptive normal reference for Burst can benefit.
+
+The ordinary learning path still excludes High MONITORING. A separate gate tracks the peak of a High IDLE → MONITORING episode and creates a pending candidate only at its normal physical MONITORING → IDLE reset. A single episode, such as 750 L/h for 12 minutes, does not enter normal samples. Neither do two episodes.
+
+At least **three** comparable clean episodes must exist in the same `learning_window_days` rolling window (default **30 days**). The exact, symmetric rule for every confirming cluster is `max_peak <= min_peak × 1.15`. For example 750/780/800 or 700/800/805 qualify; 650/850/1400 do not. Sorted bands are evaluated deterministically, including overlapping valid bands, without greedy order-dependent grouping. The 15% boundary is inclusive.
+
+On confirmation, pending members enter the existing normal LearningSample model once, retaining their **original completion timestamps**. Confirmed High history can help a fourth episode qualify immediately if at least three comparable episodes, including the new one, remain in the window. Only the peak is learned: no durations, litre limits or reset times. Existing P95, short/long references, seasonal weighting and `insufficient` / `learning` / `reliable` confidence rules remain binding. Three High samples alone do not bypass insufficient confidence. With sufficient confidence, admitted peaks affect normal reference → Burst multiplier → hydraulic ceiling → adaptive Burst threshold; High stays static.
+
+Bypass is never learning permission. Any High ACTIVE, any other ACTIVE leak, or Burst MONITORING/ACTIVE—including a transient Rapid Rise candidate—permanently disqualifies that episode. Unknown, unavailable, invalid flow, a real excluded evidence gap, source rebind and restart also prevent admission. The engine's existing evidence-gap decision is reused: float/datetime differences within the existing absolute 2-µs tolerance are not gaps; explicit zero credit remains zero. Cancelling bypass during continuing high consumption cannot make it normal. A rejected episode requires the configured physical High quiet reset before a fresh eligible episode. An already-high first report after restore is conservatively rejected.
+
+Running candidates and rejection/quiet tracking are transient. Completed pending candidates and confirmed High history persist as separate optional lists of `{timestamp, peak_lph}`, with no storage-version change. They use the existing F15 bounded, exact-identity clock-rollback context; promotion transfers applicable permissions without retimestamping or duplicate admission. Old stores default to empty High histories. Invalid records and duplicates are ignored; confirmation history is bounded to the latest 4096 entries. Normal samples and both High histories age out using the same window, including immediately after window reduction or restore. Old winter evidence therefore loses its influence naturally without calendar-season rules.
+
+`reset_learning` clears normal samples, both High histories, running tracking and associated rollback permissions. Source changes retain the existing learning neutralization. There are no new options or entities: the fixed three confirmations and 15% band are internal constants; the existing learning window remains configurable.
+
+
 ---
 
 ## 12. Overall detector priority
@@ -1040,8 +1057,8 @@ Quiet/Reset und High-Bypass bleiben unverändert.
 nicht angezeigt oder verwendet. Der Burst-Multiplikator bleibt unabhängig.
 `effective_high_threshold` behält Entity-Identität und translation key.
 
-Die Lernaufnahme bleibt unverändert: High-MONITORING schließt die gesamte
-Episode als suspicious aus. Damit können normale Episoden >=600 L/h nicht
-mehr regulär als Burst-Normalkontext gelernt werden; auch Bypass hilft nicht.
-Eine Ausnahme erfordert eine separate fachliche Entscheidung außerhalb F02.
-F02 ist geschlossen; F04, F08 und Rapid Rise bleiben offen.
+Der allgemeine Lernpfad behandelt High-MONITORING weiterhin als suspicious.
+Der separate High-Normal-Pfad darf ausschließlich mehrfach bestätigte, sauber
+beendete High-Episoden als Burst-Normalkontext zulassen. Bypass und Alarmepisoden
+bleiben ausgeschlossen. Die F02-Detektionsregeln ändern sich dadurch nicht.
+F02 ist geschlossen; F04 und Rapid Rise bleiben offen.

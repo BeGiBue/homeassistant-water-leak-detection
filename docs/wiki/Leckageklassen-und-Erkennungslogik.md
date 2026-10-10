@@ -193,6 +193,8 @@ Die konfigurierte Experten-Schwelle beträgt standardmäßig 600 L/h.
 Lernen, manuelles Maximum und Hydraulik erhöhen sie nicht.
 Low endet exakt darunter; High beginnt exakt an der Schwelle.
 
+Sauber beendetes High-MONITORING kann erst nach mindestens drei ähnlichen Episoden im rollierenden Lernfenster (standardmäßig 30 Tage) als normale Peak-Evidenz zugelassen werden. Für einen bestätigenden Cluster gilt `max_peak <= min_peak × 1,15`. Bypass, High ACTIVE, andere aktive Alarme, Burst-/Rapid-Rise-Kandidaten und Messlücken verhindern die Aufnahme. Nur der Peak wird gelernt; High-Dauer, 500-Liter-Grenze und Reset bleiben statisch. Ursprüngliche Abschlusszeiten und bestehende Confidence bleiben bindend. Alte Bestätigungen altern mit dem Fenster aus.
+
 Details: [Adaptives Lernen und Hydraulik](Adaptives-Lernen-und-Hydraulik)
 
 ## Erkennungsentscheidung

@@ -178,7 +178,7 @@ sequence:
 
 ## Adaptive learning
 
-The learner stores peaks from completed, non-suspicious water-use episodes. Events are excluded from learning when High/Burst detection becomes suspicious or active, or while High Flow bypass is active.
+The learner stores peaks from completed, non-suspicious water-use episodes. The general path still excludes High/Burst monitoring, active alarms and bypass. A separate gate can admit clean High episodes only after at least three comparable episodes in the rolling window (default 30 days), with `max_peak <= min_peak × 1.15`. Pending episodes do not affect the normal reference; promotion preserves original timestamps. High stays static; only the existing confidence-weighted adaptive Burst reference may change. See [configuration](docs/CONFIGURATION.md#repeatedly-confirmed-normal-high-episodes).
 
 The default rolling window is 30 days. Recent and longer-term references are combined so the model can adapt to seasonal changes without allowing one unusual event to redefine normal behavior.
 
@@ -188,7 +188,7 @@ Learning confidence:
 - `learning` — learned values have reduced influence,
 - `reliable` — the robust learned reference can fully influence the adaptive Burst threshold.
 
-Use `water_leak_detection.reset_learning` to intentionally clear admitted learning history.
+Use `water_leak_detection.reset_learning` to clear normal samples, pending High candidates, confirmed High history and their rollback context. Bypass, any active alarm, Burst/Rapid-Rise candidates, measurement gaps and interrupted High episodes are never learned. High duration and the 500-litre limit stay static; older seasonal evidence ages out of the configured rolling window.
 
 ## Hydraulic context
 
@@ -381,8 +381,8 @@ Monitoring is not an immediate alarm: duration, volume, quiet/reset rules and
 High bypass are unchanged. Burst remains active during bypass and can still use
 adaptive context; its dynamic floor uses static High as the High reference.
 
-Learning admission remains unchanged: High MONITORING marks an episode as
-suspicious, excluding even legitimate episodes reaching 600 L/h from learning.
-Bypassed episodes are also excluded. Whether such usage should be admitted as
-normal Burst context requires a separate product decision; F02 adds no learning
-exception. F04, F08 and the Rapid Rise definition remain open.
+The general learning path still treats High MONITORING as suspicious. The separate
+High-normal confirmation gate admits only repeatedly confirmed, cleanly ended
+High episodes; bypass and alarm episodes remain excluded. This extends learning
+outside F02 without changing static High or Low stability. F04 and Rapid Rise
+remain open.

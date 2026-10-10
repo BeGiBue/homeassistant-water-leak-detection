@@ -147,6 +147,7 @@ class WaterLeakManager:
         self.flow_entity_id: str = entry.data[CONF_FLOW_ENTITY]
         self.total_entity_id: str | None = entry.data.get(CONF_TOTAL_ENTITY) or None
         self.engine = DetectionEngine(self._settings_from_options())
+        self._high_learning_startup = False
         self.learner = AdaptiveFlowLearner(
             window_days=int(
                 entry.options.get(
@@ -187,6 +188,7 @@ class WaterLeakManager:
         """Restore persisted state and start tracking source entities."""
         stored = await self._store.async_load()
         if isinstance(stored, dict):
+            self._high_learning_startup = True
             engine_data = stored.get("engine")
             if isinstance(engine_data, dict):
                 self.engine.restore(engine_data)
@@ -421,8 +423,38 @@ class WaterLeakManager:
             suspicious=suspicious,
             high_flow_bypassed=bypass_active,
         )
+        high_started = any(
+            transition.kind is DetectorKind.HIGH_FLOW
+            and transition.old_phase is DetectorPhase.IDLE
+            and transition.new_phase is DetectorPhase.MONITORING
+            for transition in transitions
+        )
+        high_finished = any(
+            transition.kind is DetectorKind.HIGH_FLOW
+            and transition.old_phase is DetectorPhase.MONITORING
+            and transition.new_phase is DetectorPhase.IDLE
+            for transition in transitions
+        )
+        high_changed = self.learner.observe_high(
+            dt_util.utcnow(), flow, runtime_now=now,
+            started=high_started, finished=high_finished,
+            disqualified=(
+                snapshot.alarm_active or bypass_active or self.engine.last_evidence_gap
+                or (self._high_learning_startup and flow >= self.engine.settings.high_threshold_lph)
+                or self.engine.runtimes[DetectorKind.BURST_LEAK].phase is not DetectorPhase.IDLE
+                or any(
+                    transition.kind is DetectorKind.BURST_LEAK
+                    and transition.new_phase is not DetectorPhase.IDLE
+                    for transition in transitions
+                )
+            ),
+            evidence_gap=self.engine.last_evidence_gap,
+            quiet_flow_lph=self.engine.settings.high_quiet_lph,
+            reset_seconds=self.engine.settings.high_reset_seconds,
+        )
+        self._high_learning_startup = False
         self._schedule_save()
-        if learning_changed:
+        if learning_changed or high_changed:
             _LOGGER.debug(
                 "Adaptive learning updated: %s",
                 self.learner.snapshot(dt_util.utcnow()),
@@ -430,6 +462,8 @@ class WaterLeakManager:
         self._notify_listeners()
 
     def _apply_controls(self) -> None:
+        if self.high_flow_bypass_active or self.engine.active_events():
+            self.learner.suspend_high_episode()
         transitions = self.engine.apply_controls(
             self.timer_now, high_flow_bypassed=self.high_flow_bypass_active
         )
