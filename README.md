@@ -4,7 +4,7 @@
 
 A backend-focused Home Assistant custom integration for detecting abnormal water consumption and possible water leaks from an existing water-meter flow sensor.
 
-**Current release:** 1.0.2  
+**Current release:** 1.0.3  
 **Minimum Home Assistant:** 2026.9.0  
 **Integration domain:** `water_leak_detection`
 
@@ -223,20 +223,20 @@ Event payloads include the event ID and relevant detector context. Burst events 
 - [Configuration reference](docs/CONFIGURATION.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Changelog](CHANGELOG.md)
-- [v1.0.2 release notes](RELEASE_NOTES_1.0.2.md)
+- [v1.0.3 release notes](RELEASE_NOTES_1.0.3.md)
 - [Release procedure](docs/RELEASING.md)
 - [Project Wiki](https://github.com/BeGiBue/homeassistant-water-leak-detection/wiki)
 - [Technical specification and roadmap](SPEC.md)
 
 ## Release status
 
-Version 1.0.2 is the current stable release and includes the complete original v0.1 → v0.3 backend roadmap plus the improved notification-recipient overview:
+Version 1.0.3 is the current stable release. It includes the complete original v0.1 → v0.3 backend roadmap plus the independently reviewed technical stabilization through correction round 7:
 
 - **v0.1.0** — detection core and backend entities
 - **v0.2.0** — notifications, device acknowledgement, and geofencing
 - **v0.3.0** — adaptive learning and hydraulic plausibility
 
-The previously published **0.3.0** GitHub release was tagged before the Home Assistant integration-type correction and still declared itself as a `helper`. **1.0.2 continues the corrected stable line introduced with 1.0.0 and explicitly declares `integration_type: "service"`, so Home Assistant loads it as a normal integration rather than a Helper.**
+The previously published **0.3.0** GitHub release was tagged before the Home Assistant integration-type correction and still declared itself as a `helper`. **1.0.3 continues the corrected stable line introduced with 1.0.0, explicitly declares `integration_type: "service"`, and contains the reviewed safety and reliability corrections released after 1.0.2.**
 
 The release is validated against Home Assistant 2026.9.4 / Python 3.14.2 with compile checks, Ruff, JSON validation, and automated tests.
 
@@ -247,11 +247,12 @@ Water Leak Guard is licensed under the **GNU Affero General Public License v3.0 
 
 See [LICENSE](LICENSE) for the complete license text.
 
-## Unreleased correction rounds: operational contract
+## Operational contract after 1.0.3
 
-The packaged version remains **1.0.2**; these working-tree corrections have not been
-released. F02 is closed by the static High Flow threshold. F04 and F08 remain known findings awaiting separate detector
-specifications. The Rapid-Rise definition also remains unchanged.
+Version **1.0.3** is the current stable release and already contains the seven reviewed
+technical correction rounds. The static High Flow change that closes F02 is implemented
+on this feature branch and is not part of 1.0.3 yet. F04 and F08 remain known findings
+awaiting separate detector specifications. The Rapid-Rise definition also remains unchanged.
 
 Only actual flow reports supply detection/quiet evidence. Re-reading a cached HA
 state on an internal tick never matures a timer. Object identity and report
