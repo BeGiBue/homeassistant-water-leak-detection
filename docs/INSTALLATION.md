@@ -80,7 +80,7 @@ Saving a Configure subsection returns to the appropriate menu instead of closing
 
 Notification recipients do not have to be configured only during initial installation; they can be added, edited, or removed later.
 
-### Back without saving (unreleased correction round)
+### Back without saving
 
 Each source, expert and recipient form now has a **Back without saving** switch.
 Enable it and submit to return to the preceding menu without saving or validating
