@@ -27,7 +27,7 @@ def test_manifest_is_normal_service_integration() -> None:
 
     assert manifest["integration_type"] == "service"
     assert manifest["config_flow"] is True
-    assert manifest["version"] == "1.0.2"
+    assert manifest["version"] == "1.0.3"
     assert manifest["name"] == "Water Leak Guard"
     assert NAME == "Water Leak Guard"
 
@@ -208,5 +208,5 @@ def test_repository_license_metadata() -> None:
 
     assert license_text.startswith("GNU AFFERO GENERAL PUBLIC LICENSE")
     assert "Version 3, 19 November 2007" in license_text
-    assert pyproject["project"]["version"] == "1.0.2"
+    assert pyproject["project"]["version"] == "1.0.3"
     assert pyproject["project"]["license"] == "AGPL-3.0-only"

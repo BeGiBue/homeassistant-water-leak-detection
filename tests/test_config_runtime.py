@@ -162,7 +162,7 @@ def test_f20_release_validation_and_target_use_same_commit():
 def test_f21_versions_and_current_operational_documentation_agree():
     manifest = json.loads(Path("custom_components/water_leak_detection/manifest.json").read_text())
     project = tomllib.loads(Path("pyproject.toml").read_text())
-    assert manifest["version"] == project["project"]["version"] == c.VERSION == "1.0.2"
+    assert manifest["version"] == project["project"]["version"] == c.VERSION == "1.0.3"
     readme = Path("README.md").read_text()
     assert "last_reported" in readme
     assert "F02, F04 and F08 remain" in readme
